@@ -143,7 +143,7 @@ class CodecTests(unittest.TestCase):
     def test_malformed_envelopes_and_tags_rejected(self):
         baseline = to_data(self.x)
         mutations = (
-            lambda data: data.update(version=2),
+            lambda data: data.update(version=999),
             lambda data: data.update(version=True),
             lambda data: data.update(format="pickle"),
             lambda data: data.update(kind="workspace"),

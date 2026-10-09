@@ -1,0 +1,12 @@
+{
+  "baseline": "d001141",
+  "package_version": "0.1.0",
+  "files": {
+    "legacy_objects.json": "sha256:1e5b24781336522fc57f8eb55f0b390c654b0d2b441979c8ba361b2b92f714e4",
+    "legacy_workspace.json": "sha256:b35b7c1d37971cbcedfaa5ab186965bc59836f7d96488c42166f814b85a93fbe"
+  },
+  "reader": {
+    "file": "serialization_v1.py",
+    "sha256": "cad12feaf98d63cec0bfc4b6153cbb7ea4bc6e1e06abc2372cd6fcc8f4c89b1e"
+  }
+}

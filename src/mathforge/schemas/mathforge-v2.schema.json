@@ -1,0 +1,1736 @@
+{
+  "$defs": {
+    "add": {
+      "additionalProperties": false,
+      "properties": {
+        "terms": {
+          "items": {
+            "$ref": "#/$defs/expression"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "type": {
+          "const": "add"
+        }
+      },
+      "required": [
+        "type",
+        "terms"
+      ],
+      "type": "object"
+    },
+    "affine_solution_set": {
+      "additionalProperties": false,
+      "properties": {
+        "basis": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/rational"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "particular": {
+          "items": {
+            "$ref": "#/$defs/rational"
+          },
+          "type": "array"
+        },
+        "type": {
+          "const": "affine_solution_set"
+        },
+        "variables": {
+          "items": {
+            "$ref": "#/$defs/symbol"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "type",
+        "variables",
+        "particular",
+        "basis"
+      ],
+      "type": "object"
+    },
+    "assumption": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "enum": [
+            "positive",
+            "nonnegative",
+            "nonzero"
+          ]
+        },
+        "truth": {
+          "$ref": "#/$defs/truth_value"
+        },
+        "type": {
+          "const": "assumption"
+        }
+      },
+      "required": [
+        "type",
+        "name",
+        "truth"
+      ],
+      "type": "object"
+    },
+    "boolean": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "boolean"
+        },
+        "value": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "type": "object"
+    },
+    "check": {
+      "additionalProperties": false,
+      "properties": {
+        "claim": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "details": {
+          "type": "string"
+        },
+        "level": {
+          "$ref": "#/$defs/verification_level_value"
+        },
+        "method": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/check_status_value"
+        },
+        "subject": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/expression"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "type": {
+          "const": "check"
+        }
+      },
+      "required": [
+        "type",
+        "claim",
+        "status",
+        "level",
+        "method",
+        "subject",
+        "details"
+      ],
+      "type": "object"
+    },
+    "check_status": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "check_status"
+        },
+        "value": {
+          "$ref": "#/$defs/check_status_value"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "type": "object"
+    },
+    "check_status_value": {
+      "enum": [
+        "verified",
+        "failed",
+        "unknown",
+        "unchecked"
+      ]
+    },
+    "completeness": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "completeness"
+        },
+        "value": {
+          "$ref": "#/$defs/completeness_value"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "type": "object"
+    },
+    "completeness_value": {
+      "enum": [
+        "complete",
+        "partial",
+        "unknown",
+        "not_applicable"
+      ]
+    },
+    "condition": {
+      "additionalProperties": false,
+      "properties": {
+        "lhs": {
+          "$ref": "#/$defs/expression"
+        },
+        "relation": {
+          "enum": [
+            "eq",
+            "ne",
+            "lt",
+            "le",
+            "gt",
+            "ge"
+          ]
+        },
+        "rhs": {
+          "$ref": "#/$defs/expression"
+        },
+        "truth": {
+          "$ref": "#/$defs/truth_value"
+        },
+        "type": {
+          "const": "condition"
+        }
+      },
+      "required": [
+        "type",
+        "lhs",
+        "relation",
+        "rhs",
+        "truth"
+      ],
+      "type": "object"
+    },
+    "decimal": {
+      "pattern": "^(0|[1-9][0-9]*|-[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "domain": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "domain"
+        },
+        "value": {
+          "$ref": "#/$defs/domain_value"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "type": "object"
+    },
+    "domain_value": {
+      "enum": [
+        "reals",
+        "rationals",
+        "integers"
+      ]
+    },
+    "empty_set": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "$ref": "#/$defs/domain_value"
+        },
+        "type": {
+          "const": "empty_set"
+        }
+      },
+      "required": [
+        "type",
+        "domain"
+      ],
+      "type": "object"
+    },
+    "equation": {
+      "additionalProperties": false,
+      "properties": {
+        "lhs": {
+          "$ref": "#/$defs/scalar"
+        },
+        "rhs": {
+          "$ref": "#/$defs/scalar"
+        },
+        "type": {
+          "const": "equation"
+        }
+      },
+      "required": [
+        "type",
+        "lhs",
+        "rhs"
+      ],
+      "type": "object"
+    },
+    "error_info": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "type": {
+          "const": "error_info"
+        }
+      },
+      "required": [
+        "type",
+        "code",
+        "message"
+      ],
+      "type": "object"
+    },
+    "exactness": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "exactness"
+        },
+        "value": {
+          "$ref": "#/$defs/exactness_value"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "type": "object"
+    },
+    "exactness_value": {
+      "enum": [
+        "exact",
+        "approximate",
+        "mixed",
+        "not_applicable"
+      ]
+    },
+    "execution_status": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "execution_status"
+        },
+        "value": {
+          "$ref": "#/$defs/execution_status_value"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "type": "object"
+    },
+    "execution_status_value": {
+      "enum": [
+        "completed",
+        "unsupported",
+        "invalid_input",
+        "error"
+      ]
+    },
+    "expression": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/rational"
+        },
+        {
+          "$ref": "#/$defs/symbol"
+        },
+        {
+          "$ref": "#/$defs/add"
+        },
+        {
+          "$ref": "#/$defs/mul"
+        },
+        {
+          "$ref": "#/$defs/pow"
+        },
+        {
+          "$ref": "#/$defs/sqrt"
+        },
+        {
+          "$ref": "#/$defs/real_algebraic_root"
+        }
+      ]
+    },
+    "finite_set": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "$ref": "#/$defs/domain_value"
+        },
+        "type": {
+          "const": "finite_set"
+        },
+        "values": {
+          "items": {
+            "$ref": "#/$defs/expression"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "type",
+        "values",
+        "domain"
+      ],
+      "type": "object"
+    },
+    "inequality": {
+      "additionalProperties": false,
+      "properties": {
+        "lhs": {
+          "$ref": "#/$defs/scalar"
+        },
+        "relation": {
+          "enum": [
+            "lt",
+            "le",
+            "gt",
+            "ge"
+          ]
+        },
+        "rhs": {
+          "$ref": "#/$defs/scalar"
+        },
+        "type": {
+          "const": "inequality"
+        }
+      },
+      "required": [
+        "type",
+        "lhs",
+        "relation",
+        "rhs"
+      ],
+      "type": "object"
+    },
+    "integer": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "integer"
+        },
+        "value": {
+          "$ref": "#/$defs/decimal"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "type": "object"
+    },
+    "interval": {
+      "additionalProperties": false,
+      "properties": {
+        "left_closed": {
+          "type": "boolean"
+        },
+        "lower": {
+          "anyOf": [
+            {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/rational"
+                },
+                {
+                  "$ref": "#/$defs/real_algebraic_root"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "right_closed": {
+          "type": "boolean"
+        },
+        "type": {
+          "const": "interval"
+        },
+        "upper": {
+          "anyOf": [
+            {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/rational"
+                },
+                {
+                  "$ref": "#/$defs/real_algebraic_root"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "lower",
+        "upper",
+        "left_closed",
+        "right_closed"
+      ],
+      "type": "object"
+    },
+    "interval_set": {
+      "additionalProperties": false,
+      "properties": {
+        "intervals": {
+          "items": {
+            "$ref": "#/$defs/interval"
+          },
+          "type": "array"
+        },
+        "type": {
+          "const": "interval_set"
+        }
+      },
+      "required": [
+        "type",
+        "intervals"
+      ],
+      "type": "object"
+    },
+    "linear_system": {
+      "additionalProperties": false,
+      "properties": {
+        "coefficients": {
+          "$ref": "#/$defs/matrix"
+        },
+        "rhs": {
+          "items": {
+            "$ref": "#/$defs/rational"
+          },
+          "type": "array"
+        },
+        "type": {
+          "const": "linear_system"
+        },
+        "variables": {
+          "items": {
+            "$ref": "#/$defs/symbol"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "type",
+        "coefficients",
+        "rhs",
+        "variables"
+      ],
+      "type": "object"
+    },
+    "matrix": {
+      "additionalProperties": false,
+      "properties": {
+        "ncols": {
+          "$ref": "#/$defs/nonnegative_decimal"
+        },
+        "rows": {
+          "items": {
+            "items": {
+              "$ref": "#/$defs/rational"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "type": {
+          "const": "matrix"
+        }
+      },
+      "required": [
+        "type",
+        "rows",
+        "ncols"
+      ],
+      "type": "object"
+    },
+    "mul": {
+      "additionalProperties": false,
+      "properties": {
+        "factors": {
+          "items": {
+            "$ref": "#/$defs/expression"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "type": {
+          "const": "mul"
+        }
+      },
+      "required": [
+        "type",
+        "factors"
+      ],
+      "type": "object"
+    },
+    "node": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/domain"
+        },
+        {
+          "$ref": "#/$defs/truth"
+        },
+        {
+          "$ref": "#/$defs/execution_status"
+        },
+        {
+          "$ref": "#/$defs/outcome"
+        },
+        {
+          "$ref": "#/$defs/exactness"
+        },
+        {
+          "$ref": "#/$defs/completeness"
+        },
+        {
+          "$ref": "#/$defs/check_status"
+        },
+        {
+          "$ref": "#/$defs/verification_level"
+        },
+        {
+          "$ref": "#/$defs/step_relation"
+        },
+        {
+          "$ref": "#/$defs/none"
+        },
+        {
+          "$ref": "#/$defs/boolean"
+        },
+        {
+          "$ref": "#/$defs/text"
+        },
+        {
+          "$ref": "#/$defs/integer"
+        },
+        {
+          "$ref": "#/$defs/rational"
+        },
+        {
+          "$ref": "#/$defs/assumption"
+        },
+        {
+          "$ref": "#/$defs/symbol"
+        },
+        {
+          "$ref": "#/$defs/add"
+        },
+        {
+          "$ref": "#/$defs/mul"
+        },
+        {
+          "$ref": "#/$defs/pow"
+        },
+        {
+          "$ref": "#/$defs/sqrt"
+        },
+        {
+          "$ref": "#/$defs/polynomial"
+        },
+        {
+          "$ref": "#/$defs/equation"
+        },
+        {
+          "$ref": "#/$defs/finite_set"
+        },
+        {
+          "$ref": "#/$defs/empty_set"
+        },
+        {
+          "$ref": "#/$defs/universal_set"
+        },
+        {
+          "$ref": "#/$defs/condition"
+        },
+        {
+          "$ref": "#/$defs/check"
+        },
+        {
+          "$ref": "#/$defs/verification_report"
+        },
+        {
+          "$ref": "#/$defs/step"
+        },
+        {
+          "$ref": "#/$defs/error_info"
+        },
+        {
+          "$ref": "#/$defs/tuple"
+        },
+        {
+          "$ref": "#/$defs/object_ref"
+        },
+        {
+          "$ref": "#/$defs/square_free_factor"
+        },
+        {
+          "$ref": "#/$defs/square_free_decomposition"
+        },
+        {
+          "$ref": "#/$defs/real_algebraic_root"
+        },
+        {
+          "$ref": "#/$defs/root_record"
+        },
+        {
+          "$ref": "#/$defs/rational_function"
+        },
+        {
+          "$ref": "#/$defs/matrix"
+        },
+        {
+          "$ref": "#/$defs/rref_result"
+        },
+        {
+          "$ref": "#/$defs/linear_system"
+        },
+        {
+          "$ref": "#/$defs/affine_solution_set"
+        },
+        {
+          "$ref": "#/$defs/inequality"
+        },
+        {
+          "$ref": "#/$defs/interval"
+        },
+        {
+          "$ref": "#/$defs/interval_set"
+        },
+        {
+          "$ref": "#/$defs/operation_request"
+        },
+        {
+          "$ref": "#/$defs/operation_record"
+        },
+        {
+          "$ref": "#/$defs/result"
+        }
+      ]
+    },
+    "none": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "none"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "nonnegative_decimal": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "object_ref": {
+      "additionalProperties": false,
+      "properties": {
+        "identifier": {
+          "$ref": "#/$defs/sha256"
+        },
+        "type": {
+          "const": "object_ref"
+        }
+      },
+      "required": [
+        "type",
+        "identifier"
+      ],
+      "type": "object"
+    },
+    "operation_record": {
+      "additionalProperties": false,
+      "properties": {
+        "inputs": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "ref": {
+                "$ref": "#/$defs/object_ref"
+              }
+            },
+            "required": [
+              "name",
+              "ref"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "operation": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "options": {
+          "$ref": "#/$defs/options"
+        },
+        "result_ref": {
+          "$ref": "#/$defs/object_ref"
+        },
+        "type": {
+          "const": "operation_record"
+        }
+      },
+      "required": [
+        "type",
+        "operation",
+        "inputs",
+        "options",
+        "result_ref"
+      ],
+      "type": "object"
+    },
+    "operation_request": {
+      "additionalProperties": false,
+      "properties": {
+        "arguments": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "value": {
+                "$ref": "#/$defs/node"
+              }
+            },
+            "required": [
+              "name",
+              "value"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "operation": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "type": {
+          "const": "operation_request"
+        }
+      },
+      "required": [
+        "type",
+        "operation",
+        "arguments"
+      ],
+      "type": "object"
+    },
+    "option": {
+      "anyOf": [
+        {
+          "type": [
+            "null",
+            "string",
+            "boolean",
+            "number"
+          ]
+        },
+        {
+          "$ref": "#/$defs/options"
+        },
+        {
+          "$ref": "#/$defs/option_integer"
+        },
+        {
+          "$ref": "#/$defs/option_array"
+        }
+      ]
+    },
+    "option_array": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/option"
+          },
+          "type": "array"
+        },
+        "type": {
+          "const": "option_array"
+        }
+      },
+      "required": [
+        "type",
+        "items"
+      ],
+      "type": "object"
+    },
+    "option_integer": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "option_integer"
+        },
+        "value": {
+          "$ref": "#/$defs/decimal"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "type": "object"
+    },
+    "options": {
+      "additionalProperties": false,
+      "properties": {
+        "entries": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "value": {
+                "$ref": "#/$defs/option"
+              }
+            },
+            "required": [
+              "name",
+              "value"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "type": {
+          "const": "options"
+        }
+      },
+      "required": [
+        "type",
+        "entries"
+      ],
+      "type": "object"
+    },
+    "outcome": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "outcome"
+        },
+        "value": {
+          "$ref": "#/$defs/outcome_value"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "type": "object"
+    },
+    "outcome_value": {
+      "enum": [
+        "value",
+        "solutions",
+        "candidates",
+        "no_solution",
+        "no_conclusion",
+        "partial",
+        "not_applicable"
+      ]
+    },
+    "polynomial": {
+      "additionalProperties": false,
+      "properties": {
+        "coefficients": {
+          "items": {
+            "$ref": "#/$defs/rational"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "type": {
+          "const": "polynomial"
+        },
+        "variable": {
+          "$ref": "#/$defs/symbol"
+        }
+      },
+      "required": [
+        "type",
+        "coefficients",
+        "variable"
+      ],
+      "type": "object"
+    },
+    "positive_decimal": {
+      "pattern": "^[1-9][0-9]*$",
+      "type": "string"
+    },
+    "pow": {
+      "additionalProperties": false,
+      "properties": {
+        "base": {
+          "$ref": "#/$defs/expression"
+        },
+        "exponent": {
+          "$ref": "#/$defs/nonnegative_decimal"
+        },
+        "type": {
+          "const": "pow"
+        }
+      },
+      "required": [
+        "type",
+        "base",
+        "exponent"
+      ],
+      "type": "object"
+    },
+    "rational": {
+      "additionalProperties": false,
+      "properties": {
+        "denominator": {
+          "$ref": "#/$defs/positive_decimal"
+        },
+        "numerator": {
+          "$ref": "#/$defs/decimal"
+        },
+        "type": {
+          "const": "rational"
+        }
+      },
+      "required": [
+        "type",
+        "numerator",
+        "denominator"
+      ],
+      "type": "object"
+    },
+    "rational_function": {
+      "additionalProperties": false,
+      "properties": {
+        "denominator": {
+          "$ref": "#/$defs/polynomial"
+        },
+        "excluded": {
+          "items": {
+            "$ref": "#/$defs/polynomial"
+          },
+          "type": "array"
+        },
+        "numerator": {
+          "$ref": "#/$defs/polynomial"
+        },
+        "type": {
+          "const": "rational_function"
+        }
+      },
+      "required": [
+        "type",
+        "numerator",
+        "denominator",
+        "excluded"
+      ],
+      "type": "object"
+    },
+    "real_algebraic_root": {
+      "additionalProperties": false,
+      "properties": {
+        "integer_coefficients": {
+          "items": {
+            "$ref": "#/$defs/decimal"
+          },
+          "minItems": 2,
+          "type": "array"
+        },
+        "real_index": {
+          "$ref": "#/$defs/nonnegative_decimal"
+        },
+        "type": {
+          "const": "real_algebraic_root"
+        }
+      },
+      "required": [
+        "type",
+        "integer_coefficients",
+        "real_index"
+      ],
+      "type": "object"
+    },
+    "result": {
+      "additionalProperties": false,
+      "properties": {
+        "assumptions": {
+          "items": {
+            "$ref": "#/$defs/assumption"
+          },
+          "type": "array"
+        },
+        "completeness": {
+          "$ref": "#/$defs/completeness_value"
+        },
+        "domain": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/domain_value"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/error_info"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error_bound": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/rational"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "exactness": {
+          "$ref": "#/$defs/exactness_value"
+        },
+        "execution_status": {
+          "$ref": "#/$defs/execution_status_value"
+        },
+        "expression": {
+          "anyOf": [
+            {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/expression"
+                },
+                {
+                  "$ref": "#/$defs/polynomial"
+                },
+                {
+                  "$ref": "#/$defs/rational_function"
+                },
+                {
+                  "$ref": "#/$defs/matrix"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "for_": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/symbol"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "method": {
+          "type": "string"
+        },
+        "outcome": {
+          "$ref": "#/$defs/outcome_value"
+        },
+        "precision": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/positive_decimal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "problem": {
+          "anyOf": [
+            {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/equation"
+                },
+                {
+                  "$ref": "#/$defs/inequality"
+                },
+                {
+                  "$ref": "#/$defs/linear_system"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "request": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/operation_request"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/step"
+          },
+          "type": "array"
+        },
+        "tolerance": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/rational"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "type": {
+          "const": "result"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/node"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "verification": {
+          "items": {
+            "$ref": "#/$defs/check"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "type",
+        "execution_status",
+        "outcome",
+        "value",
+        "exactness",
+        "completeness",
+        "verification",
+        "method",
+        "domain",
+        "assumptions",
+        "steps",
+        "problem",
+        "expression",
+        "for_",
+        "precision",
+        "tolerance",
+        "error_bound",
+        "error",
+        "request"
+      ],
+      "type": "object"
+    },
+    "root_record": {
+      "additionalProperties": false,
+      "properties": {
+        "multiplicity": {
+          "$ref": "#/$defs/positive_decimal"
+        },
+        "root": {
+          "$ref": "#/$defs/expression"
+        },
+        "type": {
+          "const": "root_record"
+        }
+      },
+      "required": [
+        "type",
+        "root",
+        "multiplicity"
+      ],
+      "type": "object"
+    },
+    "rref_result": {
+      "additionalProperties": false,
+      "properties": {
+        "matrix": {
+          "$ref": "#/$defs/matrix"
+        },
+        "pivot_columns": {
+          "items": {
+            "$ref": "#/$defs/nonnegative_decimal"
+          },
+          "type": "array"
+        },
+        "type": {
+          "const": "rref_result"
+        }
+      },
+      "required": [
+        "type",
+        "matrix",
+        "pivot_columns"
+      ],
+      "type": "object"
+    },
+    "scalar": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/expression"
+        },
+        {
+          "$ref": "#/$defs/rational_function"
+        }
+      ]
+    },
+    "sha256": {
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "sqrt": {
+      "additionalProperties": false,
+      "properties": {
+        "radicand": {
+          "$ref": "#/$defs/rational"
+        },
+        "type": {
+          "const": "sqrt"
+        }
+      },
+      "required": [
+        "type",
+        "radicand"
+      ],
+      "type": "object"
+    },
+    "square_free_decomposition": {
+      "additionalProperties": false,
+      "properties": {
+        "coefficient": {
+          "$ref": "#/$defs/rational"
+        },
+        "factors": {
+          "items": {
+            "$ref": "#/$defs/square_free_factor"
+          },
+          "type": "array"
+        },
+        "type": {
+          "const": "square_free_decomposition"
+        }
+      },
+      "required": [
+        "type",
+        "coefficient",
+        "factors"
+      ],
+      "type": "object"
+    },
+    "square_free_factor": {
+      "additionalProperties": false,
+      "properties": {
+        "multiplicity": {
+          "$ref": "#/$defs/positive_decimal"
+        },
+        "polynomial": {
+          "$ref": "#/$defs/polynomial"
+        },
+        "type": {
+          "const": "square_free_factor"
+        }
+      },
+      "required": [
+        "type",
+        "polynomial",
+        "multiplicity"
+      ],
+      "type": "object"
+    },
+    "step": {
+      "additionalProperties": false,
+      "properties": {
+        "audit": {
+          "items": {
+            "$ref": "#/$defs/check"
+          },
+          "type": "array"
+        },
+        "explanation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "inputs": {
+          "items": {
+            "$ref": "#/$defs/node"
+          },
+          "type": "array"
+        },
+        "outputs": {
+          "items": {
+            "$ref": "#/$defs/node"
+          },
+          "type": "array"
+        },
+        "preconditions": {
+          "items": {
+            "$ref": "#/$defs/condition"
+          },
+          "type": "array"
+        },
+        "relation": {
+          "$ref": "#/$defs/step_relation_value"
+        },
+        "rule": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "type": {
+          "const": "step"
+        }
+      },
+      "required": [
+        "type",
+        "rule",
+        "inputs",
+        "outputs",
+        "preconditions",
+        "relation",
+        "audit",
+        "explanation"
+      ],
+      "type": "object"
+    },
+    "step_relation": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "step_relation"
+        },
+        "value": {
+          "$ref": "#/$defs/step_relation_value"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "type": "object"
+    },
+    "step_relation_value": {
+      "enum": [
+        "equivalence",
+        "implication",
+        "approximation",
+        "derivation",
+        "evaluation"
+      ]
+    },
+    "symbol": {
+      "additionalProperties": false,
+      "properties": {
+        "assumptions": {
+          "items": {
+            "$ref": "#/$defs/assumption"
+          },
+          "type": "array"
+        },
+        "domain": {
+          "$ref": "#/$defs/domain_value"
+        },
+        "name": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "type": {
+          "const": "symbol"
+        },
+        "uid": {
+          "$ref": "#/$defs/uuid"
+        }
+      },
+      "required": [
+        "type",
+        "name",
+        "uid",
+        "domain",
+        "assumptions"
+      ],
+      "type": "object"
+    },
+    "text": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "text"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "type": "object"
+    },
+    "truth": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "truth"
+        },
+        "value": {
+          "$ref": "#/$defs/truth_value"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "type": "object"
+    },
+    "truth_value": {
+      "enum": [
+        "true",
+        "false",
+        "unknown"
+      ]
+    },
+    "tuple": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/node"
+          },
+          "type": "array"
+        },
+        "type": {
+          "const": "tuple"
+        }
+      },
+      "required": [
+        "type",
+        "items"
+      ],
+      "type": "object"
+    },
+    "universal_set": {
+      "additionalProperties": false,
+      "properties": {
+        "domain": {
+          "$ref": "#/$defs/domain_value"
+        },
+        "type": {
+          "const": "universal_set"
+        }
+      },
+      "required": [
+        "type",
+        "domain"
+      ],
+      "type": "object"
+    },
+    "uuid": {
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "type": "string"
+    },
+    "verification_level": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "verification_level"
+        },
+        "value": {
+          "$ref": "#/$defs/verification_level_value"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "type": "object"
+    },
+    "verification_level_value": {
+      "enum": [
+        "none",
+        "exact_substitution",
+        "algorithmic_check"
+      ]
+    },
+    "verification_report": {
+      "additionalProperties": false,
+      "properties": {
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/check"
+          },
+          "type": "array"
+        },
+        "type": {
+          "const": "verification_report"
+        }
+      },
+      "required": [
+        "type",
+        "checks"
+      ],
+      "type": "object"
+    },
+    "workspace": {
+      "additionalProperties": false,
+      "properties": {
+        "history": {
+          "items": {
+            "$ref": "#/$defs/operation_record"
+          },
+          "type": "array"
+        },
+        "objects": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "object": {
+                "$ref": "#/$defs/node"
+              },
+              "ref": {
+                "$ref": "#/$defs/sha256"
+              }
+            },
+            "required": [
+              "ref",
+              "object"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "type": {
+          "const": "workspace"
+        }
+      },
+      "required": [
+        "type",
+        "objects",
+        "history"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "urn:mathforge:serialization:v2",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "else": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/node"
+          }
+        }
+      },
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "workspace"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/workspace"
+          }
+        }
+      }
+    }
+  ],
+  "description": "Structural transport constraints only. Canonical arithmetic, symbol consistency, shape relations, mathematical claims, content hashes and resource limits require the MathForge decoder and verifier.",
+  "properties": {
+    "data": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/node"
+        },
+        {
+          "$ref": "#/$defs/workspace"
+        }
+      ]
+    },
+    "format": {
+      "const": "mathforge"
+    },
+    "kind": {
+      "enum": [
+        "object",
+        "workspace"
+      ]
+    },
+    "version": {
+      "const": 2
+    }
+  },
+  "required": [
+    "format",
+    "version",
+    "kind",
+    "data"
+  ],
+  "title": "MathForge format v2 structural schema",
+  "type": "object"
+}

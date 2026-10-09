@@ -7,7 +7,6 @@ no source code and never imports a type named by the document.
 from __future__ import annotations
 
 from collections.abc import Iterable
-from contextvars import ContextVar
 from enum import Enum
 import json
 import math
@@ -22,60 +21,7 @@ from .polynomial import Polynomial
 
 
 FORMAT = "mathforge"
-VERSION = 2
-_decode_limits = ContextVar("mathforge_decode_limits", default=None)
-
-
-def _resource_limit(message: str):
-    raise SerializationError(message, code="resource_limit_exceeded")
-
-
-def _limits(value):
-    from .limits import DecodeLimits
-
-    if value is None:
-        return DecodeLimits()
-    if type(value) is not DecodeLimits:
-        raise SerializationError("decode_limits must be a DecodeLimits value")
-    return value
-
-
-def _v2_types():
-    """Fixed imports, never names supplied by an input document."""
-    from .algebraic import RealAlgebraicRoot, RootRecord
-    from .intervals import Interval, IntervalSet
-    from .matrices import AffineSolutionSet, LinearSystem, Matrix, RREFResult
-    from .polynomial import SquareFreeDecomposition, SquareFreeFactor
-    from .rational_function import RationalFunction
-
-    return {
-        "square_free_factor": SquareFreeFactor,
-        "square_free_decomposition": SquareFreeDecomposition,
-        "real_algebraic_root": RealAlgebraicRoot,
-        "root_record": RootRecord,
-        "rational_function": RationalFunction,
-        "matrix": Matrix,
-        "rref_result": RREFResult,
-        "linear_system": LinearSystem,
-        "affine_solution_set": AffineSolutionSet,
-        "inequality": c.Inequality,
-        "interval": Interval,
-        "interval_set": IntervalSet,
-        "operation_request": c.OperationRequest,
-    }
-
-
-_V2_TAGS = frozenset((
-    "square_free_factor", "square_free_decomposition", "real_algebraic_root",
-    "root_record", "rational_function", "matrix", "rref_result", "linear_system",
-    "affine_solution_set", "inequality", "interval", "interval_set", "operation_request",
-))
-
-
-def _boolean(value):
-    if type(value) is not bool:
-        raise SerializationError("A boolean is required")
-    return value
+VERSION = 1
 
 
 def _decimal(number: int) -> str:
@@ -92,12 +38,7 @@ def _decimal(number: int) -> str:
 
 
 def _integer(value: Any) -> int:
-    if type(value) is not str:
-        raise SerializationError("An integer must be a canonical decimal string")
-    limits = _decode_limits.get()
-    if limits is not None and len(value) - value.startswith("-") > limits.max_integer_digits:
-        _resource_limit("Integer exceeds the configured decimal digit limit")
-    if not re.fullmatch(r"(?:0|-?[1-9][0-9]*)", value):
+    if not isinstance(value, str) or not re.fullmatch(r"(?:0|-?[1-9][0-9]*)", value):
         raise SerializationError("An integer must be a canonical decimal string")
     negative = value.startswith("-")
     digits = value[1:] if negative else value
@@ -156,7 +97,6 @@ class _Encoder:
     def __init__(self, *, allow_workspace: bool = False) -> None:
         self.symbols: dict[str, Any] = {}
         self.allow_workspace = allow_workspace
-        self.minimum_version = 1
 
     def encode(self, value: Any) -> dict[str, Any]:
         from .workspace import FrozenOptions, ObjectRef, OperationRecord, Workspace
@@ -222,9 +162,7 @@ class _Encoder:
         if t is c.ErrorInfo:
             return {"type": "error_info", "code": value.code, "message": value.message}
         if t is c.Result:
-            if type(value.expression) is Polynomial:
-                self.minimum_version = 2
-            result = {"type": "result", "execution_status": value.execution_status.value,
+            return {"type": "result", "execution_status": value.execution_status.value,
                     "outcome": value.outcome.value, "value": self.optional(value.value),
                     "exactness": value.exactness.value, "completeness": value.completeness.value,
                     "verification": [self.encode(v) for v in value.verification],
@@ -235,10 +173,6 @@ class _Encoder:
                     "precision": None if value.precision is None else _decimal(value.precision),
                     "tolerance": self.optional(value.tolerance), "error_bound": self.optional(value.error_bound),
                     "error": self.optional(value.error)}
-            if value.request is not None:
-                self.minimum_version = 2
-                result["request"] = self.encode(value.request)
-            return result
         if t is ObjectRef:
             return {"type": "object_ref", "identifier": value.identifier}
         if t is OperationRecord:
@@ -254,53 +188,7 @@ class _Encoder:
             return {"type": "workspace", "objects": [
                 {"ref": key, "object": self.encode(obj)} for key, obj in sorted(value._objects.items())
             ], "history": [self.encode(record) for record in value.history]}
-        classes = _v2_types()
-        tag = next((tag for tag, cls in classes.items() if t is cls), None)
-        if tag is not None:
-            self.minimum_version = 2
-            return self.v2(tag, value)
         raise SerializationError(f"Unsupported object type: {t.__name__}")
-
-    def v2(self, tag, value):
-        data = {"type": tag}
-        if tag == "square_free_factor":
-            data.update(polynomial=self.encode(value.polynomial), multiplicity=_decimal(value.multiplicity))
-        elif tag == "square_free_decomposition":
-            data.update(coefficient=self.encode(value.coefficient),
-                        factors=[self.encode(v) for v in value.factors])
-        elif tag == "real_algebraic_root":
-            data.update(integer_coefficients=[_decimal(v) for v in value.integer_coefficients],
-                        real_index=_decimal(value.real_index))
-        elif tag == "root_record":
-            data.update(root=self.encode(value.root), multiplicity=_decimal(value.multiplicity))
-        elif tag == "rational_function":
-            data.update(numerator=self.encode(value.numerator), denominator=self.encode(value.denominator),
-                        excluded=[self.encode(v) for v in value.excluded])
-        elif tag == "matrix":
-            data.update(rows=[[self.encode(v) for v in row] for row in value.rows],
-                        ncols=_decimal(value.ncols))
-        elif tag == "rref_result":
-            data.update(matrix=self.encode(value.matrix),
-                        pivot_columns=[_decimal(v) for v in value.pivot_columns])
-        elif tag == "linear_system":
-            data.update(coefficients=self.encode(value.coefficients),
-                        rhs=[self.encode(v) for v in value.rhs],
-                        variables=[self.encode(v) for v in value.variables])
-        elif tag == "affine_solution_set":
-            data.update(variables=[self.encode(v) for v in value.variables],
-                        particular=[self.encode(v) for v in value.particular],
-                        basis=[[self.encode(v) for v in row] for row in value.basis])
-        elif tag == "inequality":
-            data.update(lhs=self.encode(value.lhs), relation=value.relation, rhs=self.encode(value.rhs))
-        elif tag == "interval":
-            data.update(lower=self.optional(value.lower), upper=self.optional(value.upper),
-                        left_closed=value.left_closed, right_closed=value.right_closed)
-        elif tag == "interval_set":
-            data.update(intervals=[self.encode(v) for v in value.intervals])
-        elif tag == "operation_request":
-            data.update(operation=value.operation,
-                        arguments=[{"name": name, "value": self.encode(v)} for name, v in value.arguments])
-        return data
 
     def optional(self, value: Any) -> Any:
         return None if value is None else self.encode(value)
@@ -329,10 +217,9 @@ class _Encoder:
 
 
 class _Decoder:
-    def __init__(self, *, allow_workspace: bool = False, version: int = 1) -> None:
+    def __init__(self, *, allow_workspace: bool = False) -> None:
         self.symbols: dict[str, tuple[Any, m.Symbol]] = {}
         self.allow_workspace = allow_workspace
-        self.version = version
 
     def decode(self, data: Any) -> Any:
         from .workspace import FrozenOptions, ObjectRef, OperationRecord, Workspace
@@ -340,10 +227,6 @@ class _Decoder:
         if type(data) is not dict or type(data.get("type")) is not str:
             raise SerializationError("A tagged mathematical object is required")
         tag = data["type"]
-        if tag in _V2_TAGS:
-            if self.version < 2:
-                raise SerializationError("This mathematical type requires format v2")
-            return self.v2(tag, data)
         if tag == "none":
             _fields(data, "type")
             return None
@@ -411,8 +294,7 @@ class _Decoder:
             return result
         if tag == "equation":
             _fields(data, "type lhs rhs")
-            scalar = (m.Expression, _v2_types()["rational_function"]) if self.version == 2 else m.Expression
-            return c.Eq(self.required(data["lhs"], scalar), self.required(data["rhs"], scalar))
+            return c.Eq(self.required(data["lhs"], m.Expression), self.required(data["rhs"], m.Expression))
         if tag == "finite_set":
             _fields(data, "type values domain")
             values = self.sequence(data["values"], m.Expression)
@@ -447,11 +329,7 @@ class _Decoder:
             _fields(data, "type code message")
             return c.ErrorInfo(_string(data["code"]), _string(data["message"]))
         if tag == "result":
-            fields = "type execution_status outcome value exactness completeness verification method domain assumptions steps problem expression for_ precision tolerance error_bound error"
-            _fields(data, fields + (" request" if self.version == 2 else ""))
-            classes = _v2_types() if self.version == 2 else {}
-            problem_types = (c.Eq, c.Inequality, classes["linear_system"]) if self.version == 2 else c.Eq
-            expression_types = (m.Expression, Polynomial, classes["rational_function"], classes["matrix"]) if self.version == 2 else m.Expression
+            _fields(data, "type execution_status outcome value exactness completeness verification method domain assumptions steps problem expression for_ precision tolerance error_bound error")
             return c.Result(
                 execution_status=_enum(c.ExecutionStatus, data["execution_status"]),
                 outcome=_enum(c.Outcome, data["outcome"]), value=self.optional(data["value"]),
@@ -460,13 +338,12 @@ class _Decoder:
                 verification=self.sequence(data["verification"], c.Check), method=_string(data["method"]),
                 domain=None if data["domain"] is None else _enum(m.Domain, data["domain"]),
                 assumptions=self.sequence(data["assumptions"], m.Assumption),
-                steps=self.sequence(data["steps"], c.Step), problem=self.optional(data["problem"], problem_types),
-                expression=self.optional(data["expression"], expression_types), for_=self.optional(data["for_"], m.Symbol),
+                steps=self.sequence(data["steps"], c.Step), problem=self.optional(data["problem"], c.Eq),
+                expression=self.optional(data["expression"], m.Expression), for_=self.optional(data["for_"], m.Symbol),
                 precision=None if data["precision"] is None else _integer(data["precision"]),
                 tolerance=self.optional(data["tolerance"], m.Rational),
                 error_bound=self.optional(data["error_bound"], m.Rational),
                 error=self.optional(data["error"], c.ErrorInfo),
-                request=self.optional(data["request"], c.OperationRequest) if self.version == 2 else None,
             )
         if tag == "object_ref":
             _fields(data, "type identifier")
@@ -497,71 +374,6 @@ class _Decoder:
             history = self.sequence(data["history"], OperationRecord)
             return Workspace._restore(objects, history)
         raise SerializationError(f"Unknown mathematical object tag: {tag}")
-
-    def v2(self, tag, data):
-        types = _v2_types()
-        cls = types[tag]
-        scalar = (m.Expression, types["rational_function"])
-        if tag == "square_free_factor":
-            _fields(data, "type polynomial multiplicity")
-            result = cls(self.required(data["polynomial"], Polynomial), _integer(data["multiplicity"]))
-        elif tag == "square_free_decomposition":
-            _fields(data, "type coefficient factors")
-            result = cls(self.required(data["coefficient"], m.Rational),
-                         self.sequence(data["factors"], types["square_free_factor"]))
-        elif tag == "real_algebraic_root":
-            _fields(data, "type integer_coefficients real_index")
-            result = cls(tuple(_integer(v) for v in _list(data["integer_coefficients"])),
-                         _integer(data["real_index"]))
-        elif tag == "root_record":
-            _fields(data, "type root multiplicity")
-            result = cls(self.required(data["root"], m.Expression), _integer(data["multiplicity"]))
-        elif tag == "rational_function":
-            _fields(data, "type numerator denominator excluded")
-            result = cls._from_normal_form(self.required(data["numerator"], Polynomial),
-                                           self.required(data["denominator"], Polynomial),
-                                           self.sequence(data["excluded"], Polynomial))
-        elif tag == "matrix":
-            _fields(data, "type rows ncols")
-            result = cls(tuple(self.sequence(row, m.Rational) for row in _list(data["rows"])),
-                         ncols=_integer(data["ncols"]))
-        elif tag == "rref_result":
-            _fields(data, "type matrix pivot_columns")
-            result = cls(self.required(data["matrix"], types["matrix"]),
-                         tuple(_integer(v) for v in _list(data["pivot_columns"])))
-        elif tag == "linear_system":
-            _fields(data, "type coefficients rhs variables")
-            result = cls(self.required(data["coefficients"], types["matrix"]),
-                         self.sequence(data["rhs"], m.Rational), self.sequence(data["variables"], m.Symbol))
-        elif tag == "affine_solution_set":
-            _fields(data, "type variables particular basis")
-            result = cls(self.sequence(data["variables"], m.Symbol),
-                         self.sequence(data["particular"], m.Rational),
-                         tuple(self.sequence(row, m.Rational) for row in _list(data["basis"])))
-        elif tag == "inequality":
-            _fields(data, "type lhs relation rhs")
-            result = cls(self.required(data["lhs"], scalar), _string(data["relation"]),
-                         self.required(data["rhs"], scalar))
-        elif tag == "interval":
-            _fields(data, "type lower upper left_closed right_closed")
-            endpoint = (m.Rational, types["real_algebraic_root"])
-            result = cls(self.optional(data["lower"], endpoint), self.optional(data["upper"], endpoint),
-                         _boolean(data["left_closed"]), _boolean(data["right_closed"]))
-        elif tag == "interval_set":
-            _fields(data, "type intervals")
-            result = cls(self.sequence(data["intervals"], types["interval"]))
-        elif tag == "operation_request":
-            _fields(data, "type operation arguments")
-            arguments = []
-            for item in _list(data["arguments"]):
-                _fields(item, "name value")
-                arguments.append((_string(item["name"]), self.decode(item["value"])))
-            result = cls(_string(data["operation"]), tuple(arguments))
-        encoded = _Encoder().encode(result)
-        _upgrade_v2_results(encoded)
-        if encoded != data:
-            raise SerializationError(f"Noncanonical {tag} encoding")
-        return result
 
     def required(self, data: Any, cls: type | tuple[type, ...]) -> Any:
         return _typed(self.decode(data), cls)
@@ -610,140 +422,40 @@ def _check_symbol_consistency(objects: Iterable[Any]) -> None:
         encoder.encode(obj)
 
 
-def _upgrade_v2_results(data):
-    """A v2 envelope uses the v2 Result shape, including legacy child objects."""
-    pending = [data]
-    while pending:
-        node = pending.pop()
-        if type(node) is dict:
-            if node.get("type") == "result":
-                node.setdefault("request", None)
-            pending.extend(node.values())
-        elif type(node) is list:
-            pending.extend(node)
-
-
-def _guard_data(document, limits):
-    """Bound traversal before constructors, including cyclic from_data inputs."""
-    pending = [(document, 0, False)]
-    active = set()
-    nodes = visits = byte_estimate = 0
-    while pending:
-        node, depth, leaving = pending.pop()
-        if leaving:
-            active.remove(id(node))
-            continue
-        if depth > limits.max_depth:
-            _resource_limit("JSON nesting exceeds the configured depth limit")
-        visits += 1
-        if visits > limits.max_nodes * 32:
-            _resource_limit("JSON structure exceeds the configured traversal limit")
-        if type(node) in (dict, list):
-            if len(node) > limits.max_nodes * 32:
-                _resource_limit("JSON container exceeds the configured traversal limit")
-            if id(node) in active:
-                raise SerializationError("Cyclic JSON container")
-            active.add(id(node))
-            pending.append((node, depth, True))
-            if type(node) is dict:
-                if any(type(key) is not str for key in node):
-                    raise SerializationError("JSON object keys must be strings")
-                if "type" in node:
-                    nodes += 1
-                    if nodes > limits.max_nodes:
-                        _resource_limit("Document exceeds the configured tagged-node limit")
-                if node.get("type") == "workspace" and type(node.get("objects")) is list:
-                    if len(node["objects"]) > limits.max_workspace_objects:
-                        _resource_limit("Workspace exceeds the configured object limit")
-                byte_estimate += sum(len(key.encode("utf-8", errors="surrogatepass")) + 3 for key in node) + 2
-                pending.extend((value, depth + 1, False) for value in node.values())
-            else:
-                byte_estimate += len(node) + 2
-                pending.extend((value, depth + 1, False) for value in node)
-        elif type(node) is str:
-            # Historical ensure_ascii JSON can safely preserve lone escaped
-            # surrogates in Python strings; budget inspection must not reject
-            # a legacy string that the transport itself still roundtrips.
-            byte_estimate += len(node.encode("utf-8", errors="surrogatepass")) + 2
-        elif node is None or type(node) in (bool, int, float):
-            byte_estimate += 4
-        else:
-            raise SerializationError("from_data requires ordinary JSON-compatible values")
-        if byte_estimate > limits.max_bytes:
-            _resource_limit("Document exceeds the configured byte limit")
-
-
-def _guard_text(text, limits):
-    if len(text.encode("utf-8")) > limits.max_bytes:
-        _resource_limit("JSON text exceeds the configured byte limit")
-    depth = 0
-    quoted = escaped = False
-    for char in text:
-        if quoted:
-            if escaped:
-                escaped = False
-            elif char == "\\":
-                escaped = True
-            elif char == '"':
-                quoted = False
-        elif char == '"':
-            quoted = True
-        elif char in "[{":
-            depth += 1
-            if depth > limits.max_depth:
-                _resource_limit("JSON text exceeds the configured depth limit")
-        elif char in "]}":
-            depth -= 1
-
-
 def to_data(value: Any) -> dict[str, Any]:
     """Return a versioned JSON-compatible document for a supported object."""
     from .workspace import Workspace
 
     try:
-        encoder = _Encoder(allow_workspace=type(value) is Workspace)
-        data = encoder.encode(value)
-        if encoder.minimum_version == 2:
-            _upgrade_v2_results(data)
-        return {"format": FORMAT, "version": encoder.minimum_version,
+        return {"format": FORMAT, "version": VERSION,
                 "kind": "workspace" if type(value) is Workspace else "object",
-                "data": data}
+                "data": _Encoder(allow_workspace=type(value) is Workspace).encode(value)}
     except SerializationError:
         raise
     except (MathForgeError, TypeError, ValueError, OverflowError, RecursionError) as exc:
         raise SerializationError("Unable to serialize the mathematical object") from exc
 
 
-def from_data(document: Any, *, decode_limits=None, computation_limits=None) -> Any:
+def from_data(document: Any) -> Any:
     """Validate and reconstruct a document using a fixed type allowlist."""
     from .workspace import Workspace
-    from .limits import computation
 
-    limits = _limits(decode_limits)
-    token = _decode_limits.set(limits)
     try:
-        _guard_data(document, limits)
         _fields(document, "format version kind data")
         if document["format"] != FORMAT or type(document["format"]) is not str:
             raise SerializationError("Unknown document format")
-        if type(document["version"]) is not int or document["version"] not in (1, 2):
+        if type(document["version"]) is not int or document["version"] != VERSION:
             raise SerializationError("Unsupported MathForge format version")
         if document["kind"] not in ("object", "workspace"):
             raise SerializationError("Unknown document kind")
-        with computation(computation_limits, fresh=True):
-            value = _Decoder(allow_workspace=document["kind"] == "workspace",
-                             version=document["version"]).decode(document["data"])
+        value = _Decoder(allow_workspace=document["kind"] == "workspace").decode(document["data"])
         if (type(value) is Workspace) != (document["kind"] == "workspace"):
             raise SerializationError("Document kind does not match its content")
         return value
     except SerializationError:
         raise
     except (MathForgeError, TypeError, ValueError, ZeroDivisionError, OverflowError, RecursionError) as exc:
-        if getattr(exc, "code", None) == "resource_limit_exceeded":
-            raise SerializationError(str(exc), code="resource_limit_exceeded") from exc
         raise SerializationError("Invalid mathematical document") from exc
-    finally:
-        _decode_limits.reset(token)
 
 
 def dumps(value: Any, *, indent: int | None = None) -> str:
@@ -765,20 +477,14 @@ def _constant(value: str) -> None:
     raise SerializationError(f"Non-finite JSON value: {value}")
 
 
-def loads(text: str, *, decode_limits=None, computation_limits=None) -> Any:
+def loads(text: str) -> Any:
     """Load JSON without duplicate keys, non-finite numbers or executable data."""
     if type(text) is not str:
         raise SerializationError("loads() requires JSON text")
-    limits = _limits(decode_limits)
-    token = _decode_limits.set(limits)
     try:
-        _guard_text(text, limits)
-        document = json.loads(text, object_pairs_hook=_pairs, parse_constant=_constant,
-                              parse_int=_integer)
+        document = json.loads(text, object_pairs_hook=_pairs, parse_constant=_constant)
     except SerializationError:
         raise
     except (TypeError, ValueError, RecursionError) as exc:
         raise SerializationError("Invalid JSON document") from exc
-    finally:
-        _decode_limits.reset(token)
-    return from_data(document, decode_limits=limits, computation_limits=computation_limits)
+    return from_data(document)

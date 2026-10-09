@@ -1,0 +1,98 @@
+name: Exact core and distributions
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      differential:
+        description: Run optional development-only SymPy comparisons
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  # REL-04: The supported Python matrix runs on Linux and Windows.
+  core:
+    name: Python ${{ matrix.python }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.11', '3.12', '3.13', '3.14']
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install without runtime dependencies
+        run: python -m pip install --no-deps -e .
+      - name: Compile source and development checks
+        run: python -m compileall -q src tests examples tools benchmarks
+      - name: Run exact and corruption tests
+        run: python -m unittest discover -s tests -v
+      - name: Execute documented Python examples
+        run: python tools/check_docs.py
+
+  # REL-05 REL-06 REL-07 REL-08 REL-09 REL-10 REL-12: Installed artifact checks include macOS.
+  distributions:
+    name: Distribution checks on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+      - name: Install the build frontend
+        run: python -m pip install build==1.4.3
+      - name: Build sdist and its wheel
+        run: python -m build
+      - name: Test isolated wheel and sdist installations
+        run: python tools/check_distribution.py --dist dist
+
+  # REL-08: The public annotated consumer is checked by one pinned type checker.
+  typing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+      - run: python -m pip install --no-deps -e .
+      - run: python -m pip install mypy==2.4.0
+      - name: Check the public typed consumer
+        run: python -m mypy --follow-imports=silent --ignore-missing-imports tests/typing/public_api.py
+      - run: python -m pip install jsonschema==4.26.0
+      - name: Check generated schema and encoded examples
+        run: |
+          python tools/generate_schema.py --check
+          python tools/check_schema.py
+
+  # REL-13: Optional oracle runs separately; core and package jobs need no CAS.
+  differential:
+    if: github.event_name == 'workflow_dispatch' && inputs.differential
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - run: python -m pip install --no-deps -e .
+      - run: python -m pip install sympy==1.14.0
+      - name: Compare bounded exact cases with a development oracle
+        run: python tools/check_sympy.py

@@ -4,13 +4,35 @@ These types describe evidence, not formal proofs. Stored verification labels
 can always be rechecked through :func:`mathforge.verify`.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from .errors import OperationError
-from .model import Assumption, Domain, Expression, Rational, Reals, Symbol, Truth, as_expression
+from .model import Assumption, Domain, Expression, Rational, Reals, Symbol, Truth, as_expression, _extension
 from .polynomial import Polynomial
+
+if TYPE_CHECKING:
+    from .rational_function import RationalFunction
+    from .matrices import LinearSystem, Matrix
+
+
+def as_scalar(value):
+    if _extension(value, "rational_function", "RationalFunction"):
+        return value
+    return as_expression(value)
+
+
+def _extended_value(value):
+    return any(_extension(value, module, name) for module, names in (
+        ("polynomial", ("SquareFreeFactor", "SquareFreeDecomposition")),
+        ("algebraic", ("RootRecord",)),
+        ("rational_function", ("RationalFunction",)),
+        ("matrices", ("Matrix", "RREFResult", "LinearSystem", "AffineSolutionSet")),
+        ("intervals", ("Interval", "IntervalSet")),
+    ) for name in names)
 
 
 class ExecutionStatus(str, Enum):
@@ -84,17 +106,70 @@ def _typed_tuple(values, item_type, name):
     return result
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class Eq:
-    lhs: Expression
-    rhs: Expression
+    lhs: Expression | RationalFunction
+    rhs: Expression | RationalFunction
+
+    def __init__(self, lhs: Expression | RationalFunction | int,
+                 rhs: Expression | RationalFunction | int):
+        object.__setattr__(self, "lhs", as_scalar(lhs))
+        object.__setattr__(self, "rhs", as_scalar(rhs))
 
     def __post_init__(self):
-        object.__setattr__(self, "lhs", as_expression(self.lhs))
-        object.__setattr__(self, "rhs", as_expression(self.rhs))
+        object.__setattr__(self, "lhs", as_scalar(self.lhs))
+        object.__setattr__(self, "rhs", as_scalar(self.rhs))
 
     def __str__(self):
         return f"{self.lhs} = {self.rhs}"
+
+
+@dataclass(frozen=True, init=False)
+class Inequality:
+    lhs: Expression | RationalFunction
+    relation: str
+    rhs: Expression | RationalFunction
+
+    def __init__(self, lhs: Expression | RationalFunction | int, relation: str,
+                 rhs: Expression | RationalFunction | int):
+        object.__setattr__(self, "lhs", lhs)
+        object.__setattr__(self, "relation", relation)
+        object.__setattr__(self, "rhs", rhs)
+        self.__post_init__()
+
+    def __post_init__(self):
+        object.__setattr__(self, "lhs", as_scalar(self.lhs))
+        object.__setattr__(self, "rhs", as_scalar(self.rhs))
+        if self.relation not in ("lt", "le", "gt", "ge"):
+            raise ValueError("Inequality relation must be lt, le, gt or ge")
+
+
+@dataclass(frozen=True)
+class OperationRequest:
+    operation: str
+    arguments: tuple[tuple[str, Any], ...]
+
+    def __post_init__(self):
+        _text(self.operation, "operation", empty=False)
+        pairs = tuple(self.arguments)
+        if any(type(p) not in (tuple, list) or len(p) != 2 for p in pairs):
+            raise TypeError("Arguments must contain name/value pairs")
+        if any(type(name) is not str or not name for name, _ in pairs):
+            raise TypeError("Argument names must be nonempty text")
+        if len({name for name, _ in pairs}) != len(pairs):
+            raise ValueError("Duplicate operation argument")
+        from .limits import current_budget
+        budget = current_budget()
+        if budget is not None:
+            budget.inspect(pairs)
+        object.__setattr__(self, "arguments", tuple(sorted(
+            (name, _immutable_value(value)) for name, value in pairs)))
+
+    def get(self, name):
+        for key, value in self.arguments:
+            if name == key:
+                return value
+        raise KeyError(name)
 
 
 @dataclass(frozen=True)
@@ -197,6 +272,10 @@ class Step:
 
     def __post_init__(self):
         _text(self.rule, "rule", empty=False)
+        from .limits import current_budget
+        budget = current_budget()
+        if budget is not None:
+            budget.inspect((self.inputs, self.outputs, self.preconditions), evidence=True)
         object.__setattr__(self, "inputs", tuple(_immutable_value(v) for v in self.inputs))
         object.__setattr__(self, "outputs", tuple(_immutable_value(v) for v in self.outputs))
         object.__setattr__(self, "preconditions", _typed_tuple(self.preconditions, Condition, "preconditions"))
@@ -224,8 +303,10 @@ def _immutable_value(value):
         # The same concrete AST allowlist is used by operators and persistence.
         # An arbitrary subclass can introduce mutable fields and has no codec.
         return as_expression(value)
-    if type(value) in (Polynomial, Eq, FiniteSet, EmptySet, UniversalSet,
-                       Condition, Check, VerificationReport, ErrorInfo, Domain, Assumption):
+    if type(value) in (Polynomial, Eq, Inequality, OperationRequest, FiniteSet, EmptySet, UniversalSet,
+                       Condition, Check, VerificationReport, ErrorInfo, Domain, Assumption, Truth):
+        return value
+    if _extended_value(value):
         return value
     if isinstance(value, (list, tuple)):
         return tuple(_immutable_value(item) for item in value)
@@ -244,13 +325,14 @@ class Result:
     domain: Domain | None = None
     assumptions: tuple[Assumption, ...] = ()
     steps: tuple[Step, ...] = ()
-    problem: Eq | None = None
-    expression: Expression | None = None
+    problem: Eq | Inequality | LinearSystem | None = None
+    expression: Expression | Polynomial | RationalFunction | Matrix | None = None
     for_: Symbol | None = None
     precision: int | None = None
     tolerance: Rational | None = None
     error_bound: Rational | None = None
     error: ErrorInfo | None = None
+    request: OperationRequest | None = None
 
     def __post_init__(self):
         for name, enum_type in (("execution_status", ExecutionStatus), ("outcome", Outcome),
@@ -261,9 +343,18 @@ class Result:
         object.__setattr__(self, "assumptions", _typed_tuple(self.assumptions, Assumption, "assumptions"))
         object.__setattr__(self, "steps", _typed_tuple(self.steps, Step, "steps"))
         _text(self.method, "method")
-        for name, item_type in (("domain", Domain), ("problem", Eq), ("expression", Expression),
+        if self.problem is not None and not (type(self.problem) in (Eq, Inequality)
+                or _extension(self.problem, "matrices", "LinearSystem")):
+            raise TypeError("problem must be a supported mathematical problem")
+        if self.expression is not None:
+            if type(self.expression) is Polynomial or _extension(self.expression, "matrices", "Matrix"):
+                pass
+            else:
+                as_scalar(self.expression)
+        for name, item_type in (("domain", Domain),
                                 ("for_", Symbol), ("tolerance", Rational),
-                                ("error_bound", Rational), ("error", ErrorInfo)):
+                                ("error_bound", Rational), ("error", ErrorInfo),
+                                ("request", OperationRequest)):
             value = getattr(self, name)
             if value is not None:
                 if item_type is Expression and isinstance(value, Expression):
@@ -285,7 +376,9 @@ class Result:
             raise ValueError("A no_solution outcome requires an EmptySet.")
         if self.outcome is Outcome.SOLUTIONS and not (
                 type(self.value) is UniversalSet
-                or (type(self.value) is FiniteSet and len(self.value) > 0)):
+                or (type(self.value) is FiniteSet and len(self.value) > 0)
+                or _extension(self.value, "matrices", "AffineSolutionSet")
+                or (_extension(self.value, "intervals", "IntervalSet") and len(self.value) > 0)):
             raise ValueError("A solutions outcome requires a nonempty represented solution set.")
         if self.outcome is Outcome.CANDIDATES and not (
                 type(self.value) is FiniteSet and len(self.value) > 0):
@@ -299,7 +392,9 @@ class Result:
         if (self.execution_status is ExecutionStatus.COMPLETED
                 and self.outcome in (Outcome.SOLUTIONS, Outcome.CANDIDATES,
                                      Outcome.NO_SOLUTION, Outcome.PARTIAL)
-                and type(self.value) in (FiniteSet, EmptySet, UniversalSet)):
+                and (type(self.value) in (FiniteSet, EmptySet, UniversalSet)
+                     or _extension(self.value, "matrices", "AffineSolutionSet")
+                     or _extension(self.value, "intervals", "IntervalSet"))):
             return self.value
         return None
 

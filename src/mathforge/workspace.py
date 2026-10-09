@@ -6,7 +6,7 @@ References identify structural content, never mathematical equivalence.
 from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, fields, is_dataclass
 import hashlib
 import math
 import os
@@ -127,13 +127,14 @@ class Workspace:
     def history(self) -> tuple[OperationRecord, ...]:
         return tuple(self._history)
 
-    def put(self, value: Any) -> ObjectRef:
+    def put(self, value: Any, *, decode_limits=None, computation_limits=None) -> ObjectRef:
         from .serialization import _check_symbol_consistency, dumps, loads
 
         if isinstance(value, Workspace):
             raise InvalidInput("A mutable workspace cannot be stored as an object")
         # Reconstruct through the allowlisted codec to reject mutable/foreign payloads.
-        snapshot = loads(dumps(value))
+        snapshot = loads(dumps(value), decode_limits=decode_limits,
+                         computation_limits=computation_limits)
         _check_symbol_consistency((*self._objects.values(), snapshot))
         reference = _content_ref(snapshot)
         self._validate_references(snapshot)
@@ -160,16 +161,21 @@ class Workspace:
         return record
 
     def _validate_references(self, value: Any) -> None:
-        if type(value) is tuple:
-            for item in value:
-                self._validate_references(item)
-            return
-        refs = (value,) if isinstance(value, ObjectRef) else ()
-        if isinstance(value, OperationRecord):
-            refs = (*[ref for _, ref in value.inputs], value.result_ref)
-        for ref in refs:
-            if ref.identifier not in self._objects:
-                raise SerializationError(f"Unknown object reference: {ref.identifier}")
+        pending = [value]
+        visited = set()
+        while pending:
+            item = pending.pop()
+            if type(item) is ObjectRef:
+                if item.identifier not in self._objects:
+                    raise SerializationError(f"Unknown object reference: {item.identifier}")
+            elif type(item) is tuple:
+                if id(item) not in visited:
+                    visited.add(id(item))
+                    pending.extend(item)
+            elif is_dataclass(item) and not isinstance(item, type):
+                if id(item) not in visited:
+                    visited.add(id(item))
+                    pending.extend(getattr(item, field.name) for field in fields(item))
 
     def save(self, path: str | os.PathLike[str]) -> None:
         from .serialization import dumps
@@ -193,10 +199,20 @@ class Workspace:
                 Path(temporary).unlink(missing_ok=True)
 
     @classmethod
-    def load(cls, path: str | os.PathLike[str]) -> Workspace:
-        from .serialization import loads
+    def load(cls, path: str | os.PathLike[str], *, decode_limits=None,
+             computation_limits=None) -> Workspace:
+        from .serialization import _limits, _resource_limit, loads
 
-        value = loads(Path(path).read_text(encoding="utf-8"))
+        limits = _limits(decode_limits)
+        with Path(path).open("rb") as stream:
+            payload = stream.read(limits.max_bytes + 1)
+        if len(payload) > limits.max_bytes:
+            _resource_limit("Workspace file exceeds the configured byte limit")
+        try:
+            text = payload.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise SerializationError("Workspace file must contain UTF-8 JSON") from exc
+        value = loads(text, decode_limits=limits, computation_limits=computation_limits)
         if not isinstance(value, Workspace):
             raise SerializationError("The document does not contain a Workspace")
         return value

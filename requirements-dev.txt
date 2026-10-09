@@ -1,0 +1,4 @@
+# Development tools only; the installed MathForge package has no dependencies.
+build==1.4.3
+mypy==2.4.0
+jsonschema==4.26.0

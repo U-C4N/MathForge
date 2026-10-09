@@ -102,7 +102,7 @@ class SolverTests(unittest.TestCase):
         self.assertEqual(result.solution_set.values, (mf.Rational(3),))
 
     def test_unsupported_not_no_solution(self):
-        result = mf.solve(mf.Eq(self.x**3 - 1, 0), for_=self.x)
+        result = mf.solve(mf.Eq(self.x**3 - mf.sqrt(2), 0), for_=self.x)
         self.assertEqual(result.execution_status, mf.ExecutionStatus.UNSUPPORTED)
         self.assertEqual(result.outcome, mf.Outcome.NOT_APPLICABLE)
         self.assertIsNone(result.solution_set)
@@ -256,7 +256,7 @@ class StructuredOperationsTests(unittest.TestCase):
 
     def test_unknown_verification_is_not_a_proof(self):
         result = mf.operations.differentiate(self.x**2, self.x)
-        report = mf.verify(result)
+        report = mf.verify(replace(result, request=None))
         self.assertFalse(report.verified)
         self.assertEqual(report.checks[0].status, mf.CheckStatus.UNKNOWN)
 

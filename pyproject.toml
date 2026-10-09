@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mathforge"
-version = "0.1.0"
+version = "0.2.0"
 description = "An independent exact mathematics core for Python applications and agents"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -27,4 +27,4 @@ classifiers = [
 where = ["src"]
 
 [tool.setuptools.package-data]
-mathforge = ["py.typed"]
+mathforge = ["py.typed", "schemas/*.json"]

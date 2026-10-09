@@ -1,4 +1,9 @@
-include LICENSE README.md pyproject.toml
-recursive-include docs *.md *.svg *.png
+include LICENSE README.md pyproject.toml CHANGELOG.md requirements-dev.txt
+prune docs
+recursive-include assets *.svg
 recursive-include examples *.py
-recursive-include tests *.py
+recursive-include tests *.py *.json
+recursive-include tools *.py
+recursive-include benchmarks *.py *.json
+recursive-include src/mathforge/schemas *.json
+include .github/workflows/ci.yml

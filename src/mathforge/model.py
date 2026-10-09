@@ -10,10 +10,26 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 from math import gcd, isqrt
+import sys
 from typing import Mapping
 from uuid import UUID, uuid4
 
 from .errors import InvalidInput, UnsupportedOperation
+from .limits import current_budget
+
+
+def _extension(value, module, name):
+    """Exact classes only, without importing upward during core initialization."""
+    loaded = sys.modules.get(__package__ + "." + module)
+    return loaded is not None and type(value) is getattr(loaded, name, None)
+
+
+def _root(value):
+    return _extension(value, "algebraic", "RealAlgebraicRoot")
+
+
+def _rf(value):
+    return _extension(value, "rational_function", "RationalFunction")
 
 
 class Domain(str, Enum):
@@ -51,18 +67,24 @@ class Expression:
     __slots__ = ()
 
     def __add__(self, other):
+        if _rf(other):
+            return NotImplemented
         return add(self, other)
 
     def __radd__(self, other):
         return add(other, self)
 
     def __sub__(self, other):
+        if _rf(other):
+            return NotImplemented
         return add(self, mul(-1, other))
 
     def __rsub__(self, other):
         return add(other, mul(-1, self))
 
     def __mul__(self, other):
+        if _rf(other) or _extension(other, "matrices", "Matrix"):
+            return NotImplemented
         return mul(self, other)
 
     def __rmul__(self, other):
@@ -75,6 +97,8 @@ class Expression:
         return self
 
     def __truediv__(self, other):
+        if _rf(other):
+            return NotImplemented
         denominator = simplify_expression(as_expression(other))
         if not isinstance(denominator, Rational):
             raise UnsupportedOperation("Only division by a rational constant is supported")
@@ -103,6 +127,11 @@ class Rational(Expression):
     def __post_init__(self):
         if type(self.numerator) is not int or type(self.denominator) is not int:
             raise TypeError("Rational requires exact Python integers, not float or bool")
+        budget = current_budget()
+        if budget is not None:
+            budget.tick()
+            budget.check_int(self.numerator)
+            budget.check_int(self.denominator)
         if self.denominator == 0:
             raise ZeroDivisionError("rational denominator is zero")
         divisor = gcd(self.numerator, self.denominator)
@@ -126,6 +155,10 @@ class Rational(Expression):
             other = Rational(other)
         if not isinstance(other, Rational):
             return NotImplemented
+        budget = current_budget()
+        if budget is not None:
+            budget.product(self.numerator, other.denominator)
+            budget.product(other.numerator, self.denominator)
         return self.numerator * other.denominator - other.numerator * self.denominator
 
     def __lt__(self, other):
@@ -264,6 +297,8 @@ def as_expression(value):
         return Rational(value)
     if type(value) in (Rational, Symbol, Add, Mul, Pow, Sqrt):
         return value
+    if _root(value):
+        return value
     raise TypeError("Expected an exact integer or a supported MathForge expression; float and bool are not exact inputs")
 
 
@@ -275,15 +310,26 @@ def _validate_exponent(exponent):
 
 
 def _radd(left: Rational, right: Rational) -> Rational:
+    budget = current_budget()
+    if budget is not None:
+        budget.product(left.numerator, right.denominator)
+        budget.product(right.numerator, left.denominator)
+        budget.product(left.denominator, right.denominator)
     return Rational(left.numerator * right.denominator + right.numerator * left.denominator,
                     left.denominator * right.denominator)
 
 
 def _rmul(left: Rational, right: Rational) -> Rational:
+    budget = current_budget()
+    if budget is not None:
+        budget.product(left.numerator, right.numerator)
+        budget.product(left.denominator, right.denominator)
     return Rational(left.numerator * right.numerator, left.denominator * right.denominator)
 
 
 def _sort_key(expr):
+    if _root(expr):
+        return (6, expr.integer_coefficients, expr.real_index)
     if isinstance(expr, Rational):
         return (0, expr.numerator, expr.denominator)
     if isinstance(expr, Symbol):
@@ -364,6 +410,13 @@ def power(base, exponent):
     if exponent == 1:
         return base
     if isinstance(base, Rational):
+        budget = current_budget()
+        if budget is not None:
+            budget.tick()
+            for value in (base.numerator, base.denominator):
+                if abs(value) > 1 and value.bit_length() * exponent > budget.limits.max_integer_bits:
+                    from .limits import ResourceLimitError
+                    raise ResourceLimitError("Computation limit exceeded: power integer bits")
         return Rational(base.numerator ** exponent, base.denominator ** exponent)
     if isinstance(base, Pow):
         return power(base.base, base.exponent * exponent)
@@ -408,7 +461,7 @@ def free_symbols(expr):
     expr = as_expression(expr)
     if isinstance(expr, Symbol):
         return frozenset((expr,))
-    if isinstance(expr, (Rational, Sqrt)):
+    if isinstance(expr, (Rational, Sqrt)) or _root(expr):
         return frozenset()
     if isinstance(expr, Pow):
         return free_symbols(expr.base)
@@ -423,7 +476,7 @@ def _has_domain(expr, domain):
         return domain is Rationals or expr.denominator == 1
     if isinstance(expr, Symbol):
         return expr.domain is Integers or (domain is Rationals and expr.domain is Rationals)
-    if isinstance(expr, Sqrt):
+    if isinstance(expr, Sqrt) or _root(expr):
         return False
     if isinstance(expr, Pow):
         return _has_domain(expr.base, domain)
@@ -469,7 +522,7 @@ def substitute_expression(expr, mapping):
     def visit(node):
         if isinstance(node, Symbol):
             return replacements.get(node, node)
-        if isinstance(node, (Rational, Sqrt)):
+        if isinstance(node, (Rational, Sqrt)) or _root(node):
             return simplify_expression(node)
         if isinstance(node, Add):
             return add(*(visit(term) for term in node.terms))

@@ -131,7 +131,7 @@ class ContractTests(unittest.TestCase):
 
     def test_solution_set_does_not_exist_on_unsupported_result(self):
         x = mf.symbol("x")
-        unsupported = mf.solve(mf.Eq(x**3 - 2, 0), for_=x)
+        unsupported = mf.solve(mf.Eq(x**3 - mf.sqrt(2), 0), for_=x)
         empty = mf.solve(mf.Eq(x**2 + 1, 0), for_=x)
         self.assertIsNone(unsupported.solution_set)
         self.assertIsInstance(empty.solution_set, mf.EmptySet)

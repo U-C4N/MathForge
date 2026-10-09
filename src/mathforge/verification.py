@@ -194,6 +194,9 @@ def _solution_checks(problem: Eq, variable: Symbol, polynomial: Polynomial, solu
 
 def verify_step(step: Step) -> Check:
     """Recompute a supported rule, ignoring its recorded audit and explanation."""
+    if type(step) is Step and step.rule.startswith("v2."):
+        from .verification_v2 import verify_step_v2
+        return verify_step_v2(step)
     try:
         if not isinstance(step, Step):
             return _check("step.validity", False, "typed_step")
@@ -240,7 +243,7 @@ def verify_step(step: Step) -> Check:
                       "recomputed_rule", details=str(exc))
 
 
-def verify(result: Result) -> VerificationReport:
+def _verify_legacy(result: Result) -> VerificationReport:
     """Check a solution independently, including completeness and recorded rules.
 
     Returns unknown for operations outside the supported verification scope.
@@ -284,3 +287,9 @@ def verify(result: Result) -> VerificationReport:
         return VerificationReport(tuple(checks))
     except (UnsupportedOperation, InvalidInput, TypeError, ValueError, ZeroDivisionError) as exc:
         return VerificationReport((_unknown("result.verification", "verification_scope", str(exc)),))
+
+
+def verify(result: Result, *, limits=None) -> VerificationReport:
+    """Independently check the source, result, completeness and attached evidence."""
+    from .verification_v2 import verify_result
+    return verify_result(result, limits=limits)

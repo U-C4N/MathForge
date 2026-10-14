@@ -1,4 +1,4 @@
-"""Generate the structural v2 JSON Schema, or check that the saved copy is current.
+"""Generate structural v2–v5 JSON Schemas, or check their saved copies.
 
 The codec remains responsible for mathematical canonicalization, content hashes,
 UUID consistency, shape dependencies, root validity, and resource limits.
@@ -8,10 +8,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
+from dataclasses import fields as dataclass_fields
 from pathlib import Path
 
 
 DESTINATION = Path(__file__).resolve().parents[1] / "src/mathforge/schemas/mathforge-v2.schema.json"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 
 def ref(name):
@@ -39,7 +42,9 @@ def tagged(tag, **properties):
     return fields(type={"const": tag}, **properties)
 
 
-def build_schema():
+def build_schema(version=2):
+    if version not in (2, 3, 4, 5):
+        raise ValueError("Schema version must be 2, 3, 4 or 5")
     text = {"type": "string"}
     boolean = {"type": "boolean"}
     definitions = {
@@ -116,6 +121,73 @@ def build_schema():
     node("interval_set", intervals=array(ref("interval")))
     node("operation_request", operation={"type": "string", "minLength": 1},
          arguments=array(fields(name={"type": "string", "minLength": 1}, value=ref("node"))))
+    if version >= 3:
+        finite_value = choice("rational", "real_algebraic_root") if version >= 4 else ref("rational")
+        node("limit_value", kind={"enum": ["finite", "positive_infinity", "negative_infinity", "does_not_exist"]},
+             value=nullable(finite_value))
+        definitions["limit_value"]["allOf"] = [{
+            "if": {"properties": {"kind": {"const": "finite"}}},
+            "then": {"properties": {"value": finite_value}},
+            "else": {"properties": {"value": {"type": "null"}}},
+        }]
+        node("excluded_point", point=choice("rational", "real_algebraic_root"),
+             kind={"enum": ["hole", "pole"]})
+        node("monotonic_region", interval=ref("interval"),
+             behavior={"enum": ["increasing", "decreasing", "constant"]})
+        node("local_extremum", point=choice("rational", "real_algebraic_root"),
+             kind={"enum": ["minimum", "maximum"]})
+        node("function_analysis", function=ref("rational_function"), domain=ref("interval_set"),
+             excluded_points=array(ref("excluded_point")), zero_set=ref("interval_set"),
+             positive_set=ref("interval_set"), negative_set=ref("interval_set"),
+             derivative=ref("rational_function"), stationary_set=ref("interval_set"),
+             monotonic_regions=array(ref("monotonic_region")), strict_extrema=array(ref("local_extremum")))
+
+        def request(operation, arguments):
+            items = [fields(name={"const": name}, value=value) for name, value in sorted(arguments.items())]
+            return tagged("operation_request", operation={"const": operation},
+                          arguments={"type": "array", "prefixItems": items,
+                                     "minItems": len(items), "maxItems": len(items), "items": False})
+
+        legacy_request = definitions["operation_request"]
+        legacy_request["properties"]["operation"]["not"] = {"enum": ["limit", "analyze_function"]}
+        expression = {"anyOf": [ref("expression"), ref("polynomial"), ref("rational_function")]}
+        point = {"oneOf": [ref("rational"), tagged("text", value={"enum": ["+inf", "-inf"]})]}
+        if version >= 4:
+            point = {"oneOf": [ref("expression"), tagged("text", value={"enum": ["+inf", "-inf"]})]}
+        definitions["operation_request"] = {"oneOf": [
+            legacy_request,
+            request("limit", {"expression": expression, "variable": ref("symbol"),
+                              "point": point, "side": tagged("text", value={"enum": ["left", "right", "both"]})}),
+            request("analyze_function", {"expression": expression, "variable": ref("symbol")}),
+        ]}
+        if version >= 4:
+            node("polynomial_factor", polynomial=ref("polynomial"), multiplicity=ref("positive_decimal"))
+            node("polynomial_factorization", coefficient=ref("rational"), factors=array(ref("polynomial_factor")))
+            node("partial_fraction_term", numerator=ref("polynomial"), factor=ref("polynomial"), power=ref("positive_decimal"))
+            node("partial_fraction_decomposition", polynomial=ref("polynomial"),
+                 terms=array(ref("partial_fraction_term")), excluded=array(ref("polynomial")))
+            node("extremum_value", point=choice("rational", "real_algebraic_root"),
+                 value=choice("rational", "real_algebraic_root"), kind={"enum": ["minimum", "maximum"]})
+            scalar = ref("expression")
+            pair = tagged("tuple", items={"type": "array", "prefixItems": [ref("symbol"), scalar],
+                                           "minItems": 2, "maxItems": 2, "items": False})
+            bindings = tagged("tuple", items=array(pair))
+            parameters = {
+                "factor": {"f": ref("polynomial")},
+                "resultant": {"f": ref("polynomial"), "g": ref("polynomial")},
+                "discriminant": {"f": ref("polynomial")},
+                "algebraic": {"expression": expression},
+                "algebraic_div": {"left": scalar, "right": scalar},
+                "algebraic_pow": {"base": scalar, "n": ref("integer")},
+                "minimal_polynomial": {"expression": expression, "variable": ref("symbol")},
+                "evaluate_algebraic": {"expression": expression, "bindings": bindings},
+                "apart": {"expression": ref("rational_function")},
+                "extrema_values": {"expression": expression, "variable": ref("symbol")},
+                "charpoly": {"A": ref("matrix"), "variable": ref("symbol")},
+                "real_eigenvalues": {"A": ref("matrix")},
+            }
+            legacy_request["properties"]["operation"]["not"]["enum"].extend(parameters)
+            definitions["operation_request"]["oneOf"].extend(request(name, values) for name, values in parameters.items())
     definitions["options"] = tagged("options", entries=array(fields(name=text, value=ref("option"))))
     definitions["option_integer"] = tagged("option_integer", value=ref("decimal"))
     definitions["option_array"] = tagged("option_array", items=array(ref("option")))
@@ -134,18 +206,46 @@ def build_schema():
          for_=nullable(ref("symbol")), precision=nullable(ref("positive_decimal")),
          tolerance=nullable(ref("rational")), error_bound=nullable(ref("rational")),
          error=nullable(ref("error_info")), request=nullable(ref("operation_request")))
+    if version >= 5:
+        from mathforge.dispatch_v5 import record_types, operation_arguments
+        for tag, cls in record_types().items():
+            node("v5_" + tag, **{field.name: ref("node") for field in dataclass_fields(cls)})
+        definitions["result"]["properties"]["deferred"] = choice("v5_unevaluated_integral", "v5_unevaluated_limit")
+        definitions["result"]["properties"]["expression"]["anyOf"].append(
+            choice("v5_real_expr", "v5_real_function", "v5_rational_primitive"))
+        new_parameters = operation_arguments()
+        legacy_request["properties"]["operation"]["not"]["enum"].extend(sorted(new_parameters))
+        definitions["operation_request"]["oneOf"].extend(
+            request(name, {key: ref("node") for key in sorted(keys)})
+            for name, keys in sorted(new_parameters.items()))
     definitions["workspace"] = tagged("workspace", objects=array(fields(ref=ref("sha256"), object=ref("node"))),
                                        history=array(ref("operation_record")))
     definitions["expression"] = choice("rational", "symbol", "add", "mul", "pow", "sqrt", "real_algebraic_root")
     definitions["scalar"] = {"anyOf": [ref("expression"), ref("rational_function")]}
     definitions["node"] = choice(*nodes)
-    schema = fields(format={"const": "mathforge"}, version={"const": 2},
+    if version >= 5:
+        # Gate recursion on discriminators. Generic proof fields may share names
+        # across many record types; exploring all mismatching records first can
+        # otherwise multiply recursive validation exponentially.
+        for name, definition in tuple(definitions.items()):
+            properties = definition.get("properties", {})
+            if "const" in properties.get("type", {}):
+                definitions[name] = {
+                    "if": {"type": "object", "required": ["type"],
+                           "properties": {"type": properties["type"]}},
+                    "then": definition, "else": False}
+        definitions["operation_request"]["oneOf"] = [
+            {"if": {"type": "object", "required": ["operation"],
+                    "properties": {"operation": entry["properties"]["operation"]}},
+             "then": entry, "else": False}
+            for entry in definitions["operation_request"]["oneOf"]]
+    schema = fields(format={"const": "mathforge"}, version={"const": version},
                     kind={"enum": ["object", "workspace"]},
                     data={"anyOf": [ref("node"), ref("workspace")]})
     schema.update({
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$id": "urn:mathforge:serialization:v2",
-        "title": "MathForge format v2 structural schema",
+        "$id": f"urn:mathforge:serialization:v{version}",
+        "title": f"MathForge format v{version} structural schema",
         "description": ("Structural transport constraints only. Canonical arithmetic, symbol consistency, "
                         "shape relations, mathematical claims, content hashes and resource limits require "
                         "the MathForge decoder and verifier."),
@@ -160,16 +260,22 @@ def build_schema():
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="Fail instead of rewriting a stale schema")
+    parser.add_argument("--version", type=int, choices=(2, 3, 4, 5), help="Process only one schema version")
     arguments = parser.parse_args()
-    text = json.dumps(build_schema(), indent=2, ensure_ascii=True, sort_keys=True) + "\n"
-    if arguments.check:
-        if not DESTINATION.is_file() or DESTINATION.read_text(encoding="utf-8") != text:
-            raise SystemExit("Schema is missing or stale; run python tools/generate_schema.py")
-        print("Saved v2 schema matches its generator.")
-    else:
-        DESTINATION.parent.mkdir(parents=True, exist_ok=True)
-        DESTINATION.write_text(text, encoding="utf-8")
-        print(DESTINATION)
+    for version in ((arguments.version,) if arguments.version else (2, 3, 4, 5)):
+        destination = DESTINATION.with_name(f"mathforge-v{version}.schema.json")
+        text = json.dumps(build_schema(version), indent=2, ensure_ascii=True, sort_keys=True) + "\n"
+        current = destination.is_file() and destination.read_text(encoding="utf-8") == text
+        if arguments.check:
+            if not current:
+                raise SystemExit(f"V{version} schema is missing or stale; run python tools/generate_schema.py")
+            print(f"Saved v{version} schema matches its generator.")
+        else:
+            # In particular, leave the historical v2 file byte-for-byte intact.
+            if not current:
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_text(text, encoding="utf-8", newline="\n")
+            print(destination)
 
 
 if __name__ == "__main__":

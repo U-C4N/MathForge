@@ -6,13 +6,15 @@ verification labels and explanatory text never serve as evidence.
 
 from dataclasses import dataclass
 from math import isqrt
+from typing import Any
 
 from .contracts import (
-    Check, CheckStatus, Completeness, Condition, EmptySet, Eq, Exactness,
+    Check, CheckStatus, Completeness, Condition, EmptySet, Eq, Exactness, OperationRequest,
     ExecutionStatus, FiniteSet, Outcome, Result, Step, StepRelation,
     UniversalSet, VerificationLevel, VerificationReport,
 )
 from .errors import InvalidInput, UnsupportedOperation
+from .limits import ComputationLimits
 from .model import Add, Expression, Mul, Pow, Rational, Reals, Sqrt, Symbol, Truth
 from .polynomial import Polynomial
 
@@ -194,6 +196,14 @@ def _solution_checks(problem: Eq, variable: Symbol, polynomial: Polynomial, solu
 
 def verify_step(step: Step) -> Check:
     """Recompute a supported rule, ignoring its recorded audit and explanation."""
+    if type(step) is not Step or type(getattr(step, "rule", None)) is not str:
+        return _check("step.validity", False, "typed_step")
+    if type(step) is Step and step.rule.startswith("v4."):
+        from .verification_v4 import verify_step_v4
+        return verify_step_v4(step)
+    if type(step) is Step and step.rule.startswith("v3."):
+        from .verification_v3 import verify_step_v3
+        return verify_step_v3(step)
     if type(step) is Step and step.rule.startswith("v2."):
         from .verification_v2 import verify_step_v2
         return verify_step_v2(step)
@@ -289,7 +299,31 @@ def _verify_legacy(result: Result) -> VerificationReport:
         return VerificationReport((_unknown("result.verification", "verification_scope", str(exc)),))
 
 
-def verify(result: Result, *, limits=None) -> VerificationReport:
+def verify(result: Result[Any], *, limits: ComputationLimits | None = None) -> VerificationReport:
     """Independently check the source, result, completeness and attached evidence."""
+    if type(result) is not Result:
+        raise InvalidInput("verify expects a Result")
+    if result.deferred is not None or (type(result.steps) is tuple and any(
+            type(step) is Step and type(step.rule) is str and step.rule.startswith("v5.")
+            for step in result.steps)):
+        from .verification_v5 import verify_result as verify_new
+        return verify_new(result, limits=limits)
+    request, steps = getattr(result, "request", None), getattr(result, "steps", None)
+    if ((request is not None and (type(request) is not OperationRequest
+                                 or type(getattr(request, "operation", None)) is not str))
+            or type(steps) is not tuple
+            or any(type(step) is not Step or type(getattr(step, "rule", None)) is not str for step in steps)):
+        return VerificationReport((_check("result.validity", False, "typed_result"),))
+    from .exact_dispatch import NEW_OPERATIONS
+    if type(result) is Result and (
+        (result.request is not None and result.request.operation in NEW_OPERATIONS)
+        or any(step.rule.startswith("v4.") for step in result.steps)
+    ):
+        from .verification_v4 import verify_result as verify_exact
+        return verify_exact(result, limits=limits)
+    from .verification_v3 import OPERATIONS, verify_result as verify_analysis
+    if (type(result) is Result and result.request is not None
+            and result.request.operation in OPERATIONS):
+        return verify_analysis(result, limits=limits)
     from .verification_v2 import verify_result
     return verify_result(result, limits=limits)

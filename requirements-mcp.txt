@@ -1,0 +1,2 @@
+# Tested optional adapter SDK; not installed by the dependency-free core.
+mcp==2.3.0

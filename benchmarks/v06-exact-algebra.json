@@ -1,0 +1,412 @@
+{
+  "mathforge_version": "0.6.0",
+  "python": "3.14.6",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "timing_is_non_gating": true,
+  "memory_is_non_gating": true,
+  "warmups_per_case": 1,
+  "counter_scope": "All producer, independent verifier and serialization budgets; excludes fixture construction",
+  "measurements": [
+    {
+      "case": "factor_sophie_germain",
+      "execution_status": "completed",
+      "outcome": "value",
+      "error_code": null,
+      "verified": true,
+      "work": 3052,
+      "nodes": 441,
+      "evidence_items": 507,
+      "output_json_bytes": 4678,
+      "seconds": 0.011747600001399405,
+      "peak_traced_bytes": 27032,
+      "ceilings": {
+        "work": 3663,
+        "nodes": 530,
+        "evidence_items": 609,
+        "output_json_bytes": 5614
+      }
+    },
+    {
+      "case": "factor_irreducible_cyclotomic",
+      "execution_status": "completed",
+      "outcome": "value",
+      "error_code": null,
+      "verified": true,
+      "work": 3995,
+      "nodes": 495,
+      "evidence_items": 417,
+      "output_json_bytes": 3983,
+      "seconds": 0.012640000000828877,
+      "peak_traced_bytes": 16714,
+      "ceilings": {
+        "work": 4794,
+        "nodes": 594,
+        "evidence_items": 501,
+        "output_json_bytes": 4780
+      }
+    },
+    {
+      "case": "factor_nonmonic_repeated",
+      "execution_status": "completed",
+      "outcome": "value",
+      "error_code": null,
+      "verified": true,
+      "work": 3414,
+      "nodes": 349,
+      "evidence_items": 462,
+      "output_json_bytes": 4416,
+      "seconds": 0.013066299998172326,
+      "peak_traced_bytes": 18764,
+      "ceilings": {
+        "work": 4097,
+        "nodes": 419,
+        "evidence_items": 555,
+        "output_json_bytes": 5300
+      }
+    },
+    {
+      "case": "resultant_degree5_degree3",
+      "execution_status": "completed",
+      "outcome": "value",
+      "error_code": null,
+      "verified": true,
+      "work": 1561,
+      "nodes": 244,
+      "evidence_items": 315,
+      "output_json_bytes": 3337,
+      "seconds": 0.006088000001909677,
+      "peak_traced_bytes": 13870,
+      "ceilings": {
+        "work": 1874,
+        "nodes": 293,
+        "evidence_items": 378,
+        "output_json_bytes": 4005
+      }
+    },
+    {
+      "case": "discriminant_degree5",
+      "execution_status": "completed",
+      "outcome": "value",
+      "error_code": null,
+      "verified": true,
+      "work": 1431,
+      "nodes": 220,
+      "evidence_items": 210,
+      "output_json_bytes": 2569,
+      "seconds": 0.005364799999370007,
+      "peak_traced_bytes": 11813,
+      "ceilings": {
+        "work": 1718,
+        "nodes": 264,
+        "evidence_items": 252,
+        "output_json_bytes": 3083
+      }
+    },
+    {
+      "case": "algebraic_independent_quadratics",
+      "execution_status": "completed",
+      "outcome": "value",
+      "error_code": null,
+      "verified": true,
+      "work": 31963,
+      "nodes": 2678,
+      "evidence_items": 1727,
+      "output_json_bytes": 7691,
+      "seconds": 0.11274830000184011,
+      "peak_traced_bytes": 51577,
+      "ceilings": {
+        "work": 38356,
+        "nodes": 3214,
+        "evidence_items": 2073,
+        "output_json_bytes": 9230
+      }
+    },
+    {
+      "case": "algebraic_inverse",
+      "execution_status": "completed",
+      "outcome": "value",
+      "error_code": null,
+      "verified": true,
+      "work": 47969,
+      "nodes": 3988,
+      "evidence_items": 2413,
+      "output_json_bytes": 10008,
+      "seconds": 0.17413519999900018,
+      "peak_traced_bytes": 70324,
+      "ceilings": {
+        "work": 57563,
+        "nodes": 4786,
+        "evidence_items": 2896,
+        "output_json_bytes": 12010
+      }
+    },
+    {
+      "case": "algebraic_negative_power",
+      "execution_status": "completed",
+      "outcome": "value",
+      "error_code": null,
+      "verified": true,
+      "work": 23350,
+      "nodes": 2136,
+      "evidence_items": 1655,
+      "output_json_bytes": 7441,
+      "seconds": 0.08383379999941099,
+      "peak_traced_bytes": 45666,
+      "ceilings": {
+        "work": 28020,
+        "nodes": 2564,
+        "evidence_items": 1986,
+        "output_json_bytes": 8930
+      }
+    },
+    {
+      "case": "minimal_polynomial_quartic",
+      "execution_status": "completed",
+      "outcome": "value",
+      "error_code": null,
+      "verified": true,
+      "work": 32036,
+      "nodes": 2723,
+      "evidence_items": 1850,
+      "output_json_bytes": 8793,
+      "seconds": 0.10762610000165296,
+      "peak_traced_bytes": 54827,
+      "ceilings": {
+        "work": 38444,
+        "nodes": 3268,
+        "evidence_items": 2220,
+        "output_json_bytes": 10552
+      }
+    },
+    {
+      "case": "evaluate_algebraic_rational",
+      "execution_status": "completed",
+      "outcome": "value",
+      "error_code": null,
+      "verified": true,
+      "work": 30709,
+      "nodes": 2963,
+      "evidence_items": 2817,
+      "output_json_bytes": 13880,
+      "seconds": 0.1304238999982772,
+      "peak_traced_bytes": 90403,
+      "ceilings": {
+        "work": 36851,
+        "nodes": 3556,
+        "evidence_items": 3381,
+        "output_json_bytes": 16656
+      }
+    },
+    {
+      "case": "apart_repeated_and_irreducible",
+      "execution_status": "completed",
+      "outcome": "value",
+      "error_code": null,
+      "verified": true,
+      "work": 12151,
+      "nodes": 1333,
+      "evidence_items": 1484,
+      "output_json_bytes": 10952,
+      "seconds": 0.04418230000010226,
+      "peak_traced_bytes": 47729,
+      "ceilings": {
+        "work": 14582,
+        "nodes": 1600,
+        "evidence_items": 1781,
+        "output_json_bytes": 13143
+      }
+    },
+    {
+      "case": "charpoly_tridiagonal4",
+      "execution_status": "completed",
+      "outcome": "value",
+      "error_code": null,
+      "verified": true,
+      "work": 4083,
+      "nodes": 429,
+      "evidence_items": 635,
+      "output_json_bytes": 5433,
+      "seconds": 0.013831000000209315,
+      "peak_traced_bytes": 20266,
+      "ceilings": {
+        "work": 4900,
+        "nodes": 515,
+        "evidence_items": 762,
+        "output_json_bytes": 6520
+      }
+    },
+    {
+      "case": "real_eigenvalues_mixed3",
+      "execution_status": "completed",
+      "outcome": "value",
+      "error_code": null,
+      "verified": true,
+      "work": 47230,
+      "nodes": 2739,
+      "evidence_items": 1134,
+      "output_json_bytes": 6102,
+      "seconds": 0.14289479999933974,
+      "peak_traced_bytes": 46045,
+      "ceilings": {
+        "work": 56676,
+        "nodes": 3287,
+        "evidence_items": 1361,
+        "output_json_bytes": 7323
+      }
+    },
+    {
+      "case": "limit_algebraic_cancelled_hole",
+      "execution_status": "completed",
+      "outcome": "value",
+      "error_code": null,
+      "verified": true,
+      "work": 7222,
+      "nodes": 941,
+      "evidence_items": 1328,
+      "output_json_bytes": 7403,
+      "seconds": 0.028947800001333235,
+      "peak_traced_bytes": 36590,
+      "ceilings": {
+        "work": 8667,
+        "nodes": 1130,
+        "evidence_items": 1594,
+        "output_json_bytes": 8884
+      }
+    },
+    {
+      "case": "integrate_algebraic_endpoint",
+      "execution_status": "completed",
+      "outcome": "value",
+      "error_code": null,
+      "verified": true,
+      "work": 31803,
+      "nodes": 3343,
+      "evidence_items": 4056,
+      "output_json_bytes": 13330,
+      "seconds": 0.10951350000323146,
+      "peak_traced_bytes": 87926,
+      "ceilings": {
+        "work": 38164,
+        "nodes": 4012,
+        "evidence_items": 4868,
+        "output_json_bytes": 15996
+      }
+    },
+    {
+      "case": "extrema_algebraic_values",
+      "execution_status": "completed",
+      "outcome": "value",
+      "error_code": null,
+      "verified": true,
+      "work": 388746,
+      "nodes": 22200,
+      "evidence_items": 11759,
+      "output_json_bytes": 34390,
+      "seconds": 1.3181067999976221,
+      "peak_traced_bytes": 289472,
+      "ceilings": {
+        "work": 466496,
+        "nodes": 26640,
+        "evidence_items": 14111,
+        "output_json_bytes": 41268
+      }
+    },
+    {
+      "case": "legacy_v04_function_analysis",
+      "execution_status": "completed",
+      "outcome": "value",
+      "error_code": null,
+      "verified": true,
+      "work": 74256,
+      "nodes": 8920,
+      "evidence_items": 3862,
+      "output_json_bytes": 21353,
+      "seconds": 0.43816850000075647,
+      "peak_traced_bytes": 132654,
+      "ceilings": {
+        "work": 89108,
+        "nodes": 10704,
+        "evidence_items": 4635,
+        "output_json_bytes": 25624
+      }
+    },
+    {
+      "case": "legacy_v05_hessian",
+      "execution_status": "completed",
+      "outcome": "value",
+      "error_code": null,
+      "verified": true,
+      "work": 557,
+      "nodes": 225,
+      "evidence_items": 1266,
+      "output_json_bytes": 9411,
+      "seconds": 0.012231400000018766,
+      "peak_traced_bytes": 43727,
+      "ceilings": {
+        "work": 669,
+        "nodes": 270,
+        "evidence_items": 1520,
+        "output_json_bytes": 11294
+      }
+    },
+    {
+      "case": "intentional_factor_work_limit",
+      "execution_status": "error",
+      "outcome": "not_applicable",
+      "error_code": "resource_limit_exceeded",
+      "verified": false,
+      "work": 10,
+      "nodes": 76,
+      "evidence_items": 0,
+      "output_json_bytes": 1015,
+      "seconds": 0.0009250999974028673,
+      "peak_traced_bytes": 8438,
+      "ceilings": {
+        "work": 12,
+        "nodes": 92,
+        "evidence_items": 0,
+        "output_json_bytes": 1218
+      }
+    },
+    {
+      "case": "intentional_algebraic_work_limit",
+      "execution_status": "error",
+      "outcome": "not_applicable",
+      "error_code": "resource_limit_exceeded",
+      "verified": false,
+      "work": 10,
+      "nodes": 45,
+      "evidence_items": 0,
+      "output_json_bytes": 971,
+      "seconds": 0.0010843999989447184,
+      "peak_traced_bytes": 8878,
+      "ceilings": {
+        "work": 12,
+        "nodes": 54,
+        "evidence_items": 0,
+        "output_json_bytes": 1166
+      }
+    },
+    {
+      "case": "factor_zero_invalid",
+      "execution_status": "invalid_input",
+      "outcome": "not_applicable",
+      "error_code": "invalid_input",
+      "verified": false,
+      "work": 2,
+      "nodes": 36,
+      "evidence_items": 0,
+      "output_json_bytes": 812,
+      "seconds": 0.0006428999986383133,
+      "peak_traced_bytes": 5742,
+      "ceilings": {
+        "work": 3,
+        "nodes": 44,
+        "evidence_items": 0,
+        "output_json_bytes": 975
+      }
+    }
+  ],
+  "baseline_release": "0.6.0",
+  "ceiling_policy": "First-release freeze after subresultant PRS and adversarial canonical/source-domain hardening. Final measured counters plus 20 percent rounded upward; zero counters remain zero. Times and peak memory are observations only."
+}

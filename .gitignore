@@ -8,5 +8,6 @@ __pycache__/
 build/
 dist/
 workspace.json
+!tests/fixtures/**/workspace.json
 /docs/
 .mypy_cache/

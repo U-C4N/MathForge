@@ -1,5 +1,91 @@
 # Changelog
 
+## 0.7.0 — 2026-10-14
+
+- Add a separate real elementary function AST with ordered axes, three-valued domain membership and restrictions collected before simplification. Existing expression parsing and real square-root behavior remain.
+- Add chain-rule derivatives, gradients, Jacobians, Hessians, finite real-algebraic-center Taylor polynomials and certified local-series, growth and oscillation limit rules.
+- Add Hermite/Lazard–Rioboo–Trager rational primitives with independent quotient-algebra trace checks, elementary integration rules and whole-interval domain certificates for proper finite integrals.
+- Add exact complex algebraic arithmetic, principal square roots and rational quadratic roots with multiplicities.
+- Add integer GCD/LCM/Bézout, modular inverses, generalized CRT, certified primality and factorization, divisors, totients, combinatorial counts and integer sequences.
+- Add finite rational distributions, conditioning, moments and descriptive statistics with explicit `ddof`; add rational matrix trace, subspaces, pivoted LU and complete least-squares solution families.
+- Add explicit unevaluated integral/limit records and `Result.deferred`: unresolved questions carry no mathematical value and cannot be verified as solved results.
+- Add mathematical JSON v5, exact presentation and two MCP tools for parsing real functions and invoking an allowlisted operation registry; retain historical v1–v4 bytes and hashes.
+- Freeze the actual local v0.6 sources and compatibility payloads; extend independent/corruption checks, typed consumers, seeded development comparisons and deterministic resource gates.
+
+Compatibility: Python 3.11–3.14 and the dependency-free core remain. New function
+operations are explicit; legacy polynomial values retain their representations.
+The new rational-integral path completes previously unsupported requests.
+`RationalPrimitive` is a formal derivative identity; arbitrary root-sum point
+evaluation, improper/principal-value integrals, general complex root isolation,
+ODE/PDE and symbolic matrix entries are outside this release. Algorithmic
+verification is independent of producers, but is not a formal proof system.
+
+## 0.6.0 — 2026-10-14
+
+- Add complete rational polynomial factorization with deterministic modular factorization, Hensel lifting and bounded exhaustive recombination; independently certify irreducibility as well as product reconstruction.
+- Add fraction-free subresultant resultants/discriminants, domain-preserving partial fractions, Berkowitz characteristic polynomials and complete real eigenvalues with algebraic multiplicity.
+- Add explicit real algebraic normalization, division, signed integer powers, minimal polynomials and algebraic evaluation with checked annihilator identities and real-root selection.
+- Extend rational-function limits and polynomial definite integrals to real algebraic points; provide exact extrema coordinates through a separate `extrema_values` operation.
+- Preserve historical expression construction, structural equality/hashes and evaluation; add strict mathematical JSON v4 for new records and evidence while retaining v1/v2/v3 bytes and mixed-workspace references.
+- Add twelve local stdio MCP tools, including canonical scalar input for chaining algebraic outputs, bringing the total to twenty-eight.
+- Separate multivariate source conversion from its checker; freeze the full v0.5 source provenance and compatibility payloads before implementation.
+- Expand corruption tests, seeded development-only differential checks, deterministic resource gates, typed consumers and executable documentation.
+
+Compatibility: Python 3.11+ and the dependency-free runtime remain. Explicit
+`algebraic` operations return canonical rationals or real root descriptors;
+ordinary AST operators and `evaluate`/`substitute` keep their historical behavior.
+Mathematical JSON v4 is distinct from package version 0.6 and MCP envelope version 1.
+Resource exhaustion remains an explicit error, never a claim of irreducibility
+or absence of solutions. Verification is algorithmic, not formal proof.
+Complex arithmetic, general nonlinear systems, symbolic/algebraic matrix entries
+and transcendental integration remain outside scope.
+
+## 0.5.0 — 2026-10-14
+
+- Add sparse exact multivariate polynomial expansion, arbitrary nonnegative-order partial derivatives, gradients, Jacobians and Hessians over rational coefficients.
+- Share source expansion across derivative components and reuse symmetric Hessian entries while retaining finite computation budgets.
+- Independently check derivative coefficient identities, source expressions, ordered axes and matrix shapes; preserve the existing expression/tuple and JSON v2 contracts.
+- Add five optional local MCP tools, bringing the curated tool count to sixteen, with bounded explicit variable lists and reusable symbol identities.
+- Reduce repeated Sturm endpoint evaluations and skip known zero prefixes in RREF without changing independent checkers or row-operation evidence.
+- Add multivariate SDK/transport/protocol regressions, typed examples and reproducible performance observations.
+
+Compatibility: Python 3.11+, the dependency-free core, existing wire schemas and
+historical object hashes remain. Jacobians and Hessians are tuples of expression
+rows, not rational `Matrix` instances. New operation names require a v0.5 checker;
+older readers can decode their generic v2 envelopes but cannot certify them.
+General multivariate solving, symbolic denominators, transcendental calculus and
+symbolic matrix inversion remain outside scope. Performance varies by workload.
+
+## 0.4.0 — 2026-10-11
+
+- Add exact limits of real rational functions at rational finite points and signed infinity, including one-sided poles and explicit nonexistence values.
+- Add complete real function analysis: domain, holes/poles, zero/positive/negative/stationary sets, derivatives, maximal connected monotonic regions, and strict local extrema x-coordinates.
+- Preserve excluded points in derivatives and analysis; include defined critical endpoints in monotonic intervals, merge through stationary non-turning points, and keep constant regions separate across holes.
+- Add independent source-linked checks and frozen typed analysis records, with exact text and LaTeX presentation.
+- Add `mathforge.limit` and `mathforge.analyze_function` to the optional stdio MCP adapter, bringing its tool count to eleven.
+- Add strict mathematical JSON v3 and its packaged schema while preserving existing v1/v2 object bytes, hashes and mixed-workspace references.
+- Add executable analysis examples and regression coverage for limits, disconnected domains, monotonicity and transport compatibility.
+
+Compatibility: Python 3.11+ and the dependency-free core remain. New analysis
+values and requests need a v3-aware reader; existing objects retain their minimum
+v1/v2 envelope. A finite or infinite limit, or `does_not_exist`, is a completed
+value. Complex roots, symbolic coefficients, transcendental calculus, approximate
+output and remote HTTP serving remain outside scope. Verification is algorithmic,
+not formal proof.
+
+## 0.3.0 — 2026-10-10
+
+- Add bounded math-text parsing with explicit symbol identity, exact decimal conversion, source spans, and domain-preserving rational expressions.
+- Add separate exact text and escaped LaTeX renderers for expressions, roots, matrices, intervals and solution records; existing string methods remain unchanged.
+- Add nine local stdio MCP tools through the optional `mathforge[mcp]` extra, with structured results, capped budgets and explicit symbol reuse.
+- Add discoverable capability metadata and generic `Result[T]` values with typed public operation boundaries.
+- Preserve mathematical v1/v2 JSON, hashes and historical workspaces, with frozen v0.2 fixtures in addition to v0.1 compatibility tests.
+- Publish executable user documentation and expand base/extras packaging, protocol and deterministic benchmark release gates.
+
+Compatibility: Python 3.11+ and the dependency-free core are retained. The MCP
+adapter is optional. Presentation metadata is outside mathematical JSON; no
+new JSON format version, numerical fallback or remote server is introduced.
+
 ## 0.2.0 — 2026-10-09
 
 - Add exact polynomial arithmetic, division, gcd/Bézout identities, and square-free decomposition.

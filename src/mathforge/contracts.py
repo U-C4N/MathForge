@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, TYPE_CHECKING
+from typing import Any, Generic, TYPE_CHECKING, TypeVar
 
 from .errors import OperationError
 from .model import Assumption, Domain, Expression, Rational, Reals, Symbol, Truth, as_expression, _extension
@@ -26,12 +26,21 @@ def as_scalar(value):
 
 
 def _extended_value(value):
+    if type(value).__module__ in tuple(__package__ + "." + name for name in (
+            "number_theory", "combinatorics", "complex_numbers", "probability",
+            "statistics", "linear_extensions", "functions", "function_calculus",
+            "rational_integration", "function_limits")):
+        from .dispatch_v5 import record_types
+        return type(value) in record_types().values()
     return any(_extension(value, module, name) for module, names in (
         ("polynomial", ("SquareFreeFactor", "SquareFreeDecomposition")),
+        ("polynomial_exact", ("PolynomialFactor", "PolynomialFactorization")),
+        ("exact_extensions", ("PartialFractionTerm", "PartialFractionDecomposition")),
         ("algebraic", ("RootRecord",)),
         ("rational_function", ("RationalFunction",)),
         ("matrices", ("Matrix", "RREFResult", "LinearSystem", "AffineSolutionSet")),
         ("intervals", ("Interval", "IntervalSet")),
+        ("analysis_types", ("LimitValue", "ExcludedPoint", "MonotonicRegion", "LocalExtremum", "FunctionAnalysis", "ExtremumValue")),
     ) for name in names)
 
 
@@ -313,11 +322,14 @@ def _immutable_value(value):
     raise TypeError(f"Unsupported result/evidence value: {type(value).__name__}.")
 
 
+T = TypeVar("T")
+
+
 @dataclass(frozen=True)
-class Result:
+class Result(Generic[T]):
     execution_status: ExecutionStatus
     outcome: Outcome
-    value: Any = None
+    value: T | None = None
     exactness: Exactness = Exactness.NOT_APPLICABLE
     completeness: Completeness = Completeness.NOT_APPLICABLE
     verification: tuple[Check, ...] = ()
@@ -333,12 +345,23 @@ class Result:
     error_bound: Rational | None = None
     error: ErrorInfo | None = None
     request: OperationRequest | None = None
+    deferred: Any | None = None
 
     def __post_init__(self):
         for name, enum_type in (("execution_status", ExecutionStatus), ("outcome", Outcome),
                                 ("exactness", Exactness), ("completeness", Completeness)):
             _enum(getattr(self, name), enum_type, name)
         object.__setattr__(self, "value", _immutable_value(self.value))
+        if self.deferred is not None:
+            object.__setattr__(self, "deferred", _immutable_value(self.deferred))
+            if not any(_extension(self.deferred, "functions", name)
+                       for name in ("UnevaluatedIntegral", "UnevaluatedLimit")):
+                raise TypeError("deferred must be an unevaluated integral or limit")
+            if (self.execution_status is not ExecutionStatus.COMPLETED
+                    or self.outcome is not Outcome.NO_CONCLUSION or self.value is not None
+                    or self.completeness is not Completeness.UNKNOWN
+                    or self.exactness is not Exactness.NOT_APPLICABLE):
+                raise ValueError("An unevaluated request cannot claim a computed answer")
         object.__setattr__(self, "verification", _typed_tuple(self.verification, Check, "verification"))
         object.__setattr__(self, "assumptions", _typed_tuple(self.assumptions, Assumption, "assumptions"))
         object.__setattr__(self, "steps", _typed_tuple(self.steps, Step, "steps"))
@@ -347,7 +370,10 @@ class Result:
                 or _extension(self.problem, "matrices", "LinearSystem")):
             raise TypeError("problem must be a supported mathematical problem")
         if self.expression is not None:
-            if type(self.expression) is Polynomial or _extension(self.expression, "matrices", "Matrix"):
+            if (type(self.expression) is Polynomial or _extension(self.expression, "matrices", "Matrix")
+                    or any(_extension(self.expression, module, name) for module, name in (
+                        ("functions", "RealExpr"), ("functions", "RealFunction"),
+                        ("rational_integration", "RationalPrimitive")))):
                 pass
             else:
                 as_scalar(self.expression)
@@ -398,7 +424,7 @@ class Result:
             return self.value
         return None
 
-    def unwrap(self):
+    def unwrap(self) -> T:
         if self.execution_status is not ExecutionStatus.COMPLETED or self.value is None:
             raise OperationError(self)
         return self.value

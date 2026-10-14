@@ -1,9 +1,11 @@
-"""REL-11: Execute shipped README Python fences with their real assertions.
+"""REL-11: Execute shipped README/public Python fences with real assertions.
 
 Fences share one namespace per document, as sequential tutorial snippets do.
 Examples run in a temporary working directory so save demonstrations do not
 overwrite a checkout file. No snippets are rewritten or assertions removed.
 Pass explicit paths to also check local documentation that is not distributed.
+Default discovery ignores public prose-only pages, never internal docs/.
+Use --mcp in an extras environment to include documentation/mcp.md.
 """
 
 from __future__ import annotations
@@ -42,10 +44,18 @@ def main() -> None:
         sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("files", nargs="*", type=Path,
-                        help="Markdown files to check (default: the shipped README.md)")
+                        help="Markdown files to check (default: README and public executable pages)")
+    parser.add_argument("--mcp", action="store_true", help="Include optional MCP documentation")
     arguments = parser.parse_args()
-    documents = ([path.resolve() for path in arguments.files] if arguments.files else
-                 [REPOSITORY / "README.md"])
+    if arguments.files:
+        documents = [path.resolve() for path in arguments.files]
+    else:
+        documents = [REPOSITORY / "README.md"]
+        for path in sorted((REPOSITORY / "documentation").rglob("*.md")):
+            if path.name == "mcp.md" and not arguments.mcp:
+                continue
+            if list(python_fences(path)):
+                documents.append(path)
     for document in documents:
         if not document.is_file():
             parser.error(f"Documentation file does not exist: {document}")

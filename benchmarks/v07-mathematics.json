@@ -1,0 +1,124 @@
+{
+  "measurements": [
+    {
+      "case": "certified_prime",
+      "deferred": false,
+      "error_code": null,
+      "evidence_items": 214,
+      "execution_status": "completed",
+      "nodes": 19,
+      "outcome": "value",
+      "output_json_bytes": 1812,
+      "verified": true,
+      "work": 468
+    },
+    {
+      "case": "integer_factorization",
+      "deferred": false,
+      "error_code": null,
+      "evidence_items": 396,
+      "execution_status": "completed",
+      "nodes": 63,
+      "outcome": "value",
+      "output_json_bytes": 3249,
+      "verified": true,
+      "work": 74
+    },
+    {
+      "case": "multinomial",
+      "deferred": false,
+      "error_code": null,
+      "evidence_items": 170,
+      "execution_status": "completed",
+      "nodes": 33,
+      "outcome": "value",
+      "output_json_bytes": 1759,
+      "verified": true,
+      "work": 57
+    },
+    {
+      "case": "complex_algebraic_sqrt",
+      "deferred": false,
+      "error_code": null,
+      "evidence_items": 17235,
+      "execution_status": "completed",
+      "nodes": 27534,
+      "outcome": "value",
+      "output_json_bytes": 36345,
+      "verified": true,
+      "work": 383534
+    },
+    {
+      "case": "finite_distribution",
+      "deferred": false,
+      "error_code": null,
+      "evidence_items": 548,
+      "execution_status": "completed",
+      "nodes": 253,
+      "outcome": "value",
+      "output_json_bytes": 4816,
+      "verified": true,
+      "work": 2535
+    },
+    {
+      "case": "least_squares",
+      "deferred": false,
+      "error_code": null,
+      "evidence_items": 766,
+      "execution_status": "completed",
+      "nodes": 340,
+      "outcome": "value",
+      "output_json_bytes": 5047,
+      "verified": true,
+      "work": 2567
+    },
+    {
+      "case": "elementary_gradient",
+      "deferred": false,
+      "error_code": null,
+      "evidence_items": 1656,
+      "execution_status": "completed",
+      "nodes": 259,
+      "outcome": "value",
+      "output_json_bytes": 15468,
+      "verified": true,
+      "work": 608
+    },
+    {
+      "case": "rational_quintic_primitive",
+      "deferred": false,
+      "error_code": null,
+      "evidence_items": 1852,
+      "execution_status": "completed",
+      "nodes": 54945,
+      "outcome": "value",
+      "output_json_bytes": 16117,
+      "verified": true,
+      "work": 1317758
+    },
+    {
+      "case": "explicitly_deferred_integral",
+      "deferred": true,
+      "error_code": null,
+      "evidence_items": 120,
+      "execution_status": "completed",
+      "nodes": 153,
+      "outcome": "no_conclusion",
+      "output_json_bytes": 3290,
+      "verified": false,
+      "work": 960
+    },
+    {
+      "case": "intentional_v07_work_limit",
+      "deferred": false,
+      "error_code": "resource_limit_exceeded",
+      "evidence_items": 27,
+      "execution_status": "error",
+      "nodes": 10,
+      "outcome": "not_applicable",
+      "output_json_bytes": 625,
+      "verified": false,
+      "work": 1
+    }
+  ]
+}

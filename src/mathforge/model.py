@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from math import gcd, isqrt
 import sys
-from typing import Mapping
+from typing import Iterable, Mapping
 from uuid import UUID, uuid4
 
 from .errors import InvalidInput, UnsupportedOperation
@@ -288,7 +288,7 @@ class Sqrt(Expression):
         return f"sqrt({self.radicand})"
 
 
-def symbol(name, domain=Reals, assumptions=()):
+def symbol(name: str, domain: Domain = Reals, assumptions: Iterable[Assumption] = ()) -> Symbol:
     return Symbol(name, domain, tuple(assumptions))
 
 
@@ -432,7 +432,7 @@ def power(base, exponent):
     return Pow(base, exponent)
 
 
-def sqrt(value):
+def sqrt(value: Expression | int) -> Expression:
     value = simplify_expression(as_expression(value))
     if not isinstance(value, Rational):
         raise UnsupportedOperation("Symbolic square-root radicands are unsupported")

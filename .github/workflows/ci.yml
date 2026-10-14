@@ -4,11 +4,6 @@ on:
   push:
   pull_request:
   workflow_dispatch:
-    inputs:
-      differential:
-        description: Run optional development-only SymPy comparisons
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -38,6 +33,8 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Execute documented Python examples
         run: python tools/check_docs.py
+      - name: Gate deterministic exact-core costs
+        run: python tools/check_benchmarks.py
 
   # REL-05 REL-06 REL-07 REL-08 REL-09 REL-10 REL-12: Installed artifact checks include macOS.
   distributions:
@@ -55,11 +52,33 @@ jobs:
         with:
           python-version: '3.14'
       - name: Install the build frontend
-        run: python -m pip install build==1.4.3
+        run: python -m pip install build==1.4.3 packaging==26.3
       - name: Build sdist and its wheel
         run: python -m build
       - name: Test isolated wheel and sdist installations
         run: python tools/check_distribution.py --dist dist
+
+  mcp:
+    name: Optional stdio MCP on Python ${{ matrix.python }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.11', '3.14']
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install pinned optional adapter dependencies
+        run: python -m pip install -c requirements-mcp.txt -e ".[mcp]"
+      - name: Require real stdio integration tests (no skips)
+        run: python tools/check_mcp.py
+      - name: Check public optional examples
+        run: python tools/check_docs.py --mcp
 
   # REL-08: The public annotated consumer is checked by one pinned type checker.
   typing:
@@ -74,16 +93,15 @@ jobs:
       - run: python -m pip install --no-deps -e .
       - run: python -m pip install mypy==2.4.0
       - name: Check the public typed consumer
-        run: python -m mypy --follow-imports=silent --ignore-missing-imports tests/typing/public_api.py
+        run: python -m mypy --follow-imports=silent --ignore-missing-imports --warn-unused-ignores tests/typing
       - run: python -m pip install jsonschema==4.26.0
       - name: Check generated schema and encoded examples
         run: |
           python tools/generate_schema.py --check
           python tools/check_schema.py
 
-  # REL-13: Optional oracle runs separately; core and package jobs need no CAS.
+  # Development-only oracle gates PRs; installed core and package jobs need no CAS.
   differential:
-    if: github.event_name == 'workflow_dispatch' && inputs.differential
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

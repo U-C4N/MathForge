@@ -17,6 +17,11 @@ from .polynomial import Polynomial, SquareFreeDecomposition
 
 
 _ARGUMENTS = {
+    "expand_multivariate": ("expression", "variables"),
+    "partial_diff": ("expression", "variable", "n"),
+    "gradient": ("expression", "variables"),
+    "jacobian": ("expressions", "variables"),
+    "hessian": ("expression", "variables"),
     "expand": ("expression", "variable"),
     "poly_divmod": ("f", "g"), "poly_gcd": ("f", "g"), "poly_xgcd": ("f", "g"),
     "square_free": ("f",), "real_roots": ("expression", "variable"),
@@ -30,8 +35,9 @@ _ARGUMENTS = {
     "det": ("A",), "inverse": ("A",), "nullspace": ("A",),
     "solve": ("problem", "for_"), "solve_system": ("system_or_equations", "for_"),
 }
-_VARIABLE_OPERATIONS = frozenset(("expand", "real_roots", "differentiate", "antiderivative", "integrate"))
-_EXPRESSION_OPERATIONS = _VARIABLE_OPERATIONS | {"evaluate", "substitute", "simplify"}
+_MULTIVARIATE_OPERATIONS = frozenset(("expand_multivariate", "partial_diff", "gradient", "jacobian", "hessian"))
+_VARIABLE_OPERATIONS = frozenset(("expand", "real_roots", "differentiate", "antiderivative", "integrate", "partial_diff"))
+_EXPRESSION_OPERATIONS = _VARIABLE_OPERATIONS | {"evaluate", "substitute", "simplify", "expand_multivariate", "gradient", "hessian"}
 _MATRIX_OPERATIONS = frozenset(("rref", "rank", "det", "inverse", "nullspace"))
 
 
@@ -291,6 +297,9 @@ def _system(args):
 def _check_operation(operation, args, value, evidence):
     if type(evidence) is not tuple:
         return False
+    if operation in _MULTIVARIATE_OPERATIONS:
+        from .multivariate import check_operation
+        return check_operation(operation, args, value, evidence)
     if operation == "poly_divmod":
         return evidence == () and _check_division(args["f"], args["g"], value)
     if operation in ("poly_gcd", "poly_xgcd"):
@@ -356,6 +365,8 @@ def _check_operation(operation, args, value, evidence):
 
 
 def _aliases(result, operation, args):
+    if operation in _MULTIVARIATE_OPERATIONS and result.method != operation:
+        return False
     expression = args["expression"] if operation in _EXPRESSION_OPERATIONS else None
     if operation in _MATRIX_OPERATIONS:
         expression = args["A"]

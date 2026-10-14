@@ -295,14 +295,18 @@ def reduce_with_trace(A: Matrix, *, limits=None) -> tuple[RREFResult, tuple[RowO
             pivot = rows[pivot_row][column]
             if pivot != _ONE:
                 multiplier = _ONE / pivot
-                rows[pivot_row] = [value * multiplier for value in rows[pivot_row]]
+                # Earlier columns in this pivot row are already zero. Preserve
+                # them without allocating or normalizing another exact scalar.
+                rows[pivot_row][column:] = [value * multiplier
+                                           for value in rows[pivot_row][column:]]
                 record(("scale", pivot_row, multiplier))
             for i in range(A.nrows):
                 if i == pivot_row or not rows[i][column].numerator:
                     continue
                 multiplier = -rows[i][column]
-                rows[i] = [value + multiplier * pivot_value
-                           for value, pivot_value in zip(rows[i], rows[pivot_row])]
+                rows[i][column:] = [value + multiplier * pivot_value
+                                    for value, pivot_value in zip(
+                                        rows[i][column:], rows[pivot_row][column:])]
                 record(("add", i, pivot_row, multiplier))
             pivots.append(column)
             pivot_row += 1

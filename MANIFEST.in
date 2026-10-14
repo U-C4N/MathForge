@@ -1,5 +1,6 @@
-include LICENSE README.md pyproject.toml CHANGELOG.md requirements-dev.txt
+include LICENSE README.md pyproject.toml CHANGELOG.md requirements-dev.txt requirements-mcp.txt
 prune docs
+recursive-include documentation *.md *.json
 recursive-include assets *.svg
 recursive-include examples *.py
 recursive-include tests *.py *.json

@@ -54,8 +54,9 @@ class CalculusV2Tests(unittest.TestCase):
     def test_integral_scope_precedes_equal_bound_shortcut(self):
         """CAL-10: equal endpoints cannot conceal an unsupported integrand."""
         rf = mf.rational_function(self.x, 1, variable=self.x)
-        self.assertEqual(mf.operations.integrate(rf, self.x, 1, 1).execution_status,
-                         mf.ExecutionStatus.UNSUPPORTED)
+        completed = mf.operations.integrate(rf, self.x, 1, 1)
+        self.assertEqual(completed.execution_status, mf.ExecutionStatus.COMPLETED)
+        self.assertTrue(mf.verify(completed).verified)
         for lower, upper in ((0.0, 1), (0, True), (None, 1)):
             result = mf.operations.integrate(self.x, self.x, lower, upper)
             self.assertIn(result.execution_status, (mf.ExecutionStatus.INVALID_INPUT, mf.ExecutionStatus.UNSUPPORTED))

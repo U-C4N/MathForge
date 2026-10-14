@@ -1,0 +1,96 @@
+{
+  "mathforge_version": "0.5.0",
+  "python": "3.14.6",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "repeat": 5,
+  "warmups_per_case": 1,
+  "timing_is_non_gating": true,
+  "timed_scope": "Structured SDK operation including independent verification; excludes parsing and serialization",
+  "measurements": [
+    {
+      "case": "expand_three_variables_degree_12",
+      "seconds": [
+        0.026707500001066364,
+        0.024575499999627937,
+        0.025380700000823708,
+        0.02629739999974845,
+        0.026823399999557296
+      ],
+      "median_seconds": 0.02629739999974845,
+      "p95_seconds": 0.026823399999557296,
+      "work": 21117,
+      "nodes": 1017,
+      "evidence_items": 12361,
+      "execution_status": "completed",
+      "verification": true
+    },
+    {
+      "case": "gradient_radial_degree_8",
+      "seconds": [
+        0.00549690000116243,
+        0.005653800002619391,
+        0.005553599999984726,
+        0.005541499998798827,
+        0.005459800002427073
+      ],
+      "median_seconds": 0.005541499998798827,
+      "p95_seconds": 0.005653800002619391,
+      "work": 2011,
+      "nodes": 469,
+      "evidence_items": 3925,
+      "execution_status": "completed",
+      "verification": true
+    },
+    {
+      "case": "hessian_radial_degree_8",
+      "seconds": [
+        0.012650999997276813,
+        0.015749499998491956,
+        0.011349500000505941,
+        0.011198199998034397,
+        0.013240200001746416
+      ],
+      "median_seconds": 0.012650999997276813,
+      "p95_seconds": 0.015749499998491956,
+      "work": 3199,
+      "nodes": 622,
+      "evidence_items": 8083,
+      "execution_status": "completed",
+      "verification": true
+    },
+    {
+      "case": "jacobian_four_functions_three_variables",
+      "seconds": [
+        0.004492199997912394,
+        0.0055334999997285195,
+        0.004801399998541456,
+        0.004386799999338109,
+        0.004256699998222757
+      ],
+      "median_seconds": 0.004492199997912394,
+      "p95_seconds": 0.0055334999997285195,
+      "work": 1758,
+      "nodes": 578,
+      "evidence_items": 3001,
+      "execution_status": "completed",
+      "verification": true
+    },
+    {
+      "case": "partial_sparse_degree_1000003",
+      "seconds": [
+        0.0009968000013031997,
+        0.0009438000015506987,
+        0.0009348000021418557,
+        0.0009178999971481971,
+        0.0010550000006332994
+      ],
+      "median_seconds": 0.0009438000015506987,
+      "p95_seconds": 0.0010550000006332994,
+      "work": 546,
+      "nodes": 215,
+      "evidence_items": 410,
+      "execution_status": "completed",
+      "verification": true
+    }
+  ]
+}

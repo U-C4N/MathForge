@@ -180,31 +180,48 @@ def isolate_real_roots(poly, *, limits=None):
         polynomial = chain[0]
         if polynomial.degree <= 0:
             return ()
+
+        def endpoint(point):
+            # Each subdivision point is evaluated once by the producer. Keep
+            # both the variation count and endpoint-root flag with its interval;
+            # the independent counting/checking path remains unchanged.
+            first = evaluate_rational(polynomial, point).numerator
+            previous_sign = (first > 0) - (first < 0)
+            variations = 0
+            for member in chain[1:]:
+                value = evaluate_rational(member, point).numerator
+                sign = (value > 0) - (value < 0)
+                if sign:
+                    variations += int(previous_sign != 0 and previous_sign != sign)
+                    previous_sign = sign
+            return point, variations, first == 0
+
         bound = _root_bound(polynomial)
-        pending = [(-bound, bound, _count_open(chain, -bound, bound))]
+        pending = [(endpoint(-bound), endpoint(bound))]
         intervals = []
         while pending:
             budget.refine()
-            lower, upper, count = pending.pop()
+            lower_state, upper_state = pending.pop()
+            lower, lower_variations, lower_zero = lower_state
+            upper, upper_variations, upper_zero = upper_state
+            count = lower_variations - upper_variations - int(upper_zero)
             if not count:
                 continue
-            lower_zero = evaluate_rational(polynomial, lower).numerator == 0
-            upper_zero = evaluate_rational(polynomial, upper).numerator == 0
             if count == 1 and not lower_zero and not upper_zero:
                 intervals.append((lower, upper))
                 continue
-            middle = (lower + upper) / 2
-            middle_zero = evaluate_rational(polynomial, middle).numerator == 0
+            middle_state = endpoint((lower + upper) / 2)
+            middle, middle_variations, middle_zero = middle_state
             if middle_zero:
                 intervals.append((middle, middle))
-            left_count = _count_open(chain, lower, middle)
-            right_count = _count_open(chain, middle, upper)
+            left_count = lower_variations - middle_variations - int(middle_zero)
+            right_count = middle_variations - upper_variations - int(upper_zero)
             if left_count + right_count + int(middle_zero) != count:
                 raise ArithmeticError("Sturm subdivision did not preserve the root count")
             if right_count:
-                pending.append((middle, upper, right_count))
+                pending.append((middle_state, upper_state))
             if left_count:
-                pending.append((lower, middle, left_count))
+                pending.append((lower_state, middle_state))
         intervals.sort(key=lambda interval: interval[0])
         result = tuple(intervals)
         cache[key] = result

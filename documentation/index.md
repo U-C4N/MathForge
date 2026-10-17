@@ -14,10 +14,14 @@ release: verification is algorithmic checking, not formal proof.
 - [Expand and differentiate multivariate polynomials](multivariate.md)
 - [Inspect measured performance and reproduce benchmarks](performance.md)
 - [Show exact results as text or LaTeX](formatting.md)
-- [Connect a local MCP client](mcp.md)
+- [Connect a local MCP client and call its area tools](mcp.md)
 - [Choose a Python operation](api.md)
 - [Find operations by mathematical area](areas.md)
 - [Understand compatibility and limits](compatibility.md)
+
+Operations belong to mathematical areas. Each area is a module that loads on first use, such as `mf.ntheory`
+or `mf.discrete`, and the MCP adapter serves the operations of an area through one tool per group of areas, next
+to a catalog that finds them. Results of operations added in v0.8 use mathematical JSON v6.
 
 The library separates **representing**, **solving**, and **verifying** an object.
 A representable expression is not a promise that every operation supports it.

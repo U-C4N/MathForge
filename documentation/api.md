@@ -33,7 +33,7 @@ assert mf.verify(result).verified
 | Function analysis | `limit`, `analyze_function`, `extrema_values` | Real univariate rational functions; real algebraic finite limit points and signed infinity |
 | Linear algebra | `rref`, `rank`, `det`, `inverse`, `nullspace`, `solve_system`, `charpoly`, `real_eigenvalues`, `trace`, `rowspace`, `columnspace`, `lu`, `least_squares` | Rational matrices; exact real spectrum; `P*A=L*U`; all least-squares minimizers |
 | Verification | `verify` | Independent algorithmic checks; not a formal proof system |
-| Transport/storage | `to_data`, `from_data`, `dumps`, `loads`, `Workspace` | Strict v1–v5 mathematical JSON, content references, explicit history |
+| Transport/storage | `to_data`, `from_data`, `dumps`, `loads`, `Workspace` | Strict v1–v6 mathematical JSON, content references, explicit history |
 | Input/output | `parse_expression`, `parse_problem`, `render_text`, `to_latex`, `capabilities` | Bounded front-end helpers; no new solving algorithms |
 
 The structured counterpart of `diff` is `operations.differentiate`. Division/GCD

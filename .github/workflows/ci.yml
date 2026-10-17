@@ -103,6 +103,8 @@ jobs:
         run: |
           python tools/generate_schema.py --check
           python tools/check_schema.py
+      - name: Check the v6 schema structure, validation speed and rejection of crafted documents
+        run: python -m unittest tests.v08.test_schema_v6 -v
 
   # Development-only oracle gates PRs; installed core and package jobs need no CAS.
   differential:

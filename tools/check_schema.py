@@ -1,4 +1,4 @@
-"""SER-03/07/08 REL-07: Validate structural schemas against v2/v3 codec output.
+"""SER-03/07/08 REL-07: Validate structural schemas against v2–v6 codec output.
 
 This is a development-only check requiring jsonschema==4.26.0. The schema is not
 used to load mathematical objects at runtime, and is not a mathematical verifier.
@@ -192,6 +192,52 @@ def main() -> None:
     else:
         raise AssertionError("An unexpected v5 field passed the schema")
     print(f"V5 structural schema accepts {len(v5_values)} results, including an explicitly deferred request and mixed workspace.")
+
+    v6_schema = json.loads(resources.files("mathforge").joinpath("schemas/mathforge-v6.schema.json").read_text(encoding="utf-8"))
+    Draft202012Validator.check_schema(v6_schema)
+    v6_validator = Draft202012Validator(v6_schema)
+    from mathforge.deferred import Reason, Unevaluated
+    rational = mf.Rational(415, 93)
+    pilot = mf.operations.continued_fraction(rational)
+    assert pilot.execution_status is mf.ExecutionStatus.COMPLETED and mf.verify(pilot).verified, pilot.error
+    request = mf.OperationRequest("continued_fraction", (("value", rational),))
+    unevaluated = Unevaluated("evaluate", request, Reason("no_applicable_rule"))
+    deferred = mf.Result(execution_status=mf.ExecutionStatus.COMPLETED, outcome=mf.Outcome.NO_CONCLUSION,
+                         completeness=mf.Completeness.UNKNOWN, method="continued_fraction", request=request,
+                         deferred=unevaluated)
+    v6_values = [pilot, pilot.value, request, unevaluated, deferred]
+    for value in v6_values:
+        document = mf.to_data(value)
+        assert document["version"] == 6
+        v6_validator.validate(document)
+        assert mf.loads(mf.dumps(value)) == value
+        try:
+            v5_validator.validate(document)
+        except ValidationError:
+            pass
+        else:
+            raise AssertionError("A v6 document passed the historical v5 schema")
+        workspace.put(value)
+    v6_validator.validate(mf.to_data(workspace))
+    v6_malformed = []
+    for change in ({"extra": True}, {"value": {"type": "v6_nope"}}):
+        bad = mf.to_data(pilot)
+        bad["data"].update(change)
+        v6_malformed.append(bad)
+    bad = mf.to_data(pilot)
+    bad["data"]["request"]["arguments"][0]["name"] = "number"
+    v6_malformed.append(bad)
+    bad = mf.to_data(deferred)
+    bad["data"]["deferred"] = bad["data"]["deferred"]["reason"]
+    v6_malformed.append(bad)
+    for document in v6_malformed:
+        try:
+            v6_validator.validate(document)
+        except ValidationError:
+            continue
+        raise AssertionError("Malformed v6 transport shape passed the schema")
+    print(f"V6 structural schema accepts {len(v6_values)} values, including a deferred request, and a mixed workspace; "
+          f"{len(v6_malformed)} corrupt shapes rejected.")
 
 
 if __name__ == "__main__":

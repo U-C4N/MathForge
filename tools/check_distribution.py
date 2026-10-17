@@ -54,6 +54,7 @@ for new_result in (mf.operations.limit(f, x, 0), mf.operations.analyze_function(
 assert resources.files("mathforge").joinpath("schemas/mathforge-v3.schema.json").is_file()
 assert resources.files("mathforge").joinpath("schemas/mathforge-v4.schema.json").is_file()
 assert resources.files("mathforge").joinpath("schemas/mathforge-v5.schema.json").is_file()
+assert resources.files("mathforge").joinpath("schemas/mathforge-v6.schema.json").is_file()
 factor = mf.operations.factor(mf.Polynomial((4, 0, 0, 0, 1), x))
 assert mf.verify(factor).verified and mf.to_data(factor)["version"] == 4
 assert mf.loads(mf.dumps(factor)) == factor

@@ -1,0 +1,83 @@
+"""Source-bearing v6 operations: run a registered family's producer, then verify its value independently.
+
+The generated wrappers call run() with every argument of the spec, defaults filled in. A producer
+returns (value, evidence), or an Unevaluated record when it reaches no answer. Only an unexpected
+failure inside the producer is an internal error; input, scope and budget errors keep the v5 codes.
+"""
+from __future__ import annotations
+
+from collections.abc import Mapping
+from dataclasses import replace
+from typing import Any
+
+from . import contracts as c
+from . import registry
+from .deferred import Unevaluated
+from .errors import InvalidInput, MathForgeError, UnsupportedOperation
+from .limits import ComputationLimits, ResourceLimitError, computation
+from .model import Reals, Symbol
+from .operations_v5 import _freeze
+
+
+def validate_arguments(operation, args):
+    """The family of a registered v6 operation, once the argument names are exactly its spec's."""
+    expected = registry.operation_arguments(6).get(operation)
+    if expected is None:
+        raise UnsupportedOperation("Unknown v6 operation")
+    if type(args) is not dict or set(args) != expected:
+        raise InvalidInput("Arguments do not match the v6 operation contract")
+    return registry.family(operation)
+
+
+def _produce(family, operation, args):
+    """Call the family's producer. A failure other than an input, scope or budget error is an internal error."""
+    try:
+        value, evidence = family.produce(operation, args)
+    except (InvalidInput, UnsupportedOperation, ResourceLimitError):
+        raise
+    except Exception as exc:
+        raise MathForgeError("The producer failed unexpectedly", code="internal_error") from exc
+    return value, evidence
+
+
+def run(operation: str, arguments: Mapping[str, object], *,
+        limits: ComputationLimits | None = None) -> c.Result[Any]:
+    from .operations import _failure
+    request = None
+    context: dict[str, Any] = {}
+    try:
+        with computation(limits) as budget:
+            if not isinstance(arguments, Mapping):
+                raise InvalidInput("Operation arguments must be a mapping")
+            args = {key: _freeze(value) for key, value in arguments.items()}
+            budget.inspect(args)
+            family = validate_arguments(operation, args)
+            request = c.OperationRequest(operation, tuple(args.items()))
+            if "expression" in args:
+                context["expression"] = args["expression"]
+            elif "A" in args:
+                context["expression"] = args["A"]
+            variable = args.get("variable")
+            if type(variable) is Symbol:
+                context.update(for_=variable, domain=Reals)
+            value, evidence = _produce(family, operation, args)
+            budget.inspect(value)
+            budget.inspect(evidence, evidence=True)
+            if type(value) is Unevaluated:
+                return c.Result(execution_status=c.ExecutionStatus.COMPLETED, outcome=c.Outcome.NO_CONCLUSION,
+                                completeness=c.Completeness.UNKNOWN, deferred=value, method=operation,
+                                request=request, **context)
+            result: c.Result[Any] = c.Result(
+                execution_status=c.ExecutionStatus.COMPLETED, outcome=c.Outcome.VALUE, value=value,
+                exactness=c.Exactness.EXACT, completeness=c.Completeness.COMPLETE, method=operation,
+                request=request, **context,
+                steps=(c.Step("v6." + operation, (request,), (value, evidence), relation=c.StepRelation.EVALUATION),))
+            from .verification_v6 import verify_result
+            report = verify_result(result, limits=limits)
+            if not report.verified:
+                if any("resources" in check.claim for check in report.checks):
+                    raise ResourceLimitError("Independent verification exceeded its budget")
+                raise ArithmeticError("Independent verification rejected the produced result")
+            return replace(result, verification=report.checks)
+    except Exception as exc:
+        return _failure(exc, method=operation, context=context, request=request)

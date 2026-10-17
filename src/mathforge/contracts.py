@@ -27,7 +27,7 @@ def as_scalar(value):
 
 def _extended_value(value):
     from . import registry  # Imported on use: contracts loads very early (no import cycles).
-    if registry._record_module(type(value).__module__):  # Static: other values never build the registry.
+    if registry.record_module(type(value).__module__):  # Static: other values never build the registry.
         return type(value) in registry.all_record_types()
     return any(_extension(value, module, name) for module, names in (
         ("polynomial", ("SquareFreeFactor", "SquareFreeDecomposition")),
@@ -351,9 +351,11 @@ class Result(Generic[T]):
         object.__setattr__(self, "value", _immutable_value(self.value))
         if self.deferred is not None:
             object.__setattr__(self, "deferred", _immutable_value(self.deferred))
-            if not any(_extension(self.deferred, "functions", name)
-                       for name in ("UnevaluatedIntegral", "UnevaluatedLimit")):
-                raise TypeError("deferred must be an unevaluated integral or limit")
+            from .deferred import Unevaluated, deferred_types  # Imported on use: deferred imports contracts.
+            if type(self.deferred) not in deferred_types():
+                raise TypeError("deferred must be an unevaluated record")
+            if type(self.deferred) is Unevaluated and self.deferred.request != self.request:
+                raise ValueError("An unevaluated record must carry its result's request")
             if (self.execution_status is not ExecutionStatus.COMPLETED
                     or self.outcome is not Outcome.NO_CONCLUSION or self.value is not None
                     or self.completeness is not Completeness.UNKNOWN

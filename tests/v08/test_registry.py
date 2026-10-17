@@ -14,7 +14,7 @@ import unittest
 from unittest.mock import patch
 
 import mathforge as m
-from mathforge import contracts, dispatch_v5, registry, registry_v07
+from mathforge import contracts, deferred, dispatch_v5, registry, registry_v07
 from mathforge.errors import UnsupportedOperation
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "v8"
@@ -177,7 +177,8 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(list(registry.record_types(5).items()), list(expected.items()))
         self.assertIs(registry.record_types(5)["crt_result"], m.CRTResult)
         self.assertIs(registry.record_types(5)["FiniteDistribution"], m.FiniteDistribution)
-        self.assertEqual(registry.all_record_types(), frozenset(expected.values()))
+        self.assertEqual(registry.all_record_types(),
+                         frozenset(expected.values()) | frozenset(registry.record_types(6).values()))
         self.assertEqual(registry.V5_FAMILIES, tuple("mathforge." + name for name in (
             "number_theory", "combinatorics", "complex_numbers", "probability", "statistics",
             "linear_extensions", "functions", "function_calculus", "rational_integration", "function_integration")))
@@ -248,7 +249,9 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(dict(registry.operation_arguments(6)), {"demo_triple": frozenset({"n"})})
         self.assertIn("demo_triple", registry.operation_arguments())
         self.assertNotIn("demo_triple", registry.operation_arguments(5))
-        self.assertEqual(dict(registry.record_types(6)), {"demo_box": _Box})
+        # The generic deferral records lead the v6 types, ahead of the families' records.
+        self.assertEqual(list(registry.record_types(6).items()),
+                         [("reason", deferred.Reason), ("unevaluated", deferred.Unevaluated), ("demo_box", _Box)])
         self.assertIn(_Box, registry.all_record_types())
         self.assertIn("demo_triple", [spec.name for spec in registry.area_operations("discrete")])
         self.assertNotIn("demo_triple", [spec.name for spec in registry.tool_operations("mathforge.discrete")])
@@ -260,6 +263,17 @@ class RegistryTests(unittest.TestCase):
         self.assertNotIn("demo_box", dispatch_v5.record_types())
         with self.assertRaisesRegex(UnsupportedOperation, "^Unknown v5 operation$"):
             dispatch_v5.module_for("demo_triple")
+
+    def test_v6_operation_lookup_rules_out_older_names_without_a_build(self):
+        """verify() asks it for every request; the legacy operations verify their own results."""
+        self.addCleanup(registry._clear_caches)
+        registry._clear_caches()
+        for name in ("solve", "factor", "integer_gcd", "function_limit"):
+            self.assertFalse(registry.is_v6_operation(name))
+        self.assertEqual(registry._tables.cache_info().currsize, 0)
+        self.install_family(demo_spec(mcp=False))
+        self.assertTrue(registry.is_v6_operation("demo_triple"))
+        self.assertFalse(registry.is_v6_operation("demo_nope"))
 
     def test_build_rejects_duplicate_public_names(self):
         self.install_family(demo_spec("demo_taylor", "series", sdk="taylor"))
@@ -276,6 +290,14 @@ class RegistryTests(unittest.TestCase):
         self.install_family(demo_spec("demo_limit", "series", sdk="limit"))
         with self.assertRaisesRegex(RuntimeError, "^Public name collides with a legacy catalogue entry: limit$"):
             registry.specs()
+
+    def test_build_rejects_family_records_named_like_the_deferral_records(self):
+        """A family TYPES tag must not shadow Reason or Unevaluated in record_types(6)."""
+        for tag in deferred.TYPES:
+            with self.subTest(tag=tag):
+                self.install_family(demo_spec(), records={tag: _Box})
+                with self.assertRaisesRegex(RuntimeError, f"^Duplicate v6 type: {tag}$"):
+                    registry.specs()
 
     def test_build_rejects_records_outside_the_record_modules(self):
         """contracts trusts a static module guard, so every record class must live in a guarded module."""

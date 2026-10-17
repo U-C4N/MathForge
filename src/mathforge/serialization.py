@@ -23,7 +23,7 @@ from .polynomial import Polynomial
 
 
 FORMAT = "mathforge"
-VERSION = 5
+VERSION = 6
 _decode_limits = ContextVar("mathforge_decode_limits", default=None)
 
 
@@ -109,11 +109,29 @@ _V4_TAGS = frozenset(("polynomial_factor", "polynomial_factorization", "partial_
                       "partial_fraction_decomposition", "extremum_value"))
 
 
+_RECORD_PREFIXES = {"v5_": 5, "v6_": 6}
+
+
+def _record_types(version):
+    """The registry record classes of format v5 (the frozen v0.7 view) or v6, by tag."""
+    if version == 5:
+        from .dispatch_v5 import record_types
+        return record_types()
+    from . import registry
+    return registry.record_types(6)
+
+
 def _request_version(request):
     from .dispatch_v5 import operation_arguments, validate_arguments as validate_new
     if request.operation in operation_arguments():
         validate_new(request.operation, dict(request.arguments))
         return 5
+    # Names this build does not register fall through: a later build's v6 request still decodes.
+    from . import registry
+    if request.operation in registry.operation_arguments(6):
+        from .operations_v6 import validate_arguments as validate_v6
+        validate_v6(request.operation, dict(request.arguments))
+        return 6
     from .exact_dispatch import NEW_OPERATIONS, validate_arguments
     if request.operation in NEW_OPERATIONS:
         validate_arguments(request.operation, dict(request.arguments))
@@ -285,6 +303,8 @@ class _Encoder:
         if t is c.VerificationReport:
             return {"type": "verification_report", "checks": [self.encode(v) for v in value.checks]}
         if t is c.Step:
+            if value.rule.startswith("v6."):
+                self.minimum_version = max(self.minimum_version, 6)
             if value.rule.startswith("v5."):
                 self.minimum_version = max(self.minimum_version, 5)
             if value.rule.startswith("v4."):
@@ -354,13 +374,13 @@ class _Encoder:
         if tag is not None:
             self.minimum_version = max(self.minimum_version, 4)
             return self.v4(tag, value)
-        from .dispatch_v5 import record_types
-        for tag, cls in record_types().items():
-            if t is cls:
-                self.minimum_version = max(self.minimum_version, 5)
-                return {"type": "v5_" + tag, **{
-                    field.name: self.encode(getattr(value, field.name))
-                    for field in dataclass_fields(cls)}}
+        for prefix, version in _RECORD_PREFIXES.items():
+            for tag, cls in _record_types(version).items():
+                if t is cls:
+                    self.minimum_version = max(self.minimum_version, version)
+                    return {"type": prefix + tag, **{
+                        field.name: self.encode(getattr(value, field.name))
+                        for field in dataclass_fields(cls)}}
         raise SerializationError(f"Unsupported object type: {t.__name__}")
 
     def v4(self, tag, value):
@@ -473,19 +493,8 @@ class _Decoder:
         if type(data) is not dict or type(data.get("type")) is not str:
             raise SerializationError("A tagged mathematical object is required")
         tag = data["type"]
-        if tag.startswith("v5_"):
-            if self.version < 5:
-                raise SerializationError("This mathematical type requires format v5")
-            from .dispatch_v5 import record_types
-            cls = record_types().get(tag[3:])
-            if cls is None:
-                raise SerializationError("Unknown v5 mathematical type")
-            names = tuple(field.name for field in dataclass_fields(cls))
-            _fields(data, "type " + " ".join(names))
-            result = cls(**{name: self.decode(data[name]) for name in names})
-            if _Encoder().encode(result) != data:
-                raise SerializationError("A v5 record must have canonical fields")
-            return result
+        if tag[:3] in _RECORD_PREFIXES:
+            return self.record(_RECORD_PREFIXES[tag[:3]], tag[3:], data)
         if tag in _V4_TAGS:
             if self.version < 4:
                 raise SerializationError("This mathematical type requires format v4")
@@ -595,6 +604,8 @@ class _Decoder:
                 raise SerializationError("This evidence rule requires format v4")
             if _string(data["rule"]).startswith("v5.") and self.version < 5:
                 raise SerializationError("This evidence rule requires format v5")
+            if _string(data["rule"]).startswith("v6.") and self.version < 6:
+                raise SerializationError("This evidence rule requires format v6")
             explanation = None if data["explanation"] is None else _string(data["explanation"])
             return c.Step(rule=_string(data["rule"]), inputs=self.sequence(data["inputs"]),
                           outputs=self.sequence(data["outputs"]),
@@ -664,6 +675,20 @@ class _Decoder:
             history = self.sequence(data["history"], OperationRecord)
             return Workspace._restore(objects, history)
         raise SerializationError(f"Unknown mathematical object tag: {tag}")
+
+    def record(self, version, tag, data):
+        """A registry record of format v5 or v6: its dataclass fields, which must re-encode canonically."""
+        if self.version < version:
+            raise SerializationError(f"This mathematical type requires format v{version}")
+        cls = _record_types(version).get(tag)
+        if cls is None:
+            raise SerializationError(f"Unknown v{version} mathematical type")
+        names = tuple(field.name for field in dataclass_fields(cls))
+        _fields(data, "type " + " ".join(names))
+        result = cls(**{name: self.decode(data[name]) for name in names})
+        if _Encoder().encode(result) != data:
+            raise SerializationError(f"A v{version} record must have canonical fields")
+        return result
 
     def v2(self, tag, data):
         types = _v2_types()
@@ -963,7 +988,7 @@ def from_data(document: Any, *, decode_limits=None, computation_limits=None) -> 
         _fields(document, "format version kind data")
         if document["format"] != FORMAT or type(document["format"]) is not str:
             raise SerializationError("Unknown document format")
-        if type(document["version"]) is not int or document["version"] not in (1, 2, 3, 4, 5):
+        if type(document["version"]) is not int or document["version"] not in (1, 2, 3, 4, 5, 6):
             raise SerializationError("Unsupported MathForge format version")
         if document["kind"] not in ("object", "workspace"):
             raise SerializationError("Unknown document kind")

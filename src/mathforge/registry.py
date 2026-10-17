@@ -13,10 +13,12 @@ memoized. Family modules must not call into the registry at import time.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
+import contextlib
 from dataclasses import dataclass
 import functools
 import importlib
+import sys
 import threading
 from types import MappingProxyType, ModuleType
 
@@ -83,14 +85,17 @@ V5_RECORD_MODULES = V5_FAMILIES + ("mathforge.function_limits",)
 # v6 family modules; each defines SPECS, TYPES, CHECKER (a module or its import path) and produce().
 V6_FAMILIES: tuple[str, ...] = ()
 
+# The generic deferral records (Reason, Unevaluated): their TYPES lead record_types(6).
+DEFERRED_MODULE = "mathforge.deferred"
 
-def _record_module(module: str) -> bool:
+
+def record_module(module: str) -> bool:
     """Whether a module may define registry records; a static answer that needs no build.
 
     contracts relies on it so that v1-v4 values never build the registry; the build checks
     that every record class lives in such a module.
     """
-    return module in V5_RECORD_MODULES or module in V6_FAMILIES
+    return module in V5_RECORD_MODULES or module == DEFERRED_MODULE or module in V6_FAMILIES
 
 
 @dataclass(frozen=True)
@@ -119,12 +124,13 @@ def _tables() -> _Tables:
     v6 = tuple(importlib.import_module(name) for name in V6_FAMILIES)
     checkers = tuple(importlib.import_module(module.CHECKER) if isinstance(module.CHECKER, str)
                      else module.CHECKER for module in v6)
+    deferred = importlib.import_module(DEFERRED_MODULE)
     legacy = frozenset(entry.name for entry in LEGACY_CATALOG)
     with _LOCK:
         # functools.cache may run this body twice when threads race on the first
         # call; every caller still receives the tables assembled first.
         if not _BUILT:
-            _BUILT.append(_assemble(V07_SPECS, legacy, v5, v6, checkers))
+            _BUILT.append(_assemble(V07_SPECS, legacy, v5, v6, checkers, deferred))
         return _BUILT[0]
 
 
@@ -135,20 +141,42 @@ def _clear_caches() -> None:
         _tables.cache_clear()
 
 
+@contextlib.contextmanager
+def _testing_families(*modules: ModuleType) -> Iterator[None]:
+    """Register v6 family modules for the duration of a with block (tests only).
+
+    The modules join V6_FAMILIES, the one list that both record_module() and the table build read, so
+    the two always agree. The build imports families by name, so each module must be its own sys.modules
+    entry. The caches are cleared on entry and on exit; V6_FAMILIES is restored even when the block raises.
+    """
+    global V6_FAMILIES
+    stray = [module.__name__ for module in modules if sys.modules.get(module.__name__) is not module]
+    if stray:
+        raise ValueError("A testing family must be an imported module: " + ", ".join(stray))
+    previous = V6_FAMILIES
+    V6_FAMILIES = previous + tuple(module.__name__ for module in modules)
+    try:
+        _clear_caches()
+        yield
+    finally:
+        V6_FAMILIES = previous
+        _clear_caches()
+
+
 def _record_types(modules: tuple[ModuleType, ...], version: int) -> dict[str, type]:
     merged: dict[str, type] = {}
     for module in modules:
         for tag, cls in getattr(module, "TYPES", {}).items():
             if tag in merged:
                 raise RuntimeError(f"Duplicate v{version} type: {tag}")
-            if not _record_module(cls.__module__):
+            if not record_module(cls.__module__):
                 raise RuntimeError(f"Record type {tag} is defined outside the record modules: {cls.__module__}")
             merged[tag] = cls
     return merged
 
 
 def _assemble(v07_specs: tuple[OperationSpec, ...], legacy: frozenset[str], v5: tuple[ModuleType, ...],
-              v6: tuple[ModuleType, ...], v6_checkers: tuple[ModuleType, ...]) -> _Tables:
+              v6: tuple[ModuleType, ...], v6_checkers: tuple[ModuleType, ...], deferred: ModuleType) -> _Tables:
     specs: dict[str, OperationSpec] = {}
     public: set[str] = set()
     families: dict[str, ModuleType] = {}
@@ -190,7 +218,8 @@ def _assemble(v07_specs: tuple[OperationSpec, ...], legacy: frozenset[str], v5: 
     for spec in specs.values():
         arguments[None][spec.name] = arguments[spec.version][spec.name] = frozenset(
             argument.name for argument in spec.arguments)
-    types = {5: _record_types(v5, 5), 6: _record_types(v6, 6)}
+    # A family tag equal to a deferral tag ("reason", "unevaluated") is a duplicate v6 type.
+    types = {5: _record_types(v5, 5), 6: _record_types((deferred, *v6), 6)}
     areas = {area: tuple(sorted((spec for spec in specs.values() if spec.area == area),
                                 key=lambda spec: spec.public_name)) for area in AREAS}
     tools = {tool: tuple(sorted((spec for spec in specs.values() if spec.mcp and spec.area in served),
@@ -244,8 +273,27 @@ def operation_arguments(version: int | None = None) -> Mapping[str, frozenset[st
     return _lookup(_tables().arguments, version, "version")
 
 
+@functools.cache
+def _older_names() -> frozenset[str]:
+    """The operation names of the legacy catalogue and the v0.7 table: static data, no family module loads."""
+    from .registry_v07 import LEGACY_CATALOG, V07_SPECS
+    return frozenset(entry.name for entry in LEGACY_CATALOG) | frozenset(spec.name for spec in V07_SPECS)
+
+
+def is_v6_operation(name: str) -> bool:
+    """Whether an operation is registered with result format version 6.
+
+    The build rejects v6 specs named like a legacy catalogue entry or a v0.7 operation, so such a name
+    is ruled out without building the tables: checking a v1-v5 request loads no family module.
+    """
+    return name not in _older_names() and name in operation_arguments(6)
+
+
 def record_types(version: int) -> Mapping[str, type]:
-    """Record classes by tag; the serialized prefix ("v5_", "v6_") is not part of the tag."""
+    """Record classes by tag; the serialized prefix ("v5_", "v6_") is not part of the tag.
+
+    Version 6 holds the generic deferral records of mathforge.deferred, then the families' records.
+    """
     return _lookup(_tables().types, version, "version")
 
 

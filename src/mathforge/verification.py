@@ -299,10 +299,34 @@ def _verify_legacy(result: Result) -> VerificationReport:
         return VerificationReport((_unknown("result.verification", "verification_scope", str(exc)),))
 
 
+def _v6_result(result: Result[Any]) -> bool:
+    """Whether a result takes the v6 path: a v6 step, an Unevaluated deferral or a registered v6 request.
+
+    The structural tests come first and the registry last; it rules v1-v5 operation names out without
+    building its tables, so the legacy operations, which verify their own results, never build them.
+    """
+    if type(result.steps) is tuple and any(type(step) is Step and type(step.rule) is str
+                                           and step.rule.startswith("v6.") for step in result.steps):
+        return True
+    if result.deferred is not None:
+        from .deferred import Unevaluated
+        if type(result.deferred) is Unevaluated:
+            return True
+    request = result.request
+    if type(request) is not OperationRequest or type(request.operation) is not str:
+        return False
+    from . import registry
+    return registry.is_v6_operation(request.operation)
+
+
 def verify(result: Result[Any], *, limits: ComputationLimits | None = None) -> VerificationReport:
     """Independently check the source, result, completeness and attached evidence."""
     if type(result) is not Result:
         raise InvalidInput("verify expects a Result")
+    # Before the v5 branch, which takes every deferral: UnevaluatedIntegral/UnevaluatedLimit stay v5.
+    if _v6_result(result):
+        from .verification_v6 import verify_result as verify_v6
+        return verify_v6(result, limits=limits)
     if result.deferred is not None or (type(result.steps) is tuple and any(
             type(step) is Step and type(step.rule) is str and step.rule.startswith("v5.")
             for step in result.steps)):

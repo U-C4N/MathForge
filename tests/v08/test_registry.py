@@ -306,6 +306,41 @@ class RegistryTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "^Record type stray is defined outside the record modules: "):
             registry.specs()
 
+    def test_render_functions_receive_the_shared_renderer(self):
+        """RENDER maps a record class to render(value, renderer, child); child keeps aliases and LaTeX fractions."""
+        def render(value, renderer, child):
+            return renderer.label("box ") + child(value.n)
+
+        family, _ = self.install_family(demo_spec(), records={"demo_box": _Box})
+        family.RENDER = {_Box: render}
+        self.assertEqual(dict(registry.record_renderers()),
+                         {deferred.Reason: None, deferred.Unevaluated: None, _Box: render})
+        x = m.Symbol("x")
+        self.assertEqual(m.render_text(_Box(x), symbols={"y": x}), "box y")
+        self.assertEqual(m.to_latex(_Box(m.Rational(1, 2))), r"\text{box }\frac{1}{2}")
+
+    def test_build_rejects_render_that_is_not_a_mapping(self):
+        family, _ = self.install_family(demo_spec(), records={"demo_box": _Box})
+        family.RENDER = [(_Box, lambda value, renderer, child: "box")]
+        with self.assertRaisesRegex(RuntimeError, f"^RENDER must be a mapping: {FAMILY}$"):
+            registry.specs()
+
+    def test_build_rejects_render_keys_outside_the_family_types(self):
+        """A key must be a record class of the family's own TYPES, not a tag and not another class."""
+        message = f"^RENDER keys must be record classes of the family's own TYPES: {FAMILY}$"
+        for key in (_Stray, "demo_box", deferred.Reason):
+            with self.subTest(key=key):
+                family, _ = self.install_family(demo_spec(), records={"demo_box": _Box})
+                family.RENDER = {key: lambda value, renderer, child: "box"}
+                with self.assertRaisesRegex(RuntimeError, message):
+                    registry.specs()
+
+    def test_build_rejects_render_values_that_are_not_callable(self):
+        family, _ = self.install_family(demo_spec(), records={"demo_box": _Box})
+        family.RENDER = {_Box: "box {n}"}
+        with self.assertRaisesRegex(RuntimeError, f"^RENDER values must be callable: {FAMILY}$"):
+            registry.specs()
+
     def test_concurrent_first_build_shares_one_table(self):
         """Review Focus 5: threads racing on a cold registry all receive the same tables."""
         import_module = importlib.import_module

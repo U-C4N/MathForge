@@ -1,19 +1,20 @@
-"""Presentation for v6 records, using the shared renderer budget.
+"""Presentation for v6 records through the shared renderer.
 
-The generic deferral records render here. A family record renders through the RENDER functions of the family
-module that defines its class, whose text the renderer bounds like any other, or else as its class name and
-fields.
+Every v6 record renders with one function render(value, renderer, child) -> str, the signature of
+rendering_v5.render. renderer.latex selects LaTeX; renderer.label, parens, join and integer apply the shared
+budget; child(nested) renders a nested value with the symbol aliases and the budget of the whole rendering.
+The deferral records use the functions below. A family record uses the function that its family declares in
+RENDER (registry.record_renderers()); any other v6 record is shown as its class name and fields.
 """
 from dataclasses import fields
-import sys
 
 from . import registry
 from .deferred import Reason, Unevaluated
 
 
 def supported(value):
-    cls = type(value)
-    return registry.record_module(cls.__module__) and cls in registry.record_types(6).values()
+    cls = type(value)  # The static module test comes first, so that other values never build the registry.
+    return registry.record_module(cls.__module__) and cls in registry.record_renderers()
 
 
 def children(value):
@@ -26,22 +27,24 @@ def children(value):
     return tuple(getattr(value, field.name) for field in fields(value))
 
 
-def _family_functions(cls):
-    """The (text, LaTeX) pair declared for cls in the RENDER mapping of its family module, or None."""
-    return getattr(sys.modules.get(cls.__module__), "RENDER", {}).get(cls)
+def _reason(value, renderer, child):
+    return renderer.label("Reason") + renderer.parens(renderer.join(
+        (renderer.label(text) for text in (value.code, value.detail) if text), ", "))
+
+
+def _unevaluated(value, renderer, child):
+    return renderer.label("Unevaluated") + renderer.parens(renderer.join(
+        (renderer.label(value.kind), renderer.label(value.request.operation), child(value.reason)), ", "))
+
+
+def _fields(value, renderer, child):
+    return renderer.label(type(value).__name__) + renderer.parens(renderer.join(
+        (renderer.label(field.name) + "=" + child(getattr(value, field.name)) for field in fields(value)), ", "))
+
+
+_DEFERRALS = {Reason: _reason, Unevaluated: _unevaluated}  # Shaped like a family's RENDER.
 
 
 def render(value, renderer, child):
-    label, parens = renderer.label, renderer.parens
-    if type(value) is Reason:
-        return label("Reason") + parens(renderer.join((label(text) for text in (value.code, value.detail) if text),
-                                                      ", "))
-    if type(value) is Unevaluated:
-        return label("Unevaluated") + parens(renderer.join(
-            (label(value.kind), label(value.request.operation), child(value.reason)), ", "))
-    functions = _family_functions(type(value))
-    if functions is not None:
-        text, latex = functions
-        return (latex if renderer.latex else text)(value)
-    return label(type(value).__name__) + parens(renderer.join(
-        (label(field.name) + "=" + child(getattr(value, field.name)) for field in fields(value)), ", "))
+    function = _DEFERRALS.get(type(value)) or registry.record_renderers()[type(value)] or _fields
+    return function(value, renderer, child)

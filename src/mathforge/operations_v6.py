@@ -1,7 +1,15 @@
 """Source-bearing v6 operations: run a registered family's producer, then verify its value independently.
 
+A v6 family module defines SPECS, TYPES, CHECKER (the import path of its independent checker), produce() and,
+optionally, RENDER: {record class of its TYPES: render(value, renderer, child) -> str}, the signature of
+rendering_v5.render, which the registry checks at build time. mathforge.areas.ntheory.continued_fraction, the
+pilot family, spells the contract out.
+
 The generated wrappers call run() with every argument of the spec, defaults filled in. A producer
-returns (value, evidence), where value may be an Unevaluated record when it reaches no answer.
+returns (value, evidence), where value may be an Unevaluated record when it reaches no answer. It validates
+its inputs first and raises InvalidInput for those it rejects. Once the inputs are validated, an InvalidInput
+raised while building a record is a producer bug that run() cannot tell from rejected input, so families
+build records only from validated data; the independent checker re-validates the value anyway.
 A producer bug is an internal error: an exception that produce() raises, other than an input, scope or
 budget error, and any failure to make its return into a Result, other than a budget error. Validation
 before produce() and the independent verification keep the v5 codes.

@@ -194,10 +194,28 @@ class GeneratedApiTests(unittest.TestCase):
         else:
             self.fail("mathforge.operations does not import every structured wrapper")
         self.assertEqual(own & set(structured.__all__), set())
-        self.assertLessEqual(wrappers, set(structured.__all__))
-        for name in structured.__all__:
+        api_v7 = importlib.import_module("mathforge.api_v7")
+        for name in wrappers:
             with self.subTest(name=name):
-                self.assertIs(getattr(operations, name), getattr(structured, name))
+                self.assertIs(getattr(api_v7, name), getattr(structured, name))
+
+    def test_v6_operations_stay_out_of_the_flat_namespace(self):
+        """Every v6 operation is reached through mathforge.operations and its area module, never as mf.<name>."""
+        structured = importlib.import_module("mathforge._generated.structured")
+        values = importlib.import_module("mathforge._generated.values")
+        specs = [spec for spec in registry.specs().values() if spec.version == 6]
+        self.assertTrue(specs)  # The pilot at least, so that the loop cannot pass vacuously.
+        for spec in specs:
+            name, area = spec.public_name, importlib.import_module("mathforge." + spec.area)
+            with self.subTest(operation=spec.name):
+                self.assertFalse(hasattr(mathforge, name))
+                self.assertNotIn(name, mathforge.__all__)
+                self.assertNotIn(name, dir(mathforge))
+                self.assertIs(getattr(mathforge.operations, name), getattr(structured, name))
+                self.assertIs(getattr(area, name), getattr(values, name))
+                self.assertIn(name, area.__all__)
+                for cls in registry.family(spec.name).TYPES.values():  # Its records come with it.
+                    self.assertIs(getattr(area, cls.__name__), cls)
 
     def test_rendering_is_deterministic(self):
         expected = {path.relative_to(SRC).as_posix(): text for path, text in self.tool.render_files(SRC).items()}

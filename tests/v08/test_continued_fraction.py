@@ -5,7 +5,7 @@ JSON v6 and rendering. rendering_v6 also presents the generic deferral records, 
 """
 
 from dataclasses import dataclass, replace
-import importlib
+from fractions import Fraction
 import unittest
 from unittest.mock import patch
 
@@ -41,6 +41,14 @@ class Impostor:
     terms: tuple[int, ...]
 
 
+def evaluate(terms):
+    """The value of [a0; a1, ..., an], folded from the right with exact fractions, whatever the form."""
+    value = Fraction(terms[-1])
+    for term in reversed(terms[:-1]):
+        value = term + 1 / value
+    return value
+
+
 def statuses(report):
     """Check status by claim."""
     return {check.claim: check.status for check in report.checks}
@@ -67,25 +75,20 @@ class ContinuedFractionTests(unittest.TestCase):
         self.assertTrue(registry.is_v6_operation("continued_fraction"))
         self.assertNotIn("continued_fraction", registry.operation_arguments(5))  # mathforge.compute stays v0.7.
 
-    def test_new_operations_stay_out_of_the_flat_namespace(self):
-        """A v6 operation is reachable from its area module and mathforge.operations, never as mf.<name>."""
-        self.assertFalse(hasattr(m, "continued_fraction"))
-        self.assertNotIn("continued_fraction", m.__all__)
-        self.assertNotIn("continued_fraction", dir(m))
-        structured = importlib.import_module("mathforge._generated.structured")
-        values = importlib.import_module("mathforge._generated.values")
-        self.assertIs(m.operations.continued_fraction, structured.continued_fraction)
-        self.assertIs(m.ntheory.continued_fraction, values.continued_fraction)
-        self.assertIs(m.ntheory.ContinuedFraction, ContinuedFraction)
-        self.assertLessEqual({"continued_fraction", "ContinuedFraction"}, set(m.ntheory.__all__))
-
     def test_checker_rejects_forged_value(self):
         args = {"value": Q(415, 93)}
         self.assertTrue(check_operation("continued_fraction", args, ContinuedFraction((4, 2, 6, 7)), ()))
         self.assertFalse(check_operation("continued_fraction", args, ContinuedFraction((4, 2, 6, 6)), ()))
-        # The right fraction in a non-canonical form, under another type, or with evidence is rejected as well.
-        for value, evidence in ((forged((4, 2, 6, 6, 1)), ()), (forged((4, 2, 6, 7.0)), ()), (forged([4, 2, 6, 7]), ()),
-                                (forged(()), ()), ((4, 2, 6, 7), ()), (Impostor((4, 2, 6, 7)), ()),
+        # Each forged expansion is mathematically right, so only the canonical-form rule it breaks can reject it:
+        # a last term of 1, a zero inner term, a negative inner term, a bool term.
+        for value, terms in ((Q(415, 93), (4, 2, 6, 6, 1)), (Q(415, 93), (4, 2, 3, 0, 3, 7)),
+                             (Q(415, 93), (5, -2, 7, 7)), (Q(1, 2), (False, 2))):
+            with self.subTest(terms=terms):
+                self.assertEqual(evaluate(terms), Fraction(value.numerator, value.denominator))
+                self.assertFalse(check_operation("continued_fraction", {"value": value}, forged(terms), ()))
+        # A float term, a list, no terms, another type, or evidence are rejected as well.
+        for value, evidence in ((forged((4, 2, 6, 7.0)), ()), (forged([4, 2, 6, 7]), ()), (forged(()), ()),
+                                ((4, 2, 6, 7), ()), (Impostor((4, 2, 6, 7)), ()),
                                 (ContinuedFraction((4, 2, 6, 7)), (1,))):
             with self.subTest(value=value, evidence=evidence):
                 self.assertFalse(check_operation("continued_fraction", args, value, evidence))
@@ -126,8 +129,10 @@ class ContinuedFractionTests(unittest.TestCase):
                          {"type": "v6_continued_fraction", "terms": {"type": "tuple", "items": terms}})
 
     def test_rendering_keeps_the_shared_limits(self):
-        # Python refuses str() on integers over 4300 digits; the presentation is exact all the same.
+        # Python refuses str() on integers over 4300 digits; the shared renderer's integer helper does not.
         self.assertEqual(m.render_text(ContinuedFraction((10**5000,))), "[1" + "0" * 5000 + "]")
+        with self.assertRaisesRegex(m.ResourceLimitError, "integer characters"):
+            m.render_text(ContinuedFraction((10**5000,)), limits=m.RenderLimits(max_chars=1000))
         with self.assertRaisesRegex(m.ResourceLimitError, "characters"):
             m.render_text(ContinuedFraction((4, 2, 6, 7)), limits=m.RenderLimits(max_chars=8))
         with self.assertRaisesRegex(m.ResourceLimitError, "nodes"):

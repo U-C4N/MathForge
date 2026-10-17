@@ -1,8 +1,8 @@
 """Public v0.7 operations; all computations share source-bearing Result records.
 
 tools/generate_api.py generates the wrappers from mathforge.registry into mathforge._generated.structured.
-This module re-exports exactly the published v0.7 names; operations added later appear only in the area
-modules and mathforge._generated.
+This module re-exports exactly the published v0.7 names. Operations added later appear in the area modules
+and in mathforge.operations, which import them from mathforge._generated, never here.
 """
 from __future__ import annotations
 from ._generated.structured import (

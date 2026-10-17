@@ -13,7 +13,7 @@ memoized. Family modules must not call into the registry at import time.
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 import contextlib
 from dataclasses import dataclass
 import functools
@@ -82,7 +82,8 @@ V5_FAMILIES = tuple("mathforge." + name for name in (
 # function_calculus.TYPES re-exports.
 V5_RECORD_MODULES = V5_FAMILIES + ("mathforge.function_limits",)
 
-# v6 family modules; each defines SPECS, TYPES, CHECKER (a module or its import path) and produce().
+# v6 family modules; each defines SPECS, TYPES, CHECKER (a module or its import path) and produce(), and
+# optionally RENDER: {record class of its TYPES: render(value, renderer, child) -> str}, checked by the build.
 V6_FAMILIES: tuple[str, ...] = ("mathforge.areas.ntheory.continued_fraction",)
 
 # The generic deferral records (Reason, Unevaluated): their TYPES lead record_types(6).
@@ -107,6 +108,7 @@ class _Tables:
     arguments: Mapping[int | None, Mapping[str, frozenset[str]]]
     types: Mapping[int, Mapping[str, type]]
     all_types: frozenset[type]
+    renderers: Mapping[type, Callable[..., str] | None]
     areas: Mapping[str, tuple[OperationSpec, ...]]
     tools: Mapping[str, tuple[OperationSpec, ...]]
 
@@ -175,6 +177,29 @@ def _record_types(modules: tuple[ModuleType, ...], version: int) -> dict[str, ty
     return merged
 
 
+def _renderers(families: tuple[ModuleType, ...],
+               v6_types: Mapping[str, type]) -> dict[type, Callable[..., str] | None]:
+    """Every v6 record class, mapped to the render function that its family declares in RENDER, else None.
+
+    RENDER is optional. A family that defines it maps classes of its own TYPES to callables.
+    """
+    renderers: dict[type, Callable[..., str] | None] = dict.fromkeys(v6_types.values())
+    for module in families:
+        if not hasattr(module, "RENDER"):
+            continue
+        if not isinstance(module.RENDER, Mapping):
+            raise RuntimeError("RENDER must be a mapping: " + module.__name__)
+        own = frozenset(getattr(module, "TYPES", {}).values())
+        for cls, render in module.RENDER.items():
+            if cls not in own:
+                raise RuntimeError(
+                    "RENDER keys must be record classes of the family's own TYPES: " + module.__name__)
+            if not callable(render):
+                raise RuntimeError("RENDER values must be callable: " + module.__name__)
+            renderers[cls] = render
+    return renderers
+
+
 def _assemble(v07_specs: tuple[OperationSpec, ...], legacy: frozenset[str], v5: tuple[ModuleType, ...],
               v6: tuple[ModuleType, ...], v6_checkers: tuple[ModuleType, ...], deferred: ModuleType) -> _Tables:
     specs: dict[str, OperationSpec] = {}
@@ -220,6 +245,7 @@ def _assemble(v07_specs: tuple[OperationSpec, ...], legacy: frozenset[str], v5: 
             argument.name for argument in spec.arguments)
     # A family tag equal to a deferral tag ("reason", "unevaluated") is a duplicate v6 type.
     types = {5: _record_types(v5, 5), 6: _record_types((deferred, *v6), 6)}
+    renderers = _renderers(v6, types[6])
     areas = {area: tuple(sorted((spec for spec in specs.values() if spec.area == area),
                                 key=lambda spec: spec.public_name)) for area in AREAS}
     tools = {tool: tuple(sorted((spec for spec in specs.values() if spec.mcp and spec.area in served),
@@ -230,7 +256,7 @@ def _assemble(v07_specs: tuple[OperationSpec, ...], legacy: frozenset[str], v5: 
         arguments=MappingProxyType({key: MappingProxyType(value) for key, value in arguments.items()}),
         types=MappingProxyType({key: MappingProxyType(value) for key, value in types.items()}),
         all_types=frozenset(cls for table in types.values() for cls in table.values()),
-        areas=MappingProxyType(areas), tools=MappingProxyType(tools))
+        renderers=MappingProxyType(renderers), areas=MappingProxyType(areas), tools=MappingProxyType(tools))
 
 
 def _lookup(table, key, kind):
@@ -299,6 +325,14 @@ def record_types(version: int) -> Mapping[str, type]:
 
 def all_record_types() -> frozenset[type]:
     return _tables().all_types
+
+
+def record_renderers() -> Mapping[type, Callable[..., str] | None]:
+    """Every v6 record class, mapped to the render(value, renderer, child) function of its family's RENDER.
+
+    The deferral records, which rendering_v6 presents itself, and records without a RENDER entry map to None.
+    """
+    return _tables().renderers
 
 
 def area_operations(area: str) -> tuple[OperationSpec, ...]:

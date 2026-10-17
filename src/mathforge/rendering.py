@@ -114,13 +114,16 @@ def _children(value: Any) -> Iterable[Any]:
         return (check.claim for check in value.checks)
     if t in (tuple, list):
         return value
-    from . import rendering_v6
-    if rendering_v6.supported(value):
-        return rendering_v6.children(value)
-    from .rendering_v5 import supported, children
-    if supported(value):
-        return children(value)
-    raise UnsupportedOperation(f"Presentation is unsupported for {t.__name__}")
+    return _record_presentation(value).children(value)
+
+
+def _record_presentation(value: Any) -> Any:
+    """The presentation module of a registry record: rendering_v6 for v6 records, then rendering_v5."""
+    from . import rendering_v5, rendering_v6
+    for module in (rendering_v6, rendering_v5):
+        if module.supported(value):
+            return module
+    raise UnsupportedOperation(f"Presentation is unsupported for {type(value).__name__}")
 
 
 class _Renderer:
@@ -383,14 +386,7 @@ class _Renderer:
         elif value is None:
             text = self.label("None")
         else:
-            from . import rendering_v6
-            if rendering_v6.supported(value):
-                text = rendering_v6.render(value, self, child)
-            else:
-                from .rendering_v5 import supported, render
-                if not supported(value):
-                    raise UnsupportedOperation(f"Presentation is unsupported for {t.__name__}")
-                text = render(value, self, child)
+            text = _record_presentation(value).render(value, self, child)
         self.bound(text)
         return self.parens(text) if level < precedence else text
 

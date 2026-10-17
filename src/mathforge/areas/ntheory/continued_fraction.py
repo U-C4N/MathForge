@@ -8,10 +8,16 @@ A v6 family module declares:
 - CHECKER, the import path of its independent checker below mathforge.certify. The checker never imports
   this module.
 - produce(operation, args), which returns (value, evidence) for a request whose argument names
-  operations_v6.run has already checked. run() calls it inside the request's computation budget. An exception
-  other than InvalidInput, UnsupportedOperation or ResourceLimitError counts as the producer's internal
-  error, so produce() rejects inexact input itself.
-- RENDER, optionally: a (text, LaTeX) pair of presentation functions for each record class (rendering_v6).
+  operations_v6.run has already checked. run() calls it inside the request's computation budget.
+  produce() validates its inputs first and raises InvalidInput for those it rejects, here anything but an
+  exact int or Rational. Once the inputs are validated, an InvalidInput raised while building a record is a
+  producer bug that run() cannot tell from rejected input, so a family builds records only from validated
+  data (the checker re-validates the canonical form anyway). Any other exception, apart from
+  UnsupportedOperation and ResourceLimitError, counts as the producer's internal error.
+- RENDER, optionally: {record class: render(value, renderer, child) -> str}, the signature of
+  rendering_v5.render. renderer.latex selects LaTeX; renderer.label, parens, join and integer apply the shared
+  budget; child(nested) renders a nested value with the aliases and the budget of the whole rendering. The
+  registry checks at build time that the keys are classes of this module's TYPES and the values callables.
 """
 
 from __future__ import annotations
@@ -22,7 +28,6 @@ from ...errors import InvalidInput
 from ...limits import computation
 from ...model import Rational
 from ...registry import Argument, OperationSpec
-from ...serialization import _decimal
 
 
 SPECS = (OperationSpec("continued_fraction", "ntheory", (Argument("value", "Rational | int", None, "rational"),),
@@ -75,10 +80,10 @@ def produce(operation, args):
             p, q = q, remainder
 
 
-def _text(fraction):
-    """[4; 2, 6, 7], or [5] for a single term. _decimal is not bound by Python's limit on integer digits."""
-    head, *tail = (_decimal(term) for term in fraction.terms)
-    return "[" + head + ("; " + ", ".join(tail) if tail else "") + "]"
+def _render(fraction, renderer, child):
+    """[4; 2, 6, 7], or [5] for a single term; the same text is LaTeX math source."""
+    head, *tail = (child(term) for term in fraction.terms)
+    return "[" + head + ("; " + renderer.join(tail, ", ") if tail else "") + "]"
 
 
-RENDER = {ContinuedFraction: (_text, _text)}  # The text is also valid LaTeX math source.
+RENDER = {ContinuedFraction: _render}

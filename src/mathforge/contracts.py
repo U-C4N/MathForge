@@ -26,12 +26,9 @@ def as_scalar(value):
 
 
 def _extended_value(value):
-    if type(value).__module__ in tuple(__package__ + "." + name for name in (
-            "number_theory", "combinatorics", "complex_numbers", "probability",
-            "statistics", "linear_extensions", "functions", "function_calculus",
-            "rational_integration", "function_limits")):
-        from .dispatch_v5 import record_types
-        return type(value) in record_types().values()
+    from .registry import all_record_types  # Imported on use: contracts loads very early (no import cycles).
+    if type(value) in all_record_types():
+        return True
     return any(_extension(value, module, name) for module, names in (
         ("polynomial", ("SquareFreeFactor", "SquareFreeDecomposition")),
         ("polynomial_exact", ("PolynomialFactor", "PolynomialFactorization")),

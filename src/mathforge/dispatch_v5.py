@@ -1,48 +1,35 @@
-"""Fixed v0.7 operation/type registry; no document selects executable code."""
+"""Fixed v0.7 operation/type registry; no document selects executable code.
 
-from importlib import import_module
+The tables come from :mod:`mathforge.registry`, built once and cached. These
+views stay v5-only: ``mathforge.compute`` and its frozen MCP schema accept
+exactly the v0.7 operations, whatever v6 families the registry also holds.
+"""
 
+from . import registry
 from .errors import InvalidInput, UnsupportedOperation
-
-_MODULES = ("number_theory", "combinatorics", "complex_numbers", "probability",
-            "statistics", "linear_extensions", "functions", "function_calculus",
-            "rational_integration", "function_integration")
 
 
 def modules():
-    return tuple(import_module("." + name, __package__) for name in _MODULES)
+    return registry._family_modules(5)
 
 
 def operation_arguments():
-    result = {}
-    for module in modules():
-        for name, keys in getattr(module, "ARGUMENTS", {}).items():
-            if name in result:
-                raise RuntimeError("Duplicate v5 operation: " + name)
-            result[name] = frozenset(keys)
-    return result
+    return registry.operation_arguments(5)
 
 
 def record_types():
-    result = {}
-    for module in modules():
-        for tag, cls in getattr(module, "TYPES", {}).items():
-            if tag in result:
-                raise RuntimeError("Duplicate v5 type: " + tag)
-            result[tag] = cls
-    return result
+    return registry.record_types(5)
 
 
 def module_for(operation):
-    for module in modules():
-        if operation in getattr(module, "ARGUMENTS", {}):
-            return module
-    raise UnsupportedOperation("Unknown v5 operation")
+    if operation not in registry.operation_arguments(5):
+        raise UnsupportedOperation("Unknown v5 operation")
+    return registry.family(operation)
 
 
 def validate_arguments(operation, args):
     module = module_for(operation)
-    if type(args) is not dict or set(args) != set(module.ARGUMENTS[operation]):
+    if type(args) is not dict or set(args) != registry.operation_arguments(5)[operation]:
         raise InvalidInput("Arguments do not match the v5 operation contract")
     return module
 

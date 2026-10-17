@@ -18,6 +18,11 @@ A v6 family module declares:
   rendering_v5.render. renderer.latex selects LaTeX; renderer.label, parens, join and integer apply the shared
   budget; child(nested) renders a nested value with the aliases and the budget of the whole rendering. The
   registry checks at build time that the keys are classes of this module's TYPES and the values callables.
+
+Once a release ships an operation, its argument set is fixed: every stored request names exactly the arguments
+of its operation, and the decoder, the JSON schema and the MCP tools check them. Extend a released operation by
+adding a new operation name, never by changing its arguments. documentation/families.md is the checklist for a
+new family.
 """
 
 from __future__ import annotations

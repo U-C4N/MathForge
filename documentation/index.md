@@ -17,6 +17,7 @@ release: verification is algorithmic checking, not formal proof.
 - [Connect a local MCP client and call its area tools](mcp.md)
 - [Choose a Python operation](api.md)
 - [Find operations by mathematical area](areas.md)
+- [Add an operation family to the registry](families.md)
 - [Understand compatibility and limits](compatibility.md)
 
 Operations belong to mathematical areas. Each area is a module that loads on first use, such as `mf.ntheory`

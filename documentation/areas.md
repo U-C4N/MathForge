@@ -51,3 +51,9 @@ assert mf.ntheory.integer_gcd is mf.integer_gcd
 assert not hasattr(mf, "continued_fraction")
 assert mf.operations.continued_fraction(7).value == mf.ntheory.ContinuedFraction((7,))
 ```
+
+By design, `typing.get_type_hints()` raises `NameError` for the functions of operations added in v0.8: their
+annotations name record classes, such as `ContinuedFraction`, that only type checkers resolve, because
+`import mathforge` loads none of the modules that define them.
+
+To add operations to an area, follow [Adding an operation family](families.md).

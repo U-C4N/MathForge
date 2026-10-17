@@ -19,7 +19,9 @@ import mathforge as mf
 
 names = [tool["name"] for tool in mf.capabilities()["tools"]]
 assert names[0] == "mathforge.capabilities" and names[29] == "mathforge.compute"
-assert "mathforge.ntheory" in names[30:-1] and names[-1] == "mathforge.catalog"
+assert names[30:-1] == ["mathforge.algebra", "mathforge.analysis", "mathforge.discrete", "mathforge.linalg",
+                        "mathforge.ntheory", "mathforge.stats"]
+assert names[-1] == "mathforge.catalog" and len(names) == 37
 ```
 
 ## Install and start
@@ -353,11 +355,11 @@ uses, and the canonical `envelope`; `arguments` refers to those definitions. The
 subset of JSON Schema: a plain object at the root, local `$ref` references, and no `if`/`then`/`else` or
 combinator at the root.
 
-The schemas are advisory. MCP clients do not gate a call on `inputSchema`, and a schema cannot tie `arguments` to
-the chosen `operation`: `arguments` may match any operation of the tool. The server therefore decodes every call
-itself, against the named operation, and its decoding is the authority. A call that satisfies the schema can
-still fail, for example with the arguments of another operation or with numbers beyond the limits, and a client
-must not rely on the schema to reject a wrong call.
+The schemas are advisory. Neither the SDK nor this server rejects a call for violating `inputSchema`; a client
+may. A schema cannot tie `arguments` to the chosen `operation` either: `arguments` may match any operation of
+the tool. The server therefore decodes every call itself, against the named operation, and its decoding is the
+authority. A call that satisfies the schema can still fail, for example with the arguments of another operation
+or with numbers beyond the limits, and a client must not rely on the schema to reject a wrong call.
 
 ## Find operations with the catalog
 
@@ -370,8 +372,10 @@ optional:
 - `limit`: the largest number of entries to return, from 1 through 200 (default 50). It is not the `limits` of
   the computation tools, which the catalog does not take.
 
-The reply is `{"api_version": 1, "operations": [...], "error": null}`, sorted by area name and then by operation
-name. Each entry looks like this:
+The reply is `{"api_version": 1, "operations": [...], "total": ..., "error": null}`. `operations` is sorted by
+area name and then by operation name, and `total` counts every match, also those beyond `limit`. There is no
+paging: when `total` exceeds the entries returned, narrow the search with `query` or `area`, or raise `limit`.
+Each entry looks like this:
 
 ```json
 {
@@ -389,21 +393,26 @@ that `mathforge.compute` also accepts. An argument is `required` unless it has a
 as JSON. `returns` is the return type as the Python API names it. Older operations that the registry does not
 hold, such as `solve`, `expand` and `rank`, are listed too, without `arguments` and with an empty `returns`; their
 `tool` is the curated tool that runs them, or an empty string when none does. A failure returns the same shape
-with an empty `operations` list and an `error` object, and sets the MCP error flag.
+with an empty `operations` list, a `total` of 0 and an `error` object, and sets the MCP error flag.
 
 ```python
 reply = call_tool("mathforge.catalog", {"query": "continued"})
 assert not reply.is_error and reply.payload["error"] is None
-(entry,) = reply.payload["operations"]
-assert (entry["name"], entry["area"], entry["tool"]) == ("continued_fraction", "ntheory", "mathforge.ntheory")
+entry = next(entry for entry in reply.payload["operations"] if entry["name"] == "continued_fraction")
+assert (entry["area"], entry["tool"]) == ("ntheory", "mathforge.ntheory")
 assert entry["arguments"] == [{"name": "value", "kind": "rational", "required": True, "default": None}]
 
 reply = call_tool("mathforge.catalog", {"area": "discrete", "limit": 3})
-assert [entry["name"] for entry in reply.payload["operations"]] == ["binomial", "catalan", "factorial"]
+entries = reply.payload["operations"]
+assert len(entries) == 3 and reply.payload["total"] > 3
+assert {entry["area"] for entry in entries} == {"discrete"}
+assert [entry["name"] for entry in entries] == sorted(entry["name"] for entry in entries)
 
 reply = call_tool("mathforge.catalog", {"query": "rank"})
-(older,) = [entry for entry in reply.payload["operations"] if entry["name"] == "rank"]
-assert older["arguments"] == [] and older["tool"] == ""
+entries = reply.payload["operations"]
+assert entries == sorted(entries, key=lambda entry: (entry["area"], entry["name"]))
+older = next(entry for entry in entries if entry["name"] == "rank")
+assert older["arguments"] == [] and older["returns"] == ""
 ```
 
 ## Understand the result
@@ -418,7 +427,9 @@ Computation tools return a structured wrapper containing:
 
 `capabilities` instead returns its own descriptive metadata object, which lists every
 tool, the area tools and the catalog included, and each operation with its `mcp_tool`
-(null when no tool runs it). `catalog` returns its own listing, described above. Tools declare
+(null when no tool runs it). `catalog` returns its own listing, described above. For the
+operations of v0.7, `capabilities` names `mathforge.compute`, as its frozen v0.7 entries do,
+while the catalog names the typed area tool; both tools run them. Tools declare
 input/output schemas. Structured results are also supplied as JSON text content
 for compatible clients. No expression or certificate is silently truncated.
 
@@ -457,6 +468,8 @@ A v0.7 client keeps working. The changes are additive, and `api_version` stays 1
   first. Results of operations that existed in v0.7 keep the format version they had (1 through 5), also when an
   area tool runs them, so results of format versions 1 through 5 are unchanged. MathForge 0.7 does not read v6
   documents.
+- A v6 request names its format version as well, `"version": 6` beside `operation` and `arguments`, so a build
+  that does not know the operation still keeps the request's format; requests of the v0.7 operations never do.
 - `mathforge.verify` accepts Result envelopes of versions 1 through 6, although its tool description, frozen with
   the rest of the v0.7 surface, still says v1–v5. The `input` and `output` texts of `mathforge.capabilities` are frozen
   too, and name envelope versions 1–5.
@@ -466,12 +479,13 @@ A v0.7 client keeps working. The changes are additive, and `api_version` stays 1
 ```python
 from mathforge.deferred import Reason, Unevaluated
 
-request = mf.OperationRequest("operation_of_a_later_build", (("value", 1),))
+request = mf.OperationRequest("operation_of_a_later_build", (("value", 1),), version=6)
 later = mf.Result(execution_status=mf.ExecutionStatus.COMPLETED, outcome=mf.Outcome.NO_CONCLUSION,
                   completeness=mf.Completeness.UNKNOWN, method=request.operation, request=request,
                   deferred=Unevaluated("evaluate", request, Reason("no_applicable_rule")))
 document = mf.to_data(later)
 assert document["version"] == 6 and document["data"]["deferred"]["type"] == "v6_unevaluated"
+assert document["data"]["request"]["version"] == 6
 reply = call_tool("mathforge.verify", {"result": document})
 assert not reply.is_error
 report = mf.from_data(reply.payload["result"])

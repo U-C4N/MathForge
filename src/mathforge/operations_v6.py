@@ -1,18 +1,21 @@
 """Source-bearing v6 operations: run a registered family's producer, then verify its value independently.
 
-A v6 family module defines SPECS, TYPES, CHECKER (the import path of its independent checker), produce() and,
-optionally, RENDER: {record class of its TYPES: render(value, renderer, child) -> str}, the signature of
-rendering_v5.render, which the registry checks at build time. mathforge.areas.ntheory.continued_fraction, the
-pilot family, spells the contract out.
+A v6 family module defines SPECS, TYPES, CHECKER (the import path of its independent checker, below
+mathforge.certify), produce() and, optionally, RENDER: {record class of its TYPES: render(value, renderer,
+child) -> str}, the signature of rendering_v5.render; the registry checks all of them at build time.
+mathforge.areas.ntheory.continued_fraction, the pilot family, spells the contract out.
 
 The generated wrappers call run() with every argument of the spec, defaults filled in. A producer
 returns (value, evidence), where value may be an Unevaluated record when it reaches no answer. It validates
 its inputs first and raises InvalidInput for those it rejects. Once the inputs are validated, an InvalidInput
 raised while building a record is a producer bug that run() cannot tell from rejected input, so families
 build records only from validated data; the independent checker re-validates the value anyway.
-A producer bug is an internal error: an exception that produce() raises, other than an input, scope or
-budget error, and any failure to make its return into a Result, other than a budget error. Validation
-before produce() and the independent verification keep the v5 codes.
+A producer bug that run() can tell apart is an internal error: an exception that produce() raises, other
+than an input, scope or budget error, and any failure to make its return into a Result, other than a budget
+error. Validation before produce() and the independent verification keep the v5 codes.
+
+The argument set of a released v6 operation never changes: run() and the decoder accept exactly the argument
+names of the spec, and every stored request repeats them. Extend an operation by adding a new operation name.
 """
 from __future__ import annotations
 

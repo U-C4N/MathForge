@@ -118,6 +118,10 @@ assert_type(mf.operations.function_limit(function, x, 0).unwrap(), mf.FunctionLi
 assert_type(mf.rational_antiderivative(mf.rational_function(1, x, variable=x), x), mf.RationalPrimitive)
 assert_type(mf.rational_integrate(mf.rational_function(1, x, variable=x), x, 1, 2), mf.RealExpr)
 
+# v0.8: the wrappers generated from the registry keep the v0.7 static types.
+assert_type(mf.integer_gcd(84, 30), int)
+assert_type(mf.operations.crt(((2, 6), (8, 9))).unwrap(), mf.CRTResult)
+
 # Expected static failures; --warn-unused-ignores catches accidental Any leaks.
 def reject_invalid_inputs() -> None:
     mf.det("not a matrix")  # type: ignore[arg-type]

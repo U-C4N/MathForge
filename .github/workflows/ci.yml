@@ -94,6 +94,8 @@ jobs:
           python-version: '3.14'
       - run: python -m pip install --no-deps -e .
       - run: python -m pip install mypy==2.4.0
+      - name: Check that the generated API matches the registry
+        run: python tools/generate_api.py --check
       - name: Check the public typed consumer
         run: python -m mypy --follow-imports=silent --ignore-missing-imports --warn-unused-ignores tests/typing
       - run: python -m pip install jsonschema==4.26.0

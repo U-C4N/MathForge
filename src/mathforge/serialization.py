@@ -122,24 +122,35 @@ def _record_types(version):
 
 
 def _request_version(request):
+    """The format version of an operation request.
+
+    An operation this build knows has its own version, and a request that carries another one is rejected.
+    Any other name keeps the version its request carries, else 2, so that a later build's v6 request still
+    decodes and, carrying its version, encodes to the same bytes again.
+    """
     from .dispatch_v5 import operation_arguments, validate_arguments as validate_new
+    from . import registry
     if request.operation in operation_arguments():
         validate_new(request.operation, dict(request.arguments))
-        return 5
-    # Names this build does not register fall through: a later build's v6 request still decodes.
-    from . import registry
-    if request.operation in registry.operation_arguments(6):
+        version = 5
+    elif request.operation in registry.operation_arguments(6):
         from .operations_v6 import validate_arguments as validate_v6
         validate_v6(request.operation, dict(request.arguments))
-        return 6
-    from .exact_dispatch import NEW_OPERATIONS, validate_arguments
-    if request.operation in NEW_OPERATIONS:
-        validate_arguments(request.operation, dict(request.arguments))
-        return 4
-    args = dict(request.arguments)
-    if request.operation == "limit":
-        return 3 if type(args.get("point")) in (m.Rational, str) else 4
-    return 3 if request.operation == "analyze_function" else 2
+        version = 6
+    elif not registry.is_older_operation(request.operation):
+        return 2 if request.version is None else request.version
+    else:
+        from .exact_dispatch import NEW_OPERATIONS, validate_arguments
+        if request.operation in NEW_OPERATIONS:
+            validate_arguments(request.operation, dict(request.arguments))
+            version = 4
+        elif request.operation == "limit":
+            version = 3 if type(dict(request.arguments).get("point")) in (m.Rational, str) else 4
+        else:
+            version = 3 if request.operation == "analyze_function" else 2
+    if request.version is not None and request.version != version:
+        raise SerializationError(f"This operation request belongs to format v{version}, not v{request.version}")
+    return version
 
 
 def _validate_v3_request(request, *, version=3):
@@ -361,6 +372,8 @@ class _Encoder:
                 required_version = _request_version(value)
                 _validate_v3_request(value, version=required_version)
                 self.minimum_version = max(self.minimum_version, required_version)
+                if required_version >= 6:  # A v6 request names its format, even where its operation is unknown.
+                    return {**self.v2(tag, value), "version": required_version}
             return self.v2(tag, value)
         classes = _v3_types()
         tag = next((tag for tag, cls in classes.items() if t is cls), None)
@@ -743,14 +756,23 @@ class _Decoder:
             _fields(data, "type intervals")
             result = cls(self.sequence(data["intervals"], types["interval"]))
         elif tag == "operation_request":
-            _fields(data, "type operation arguments")
+            carried = None
+            if "version" in data:  # Written for requests of format 6 and later.
+                _fields(data, "type operation arguments version")
+                carried = data["version"]
+                if type(carried) is not int or carried < 6:
+                    raise SerializationError("An operation request version is an integer of at least 6")
+                if self.version < carried:
+                    raise SerializationError(f"This operation request requires format v{carried}")
+            else:
+                _fields(data, "type operation arguments")
             if data["operation"] in _V3_OPERATIONS and self.version < 3:
                 raise SerializationError("This operation request requires format v3")
             arguments = []
             for item in _list(data["arguments"]):
                 _fields(item, "name value")
                 arguments.append((_string(item["name"]), self.decode(item["value"])))
-            result = cls(_string(data["operation"]), tuple(arguments))
+            result = cls(_string(data["operation"]), tuple(arguments), carried)
             required_version = _request_version(result)
             if self.version < required_version:
                 raise SerializationError(f"This operation request requires format v{required_version}")

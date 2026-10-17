@@ -4467,12 +4467,16 @@
               },
               "type": {
                 "const": "operation_request"
+              },
+              "version": {
+                "const": 6
               }
             },
             "required": [
               "type",
               "operation",
-              "arguments"
+              "arguments",
+              "version"
             ],
             "type": "object"
           }
@@ -8892,6 +8896,10 @@
               },
               "type": {
                 "const": "operation_request"
+              },
+              "version": {
+                "minimum": 6,
+                "type": "integer"
               }
             },
             "required": [

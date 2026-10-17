@@ -183,11 +183,13 @@ def build_schema(version=2):
              derivative=ref("rational_function"), stationary_set=ref("interval_set"),
              monotonic_regions=array(ref("monotonic_region")), strict_extrema=array(ref("local_extremum")))
 
-        def request(operation, arguments):
+        def request(operation, arguments, marker=None):
+            """The exact shape of a request; a request of format 6 or later also names its format version."""
             items = [fields(name={"const": name}, value=value) for name, value in sorted(arguments.items())]
+            version = {} if marker is None else {"version": {"const": marker}}
             return tagged("operation_request", operation={"const": operation},
                           arguments={"type": "array", "prefixItems": items,
-                                     "minItems": len(items), "maxItems": len(items), "items": False})
+                                     "minItems": len(items), "maxItems": len(items), "items": False}, **version)
 
         legacy_request = definitions["operation_request"]
         legacy_request["properties"]["operation"]["not"] = {"enum": ["limit", "analyze_function"]}
@@ -269,7 +271,7 @@ def build_schema(version=2):
         new_parameters = registry.operation_arguments(later_version)
         legacy_request["properties"]["operation"]["not"]["enum"].extend(sorted(new_parameters))
         definitions["operation_request"]["oneOf"].extend(
-            request(name, {key: ref("node") for key in sorted(keys)})
+            request(name, {key: ref("node") for key in sorted(keys)}, later_version if later_version >= 6 else None)
             for name, keys in sorted(new_parameters.items()))
     definitions["workspace"] = tagged("workspace", objects=array(fields(ref=ref("sha256"), object=ref("node"))),
                                        history=array(ref("operation_record")))
@@ -294,7 +296,9 @@ def build_schema(version=2):
             for entry in definitions["operation_request"]["oneOf"]]
     if version >= 6:
         # Requests dispatch on their operation: a registered name selects its exact shape; any other name,
-        # such as an operation of a later build that the decoder still accepts, selects the generic shape.
+        # such as an operation of a later build that the decoder still accepts, selects the generic shape,
+        # where a request of format 6 or later names its format version.
+        legacy_request["properties"]["version"] = {"type": "integer", "minimum": 6}
         pairs = [(entry["properties"]["operation"]["const"], entry)
                  for entry in definitions["operation_request"]["oneOf"] if entry is not legacy_request]
         definitions["operation_request"] = {"type": "object", "required": ["operation"], "allOf": [

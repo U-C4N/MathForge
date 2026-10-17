@@ -90,6 +90,27 @@ class SchemaV6Tests(unittest.TestCase):
         self.assertEqual(m.from_data(later), request)  # The decoder accepts it, so the schema must too.
         self.validator.validate(later)
 
+    def test_v6_schema_checks_request_versions(self):
+        """A registered v6 request names version 6; another request may name a version of 6 or more."""
+        document = self.canonical(self.pilot)
+        self.assertEqual(document["data"]["request"]["version"], 6)
+        for version in (None, 5, 7, "6"):
+            with self.subTest(registered=version):
+                wrong = self.canonical(self.pilot)
+                if version is None:
+                    del wrong["data"]["request"]["version"]
+                else:
+                    wrong["data"]["request"]["version"] = version
+                self.assertFalse(self.validator.is_valid(wrong))
+        later = m.to_data(m.OperationRequest("later_operation", (("anything", 1),), version=6))
+        self.assertEqual(later["data"]["version"], 6)
+        self.assertEqual(m.from_data(later).version, 6)  # The decoder accepts it, so the schema must too.
+        self.validator.validate(later)
+        for version in (5, 6.5, "6", True):
+            with self.subTest(later=version):
+                later["data"]["version"] = version
+                self.assertFalse(self.validator.is_valid(later))
+
     def test_v6_schema_rejects_untagged_nesting_quickly(self):
         """An object without a type tag takes no dispatch branch, so crafted nesting cannot multiply the work."""
         untagged = {}

@@ -110,7 +110,8 @@ class Budget:
             elif type(node) is dict:
                 stack.extend((item, depth + 1) for pair in node.items() for item in pair)
             elif is_dataclass(node) and not isinstance(node, type):
-                stack.extend((getattr(node, f.name), depth + 1) for f in fields(node))
+                # A field outside comparison, such as OperationRequest.version, marks a format, not content.
+                stack.extend((getattr(node, f.name), depth + 1) for f in fields(node) if f.compare)
 
 
 _ACTIVE: ContextVar[Budget | None] = ContextVar("mathforge_budget", default=None)

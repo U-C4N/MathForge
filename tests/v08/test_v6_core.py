@@ -1,5 +1,6 @@
 """JSON v6 core: the generic Unevaluated record and the v6 run/verify path, driven by a demo family."""
 
+from copy import deepcopy
 from dataclasses import replace
 import types
 import unittest
@@ -10,6 +11,7 @@ from mathforge.contracts import (Check, CheckStatus, Completeness, ErrorInfo, Ex
                                  VerificationLevel)
 from mathforge.deferred import Reason, Unevaluated
 from mathforge.errors import OperationError, SerializationError
+from mathforge.limits import Budget
 
 from . import demo_family
 from .demo_family import DemoPair
@@ -77,6 +79,95 @@ class V6CoreTests(unittest.TestCase):
                 self.assertFalse(report.verified)
                 self.assertIn(UNKNOWN_OPERATION, report.checks)
                 self.assertNotIn(CheckStatus.FAILED, [check.status for check in report.checks])
+
+    def test_v6_requests_carry_their_format_version(self):
+        """A request of format 6 names it, so a build that does not know the operation still keeps the format."""
+        with registry._testing_families(demo_family):
+            r = operations_v6.run("demo_double", {"n": 21})
+            self.assertIsNone(r.request.version)  # run() leaves it to the encoder, which asks the registry.
+            document = m.to_data(r)
+            self.assertEqual(document["data"]["request"]["version"], 6)
+            self.assertEqual(document["data"]["steps"][0]["inputs"][0]["version"], 6)
+            restored = m.from_data(document)
+            self.assertEqual(restored.request.version, 6)  # Kept on decode...
+            self.assertEqual(m.to_data(restored), document)  # ...so the document re-encodes to the same bytes.
+        later = m.from_data(document)  # A build without the operation takes the format from the request itself.
+        self.assertEqual((later.request.version, m.to_data(later)), (6, document))
+        # Requests of v1-v5 operations never carry the field: their bytes are unchanged.
+        gcd = m.to_data(m.operations.integer_gcd(84, 30))
+        self.assertEqual(gcd["version"], 5)
+        self.assertNotIn("version", gcd["data"]["request"])
+        self.assertIsNone(m.from_data(gcd).request.version)
+        older = m.to_data(m.OperationRequest("operation_of_a_later_build", (("value", 1),)))
+        self.assertEqual((older["version"], set(older["data"])), (2, {"type", "operation", "arguments"}))
+
+    def test_a_later_build_workspace_keeps_its_v6_requests(self):
+        """A workspace holding a v6 failure result and a bare v6 request loads in a build without their operation.
+
+        Each request carries its format version, so both objects re-encode to the bytes their references hash.
+        """
+        with registry._testing_families(demo_family):
+            failure = operations_v6.run("demo_double", {"n": True})  # It reaches produce(), which rejects a bool.
+            self.assertIs(failure.execution_status, ExecutionStatus.INVALID_INPUT)
+            self.assertEqual(failure.steps, ())
+            request = m.OperationRequest("demo_double", (("n", 21),))
+            workspace = m.Workspace()
+            references = (workspace.put(failure), workspace.put(request))
+            text = m.dumps(workspace)
+        loaded = m.loads(text)
+        self.assertEqual(m.dumps(loaded), text)
+        stored_failure, stored_request = (loaded.get(reference) for reference in references)
+        self.assertEqual((stored_failure, stored_request), (failure, request))
+        self.assertEqual((stored_failure.request.version, stored_request.version), (6, 6))
+        self.assertEqual(m.to_data(stored_failure)["version"], 6)
+        self.assertEqual(m.verify(stored_failure).checks, (UNKNOWN_OPERATION,))
+
+    def test_request_versions_that_disagree_are_rejected(self):
+        with registry._testing_families(demo_family):
+            known = m.to_data(m.OperationRequest("demo_double", (("n", 21),)))
+        later = m.to_data(m.OperationRequest("operation_of_a_later_build", (("value", 1),), version=6))
+        tampered = []
+        for version in (5, 7, "6", 6.0, True, None):
+            document = deepcopy(later)
+            document["data"]["version"] = version
+            message = "requires format v7" if version == 7 else "version is an integer of at least 6"
+            tampered.append((f"later build, {version!r}", document, message))
+        unmarked = deepcopy(known)
+        del unmarked["data"]["version"]
+        tampered.append(("registered v6 operation without its version", unmarked, "^Noncanonical operation_request"))
+        x = m.Symbol("x")
+        for operation, arguments, version in (("integer_gcd", (("a", 84), ("b", 30)), 5), ("solve", (("problem", 1),), 2),
+                                              ("factor", (("f", m.Polynomial((-2, 0, 1), x)),), 4)):
+            document = m.to_data(m.OperationRequest(operation, arguments))
+            self.assertEqual(document["version"], version)
+            document["version"], document["data"]["version"] = 6, 6
+            tampered.append((f"{operation} marked as v6", document, f"^This operation request belongs to format "
+                                                                    f"v{version}, not v6$"))
+        for label, document, message in tampered:
+            with self.subTest(document=label), registry._testing_families(demo_family):
+                with self.assertRaisesRegex(SerializationError, message):
+                    m.from_data(document)
+        with self.assertRaisesRegex(SerializationError, "^This operation request belongs to format v5, not v6$"):
+            m.to_data(m.OperationRequest("integer_gcd", (("a", 84), ("b", 30)), version=6))
+        for version, error in ((5, ValueError), (True, TypeError), ("6", TypeError), (6.0, TypeError)):
+            with self.subTest(version=version), self.assertRaises(error):
+                m.OperationRequest("operation_of_a_later_build", (), version=version)
+
+    def test_the_version_marker_leaves_equality_hash_repr_and_budgets_alone(self):
+        plain = m.OperationRequest("demo_double", (("n", 1),))
+        marked = m.OperationRequest("demo_double", (("n", 1),), version=6)
+        self.assertEqual((plain, hash(plain), repr(plain)), (marked, hash(marked), repr(marked)))
+        budget = Budget()
+        budget.inspect(marked)  # The request, operation, arguments, one pair, its name and value: not the version.
+        self.assertEqual(budget.node_count, 6)
+        with registry._testing_families(demo_family):
+            r = operations_v6.run("demo_defer", {"n": 1})
+            restored = m.loads(m.dumps(r))
+        self.assertEqual((r.request.version, restored.request.version, restored.deferred.request.version),
+                         (None, 6, 6))
+        self.assertEqual(restored, r)
+        self.assertEqual(restored.deferred.request, restored.request)
+        self.assertEqual(restored.deferred.request, r.request)
 
     def test_deferral_is_no_conclusion(self):
         with registry._testing_families(demo_family):

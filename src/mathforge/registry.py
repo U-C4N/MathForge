@@ -385,13 +385,21 @@ def _older_names() -> frozenset[str]:
     return frozenset(entry.name for entry in LEGACY_CATALOG) | frozenset(spec.name for spec in V07_SPECS)
 
 
+def is_older_operation(name: str) -> bool:
+    """Whether a name belongs to an operation of format v1-v5: a legacy catalogue entry or a v0.7 operation.
+
+    Static data: the answer builds no tables, and the build rejects v6 specs with such names.
+    """
+    return name in _older_names()
+
+
 def is_v6_operation(name: str) -> bool:
     """Whether an operation is registered with result format version 6.
 
     The build rejects v6 specs named like a legacy catalogue entry or a v0.7 operation, so such a name
     is ruled out without building the tables: checking a v1-v5 request loads no family module.
     """
-    return name not in _older_names() and name in operation_arguments(6)
+    return not is_older_operation(name) and name in operation_arguments(6)
 
 
 def record_types(version: int) -> Mapping[str, type]:

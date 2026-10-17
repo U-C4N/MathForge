@@ -129,6 +129,11 @@ assert_type(mf.stats.mean((1, 2, 3)), mf.Rational)
 assert_type(mf.linalg.lu(A), mf.LUDecomposition)
 assert_type(mf.discrete.binomial(12, 5), int)
 
+# v0.8: the pilot v6 family, reached through its area module and mathforge.operations.
+assert_type(mf.ntheory.continued_fraction(mf.Rational(415, 93)), mf.ntheory.ContinuedFraction)
+assert_type(mf.operations.continued_fraction(mf.Rational(415, 93)).unwrap(), mf.ntheory.ContinuedFraction)
+assert_type(mf.ntheory.ContinuedFraction((4, 2, 6, 7)).terms, tuple[int, ...])
+
 # Expected static failures; --warn-unused-ignores catches accidental Any leaks.
 def reject_invalid_inputs() -> None:
     mf.det("not a matrix")  # type: ignore[arg-type]
@@ -146,4 +151,6 @@ def reject_invalid_inputs() -> None:
     wrong_prime: str = mf.is_prime(7)  # type: ignore[assignment]
     wrong_distribution: mf.Matrix = mf.binomial_distribution(4, mf.Rational(1, 2))  # type: ignore[assignment]
     mf.ntheory.integer_gcd(1.5, 2)  # type: ignore[arg-type]
+    mf.ntheory.continued_fraction(0.5)  # type: ignore[arg-type]
+    mf.continued_fraction  # type: ignore[attr-defined]  # v6 operations never enter the flat namespace.
     mf.integer_gcdd  # type: ignore[attr-defined]  # The lazy-area __getattr__ must stay invisible to type checkers.

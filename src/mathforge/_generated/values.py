@@ -62,8 +62,10 @@ __all__ = [
     "rational_antiderivative",
     "rational_integrate",
     "function_integrate",
+    "continued_fraction",
 ]
 
+from typing import TYPE_CHECKING
 from ..limits import ComputationLimits
 from ..model import Rational, Symbol, Expression
 from ..matrices import Matrix
@@ -76,6 +78,9 @@ from ..algebraic import RealAlgebraicRoot
 from ..function_calculus import TaylorPolynomial, FunctionLimitValue
 from ..rational_integration import RationalPrimitive
 from . import structured
+
+if TYPE_CHECKING:
+    from ..areas.ntheory.continued_fraction import ContinuedFraction
 
 
 def integer_gcd(a: int, b: int, *, limits: ComputationLimits | None = None) -> int:
@@ -316,3 +321,7 @@ def rational_integrate(expression, variable: Symbol, lower, upper, *, limits: Co
 
 def function_integrate(expression, variable: Symbol, lower, upper, *, limits: ComputationLimits | None = None) -> RealExpr:
     return structured.function_integrate(expression, variable, lower, upper, limits=limits).unwrap()
+
+
+def continued_fraction(value: Rational | int, *, limits: ComputationLimits | None = None) -> ContinuedFraction:
+    return structured.continued_fraction(value, limits=limits).unwrap()

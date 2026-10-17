@@ -172,6 +172,33 @@ class GeneratedApiTests(unittest.TestCase):
                 for name in V5_RECORDS.get(area, ()):
                     self.assertIs(getattr(module, name), getattr(mathforge, name))
 
+    def test_operations_module_imports_every_wrapper_without_shadowing(self):
+        # mathforge.operations ends with `from ._generated.structured import *`. That import may rebind only the
+        # v0.7 names it took from api_v7, which are the same wrappers, never a helper, an import or an operation.
+        from mathforge import operations
+        structured = importlib.import_module("mathforge._generated.structured")
+        own, wrappers = set(), set()
+        for node in ast.parse(Path(operations.__file__).read_text(encoding="utf-8")).body:
+            if isinstance(node, ast.ImportFrom) and node.module == "_generated.structured":
+                self.assertEqual([alias.name for alias in node.names], ["*"])
+                break
+            if isinstance(node, ast.ImportFrom) and node.module == "api_v7":
+                wrappers.update(alias.asname or alias.name for alias in node.names)
+            elif isinstance(node, (ast.Import, ast.ImportFrom)):
+                own.update((alias.asname or alias.name).split(".")[0] for alias in node.names)
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                own.add(node.name)
+            elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                own.update(name.id for target in targets for name in ast.walk(target) if isinstance(name, ast.Name))
+        else:
+            self.fail("mathforge.operations does not import every structured wrapper")
+        self.assertEqual(own & set(structured.__all__), set())
+        self.assertLessEqual(wrappers, set(structured.__all__))
+        for name in structured.__all__:
+            with self.subTest(name=name):
+                self.assertIs(getattr(operations, name), getattr(structured, name))
+
     def test_rendering_is_deterministic(self):
         expected = {path.relative_to(SRC).as_posix(): text for path, text in self.tool.render_files(SRC).items()}
         self.assertFalse([name for name, text in expected.items() if "\r" in text])
@@ -194,8 +221,10 @@ class GeneratedApiTests(unittest.TestCase):
             self.tool.render_files(SRC)
 
     def test_v6_operations_use_the_v6_runner(self):
-        self.assertNotIn("operations_v6", self.rendered("_generated/structured.py"))  # No v6 operation exists yet.
-        self.install_family(demo_spec(), records={"demo_box": DemoBox})
+        pilot = self.rendered("_generated/structured.py")  # continued_fraction is the one production v6 family.
+        self.assertIn("from ..operations_v6 import run as run_v6\n", pilot)
+        self.assertIn('    return run_v6("continued_fraction", dict(value=value), limits=limits)\n', pilot)
+        self.install_family(demo_spec(), records={"demo_box": DemoBox})  # It replaces the production families.
         structured = self.rendered("_generated/structured.py")
         self.assertIn("from ..operations_v6 import run as run_v6\n", structured)
         self.assertIn("\nif TYPE_CHECKING:\n    from .._generated_api_test_family import DemoBox\n", structured)

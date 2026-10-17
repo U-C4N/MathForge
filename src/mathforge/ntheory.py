@@ -3,7 +3,9 @@ from __future__ import annotations
 
 __all__ = [
     "CRTResult",
+    "ContinuedFraction",
     "IntegerFactorization",
+    "continued_fraction",
     "crt",
     "divisors",
     "factor_integer",
@@ -16,6 +18,7 @@ __all__ = [
 ]
 
 from ._generated.values import (
+    continued_fraction,
     crt,
     divisors,
     factor_integer,
@@ -27,3 +30,4 @@ from ._generated.values import (
     totient,
 )
 from .number_theory import CRTResult, IntegerFactorization
+from .areas.ntheory.continued_fraction import ContinuedFraction

@@ -246,6 +246,16 @@ def check_v07(sp, rng):
     return count
 
 
+def check_v08(sp):
+    """The v0.8 pilot family on 200 seeded rationals; its own stream leaves the earlier checks' draws unchanged."""
+    rng, cases = Random(80801), 200
+    for _ in range(cases):
+        p, q = rng.randint(-10**12, 10**12), rng.randint(1, 10**12)
+        expected = list(sp.continued_fraction(sp.Rational(p, q)))
+        assert expected == list(mf.ntheory.continued_fraction(mf.Rational(p, q)).terms), (p, q)
+    return cases
+
+
 def main() -> None:
     try:
         import sympy as sp
@@ -274,6 +284,8 @@ def main() -> None:
     v07_cases = check_v07(sp, random)
     print(f"100 exact matrix/charpoly, {polynomial_cases} polynomial/root/calculus and "
           f"{algebraic_cases} algebraic/partial-fraction plus {v07_cases} v0.7 integer/combinatorial/probability/statistics/linear/LRT/complex groups agree with SymPy 1.14.0.")
+    v08_cases = check_v08(sp)
+    print(f"{v08_cases} v0.8 continued fractions of seeded rationals agree with SymPy 1.14.0.")
 
 
 if __name__ == "__main__":

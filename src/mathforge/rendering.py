@@ -114,6 +114,9 @@ def _children(value: Any) -> Iterable[Any]:
         return (check.claim for check in value.checks)
     if t in (tuple, list):
         return value
+    from . import rendering_v6
+    if rendering_v6.supported(value):
+        return rendering_v6.children(value)
     from .rendering_v5 import supported, children
     if supported(value):
         return children(value)
@@ -380,10 +383,14 @@ class _Renderer:
         elif value is None:
             text = self.label("None")
         else:
-            from .rendering_v5 import supported, render
-            if not supported(value):
-                raise UnsupportedOperation(f"Presentation is unsupported for {t.__name__}")
-            text = render(value, self, child)
+            from . import rendering_v6
+            if rendering_v6.supported(value):
+                text = rendering_v6.render(value, self, child)
+            else:
+                from .rendering_v5 import supported, render
+                if not supported(value):
+                    raise UnsupportedOperation(f"Presentation is unsupported for {t.__name__}")
+                text = render(value, self, child)
         self.bound(text)
         return self.parens(text) if level < precedence else text
 

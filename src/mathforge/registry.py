@@ -83,7 +83,7 @@ V5_FAMILIES = tuple("mathforge." + name for name in (
 V5_RECORD_MODULES = V5_FAMILIES + ("mathforge.function_limits",)
 
 # v6 family modules; each defines SPECS, TYPES, CHECKER (a module or its import path) and produce().
-V6_FAMILIES: tuple[str, ...] = ()
+V6_FAMILIES: tuple[str, ...] = ("mathforge.areas.ntheory.continued_fraction",)
 
 # The generic deferral records (Reason, Unevaluated): their TYPES lead record_types(6).
 DEFERRED_MODULE = "mathforge.deferred"

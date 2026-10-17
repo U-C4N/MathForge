@@ -16,6 +16,7 @@ release: verification is algorithmic checking, not formal proof.
 - [Show exact results as text or LaTeX](formatting.md)
 - [Connect a local MCP client](mcp.md)
 - [Choose a Python operation](api.md)
+- [Find operations by mathematical area](areas.md)
 - [Understand compatibility and limits](compatibility.md)
 
 The library separates **representing**, **solving**, and **verifying** an object.

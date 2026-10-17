@@ -142,14 +142,15 @@ class RegistryTests(unittest.TestCase):
             return {spec.name for spec in registry.area_operations(area)}
 
         self.assertEqual(names("ntheory"), {"integer_gcd", "integer_lcm", "integer_xgcd", "mod_inverse", "crt",
-                                            "is_prime", "factor_integer", "divisors", "totient"})
+                                            "is_prime", "factor_integer", "divisors", "totient",
+                                            "continued_fraction"})  # The v0.8 pilot family is v6.
         self.assertEqual(names("series"), {"function_taylor", "function_limit"})
         self.assertEqual(names("integrals"), {"function_antiderivative", "rational_antiderivative",
                                               "rational_integrate", "function_integrate"})
         sizes = {area: len(registry.area_operations(area)) for area in registry.AREAS}
         self.assertEqual({area: size for area, size in sizes.items() if size},
                          {"algebra": 12, "analysis": 6, "series": 2, "integrals": 4, "linalg": 5, "stats": 15,
-                          "ntheory": 9, "discrete": 7})
+                          "ntheory": 10, "discrete": 7})
         self.assertEqual([spec.public_name for spec in registry.area_operations("series")], ["function_limit", "taylor"])
         analysis = registry.tool_operations("mathforge.analysis")
         self.assertEqual(len(analysis), 12)

@@ -554,3 +554,7 @@ from .api_v7 import (
     function_integrate,
     function_limit,
 )
+
+# Every registry operation, also those added after v0.7: the generated __all__ lists them all, and the v0.7
+# names above rebind to the very same wrappers. New families therefore never edit this module.
+from ._generated.structured import *

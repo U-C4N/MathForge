@@ -1,0 +1,3139 @@
+{
+ "mathforge.algebraic": {
+  "additionalProperties": false,
+  "properties": {
+   "expression": {
+    "anyOf": [
+     {
+      "description": "Closed exact mathematical text; use scalar object envelopes for root reuse.",
+      "maxLength": 1024,
+      "type": "string"
+     },
+     {
+      "additionalProperties": false,
+      "properties": {
+       "data": {
+        "properties": {
+         "type": {
+          "enum": [
+           "rational",
+           "sqrt",
+           "real_algebraic_root",
+           "add",
+           "mul",
+           "pow"
+          ]
+         }
+        },
+        "required": [
+         "type"
+        ],
+        "type": "object"
+       },
+       "format": {
+        "const": "mathforge"
+       },
+       "kind": {
+        "const": "object"
+       },
+       "version": {
+        "enum": [
+         1,
+         2,
+         3,
+         4
+        ],
+        "type": "integer"
+       }
+      },
+      "required": [
+       "format",
+       "version",
+       "kind",
+       "data"
+      ],
+      "type": "object"
+     }
+    ]
+   },
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   }
+  },
+  "required": [
+   "expression"
+  ],
+  "type": "object"
+ },
+ "mathforge.algebraic_div": {
+  "additionalProperties": false,
+  "properties": {
+   "left": {
+    "anyOf": [
+     {
+      "description": "Closed exact mathematical text; use scalar object envelopes for root reuse.",
+      "maxLength": 1024,
+      "type": "string"
+     },
+     {
+      "additionalProperties": false,
+      "properties": {
+       "data": {
+        "properties": {
+         "type": {
+          "enum": [
+           "rational",
+           "sqrt",
+           "real_algebraic_root",
+           "add",
+           "mul",
+           "pow"
+          ]
+         }
+        },
+        "required": [
+         "type"
+        ],
+        "type": "object"
+       },
+       "format": {
+        "const": "mathforge"
+       },
+       "kind": {
+        "const": "object"
+       },
+       "version": {
+        "enum": [
+         1,
+         2,
+         3,
+         4
+        ],
+        "type": "integer"
+       }
+      },
+      "required": [
+       "format",
+       "version",
+       "kind",
+       "data"
+      ],
+      "type": "object"
+     }
+    ]
+   },
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "right": {
+    "anyOf": [
+     {
+      "description": "Closed exact mathematical text; use scalar object envelopes for root reuse.",
+      "maxLength": 1024,
+      "type": "string"
+     },
+     {
+      "additionalProperties": false,
+      "properties": {
+       "data": {
+        "properties": {
+         "type": {
+          "enum": [
+           "rational",
+           "sqrt",
+           "real_algebraic_root",
+           "add",
+           "mul",
+           "pow"
+          ]
+         }
+        },
+        "required": [
+         "type"
+        ],
+        "type": "object"
+       },
+       "format": {
+        "const": "mathforge"
+       },
+       "kind": {
+        "const": "object"
+       },
+       "version": {
+        "enum": [
+         1,
+         2,
+         3,
+         4
+        ],
+        "type": "integer"
+       }
+      },
+      "required": [
+       "format",
+       "version",
+       "kind",
+       "data"
+      ],
+      "type": "object"
+     }
+    ]
+   }
+  },
+  "required": [
+   "left",
+   "right"
+  ],
+  "type": "object"
+ },
+ "mathforge.algebraic_pow": {
+  "additionalProperties": false,
+  "properties": {
+   "base": {
+    "anyOf": [
+     {
+      "description": "Closed exact mathematical text; use scalar object envelopes for root reuse.",
+      "maxLength": 1024,
+      "type": "string"
+     },
+     {
+      "additionalProperties": false,
+      "properties": {
+       "data": {
+        "properties": {
+         "type": {
+          "enum": [
+           "rational",
+           "sqrt",
+           "real_algebraic_root",
+           "add",
+           "mul",
+           "pow"
+          ]
+         }
+        },
+        "required": [
+         "type"
+        ],
+        "type": "object"
+       },
+       "format": {
+        "const": "mathforge"
+       },
+       "kind": {
+        "const": "object"
+       },
+       "version": {
+        "enum": [
+         1,
+         2,
+         3,
+         4
+        ],
+        "type": "integer"
+       }
+      },
+      "required": [
+       "format",
+       "version",
+       "kind",
+       "data"
+      ],
+      "type": "object"
+     }
+    ]
+   },
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "n": {
+    "maximum": 1024,
+    "minimum": -1024,
+    "type": "integer"
+   }
+  },
+  "required": [
+   "base",
+   "n"
+  ],
+  "type": "object"
+ },
+ "mathforge.analyze_function": {
+  "additionalProperties": false,
+  "properties": {
+   "expression": {
+    "maxLength": 16384,
+    "type": "string"
+   },
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "symbol_ids": {
+    "anyOf": [
+     {
+      "additionalProperties": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "maxProperties": 64,
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "variable": {
+    "default": "x",
+    "maxLength": 128,
+    "not": {
+     "const": "sqrt"
+    },
+    "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+    "type": "string"
+   }
+  },
+  "required": [
+   "expression"
+  ],
+  "type": "object"
+ },
+ "mathforge.apart": {
+  "additionalProperties": false,
+  "properties": {
+   "expression": {
+    "maxLength": 16384,
+    "type": "string"
+   },
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "symbol_ids": {
+    "anyOf": [
+     {
+      "additionalProperties": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "maxProperties": 64,
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "variable": {
+    "default": "x",
+    "maxLength": 128,
+    "not": {
+     "const": "sqrt"
+    },
+    "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+    "type": "string"
+   }
+  },
+  "required": [
+   "expression"
+  ],
+  "type": "object"
+ },
+ "mathforge.capabilities": {
+  "additionalProperties": false,
+  "properties": {},
+  "required": [],
+  "type": "object"
+ },
+ "mathforge.charpoly": {
+  "additionalProperties": false,
+  "properties": {
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "rows": {
+    "items": {
+     "items": {
+      "maxLength": 1024,
+      "pattern": "^[+-]?[0-9]+(?:/[+-]?[0-9]+)?$",
+      "type": "string"
+     },
+     "maxItems": 4096,
+     "type": "array"
+    },
+    "maxItems": 4096,
+    "type": "array"
+   },
+   "symbol_ids": {
+    "anyOf": [
+     {
+      "additionalProperties": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "maxProperties": 64,
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "variable": {
+    "default": "x",
+    "maxLength": 128,
+    "not": {
+     "const": "sqrt"
+    },
+    "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+    "type": "string"
+   }
+  },
+  "required": [
+   "rows"
+  ],
+  "type": "object"
+ },
+ "mathforge.compute": {
+  "additionalProperties": false,
+  "properties": {
+   "arguments": {
+    "additionalProperties": {
+     "additionalProperties": false,
+     "properties": {
+      "data": {
+       "properties": {
+        "type": {
+         "enum": [
+          "add",
+          "integer",
+          "matrix",
+          "mul",
+          "none",
+          "polynomial",
+          "pow",
+          "rational",
+          "rational_function",
+          "real_algebraic_root",
+          "sqrt",
+          "symbol",
+          "text",
+          "tuple",
+          "v5_FiniteDistribution",
+          "v5_LUDecomposition",
+          "v5_LeastSquaresResult",
+          "v5_complex_algebraic",
+          "v5_complex_root",
+          "v5_crt_result",
+          "v5_domain_predicate",
+          "v5_exponential_scale",
+          "v5_function_derivative_trace",
+          "v5_function_limit_certificate",
+          "v5_function_limit_value",
+          "v5_integer_factorization",
+          "v5_leading_coefficient",
+          "v5_log_root_sum",
+          "v5_rational_primitive",
+          "v5_real_expr",
+          "v5_real_function",
+          "v5_taylor_polynomial",
+          "v5_unevaluated_integral",
+          "v5_unevaluated_limit"
+         ]
+        }
+       },
+       "required": [
+        "type"
+       ],
+       "type": "object"
+      },
+      "format": {
+       "const": "mathforge"
+      },
+      "kind": {
+       "const": "object"
+      },
+      "version": {
+       "enum": [
+        1,
+        2,
+        3,
+        4,
+        5
+       ],
+       "type": "integer"
+      }
+     },
+     "required": [
+      "format",
+      "version",
+      "kind",
+      "data"
+     ],
+     "type": "object"
+    },
+    "description": "Exactly the selected operation's named arguments, each a canonical object envelope. Include explicit defaults.",
+    "maxProperties": 64,
+    "type": "object"
+   },
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "operation": {
+    "enum": [
+     "bernoulli",
+     "binomial",
+     "binomial_distribution",
+     "catalan",
+     "cdf",
+     "columnspace",
+     "complex_add",
+     "complex_algebraic",
+     "complex_conjugate",
+     "complex_div",
+     "complex_imag",
+     "complex_mul",
+     "complex_norm_squared",
+     "complex_pow",
+     "complex_real",
+     "complex_sqrt",
+     "complex_sub",
+     "condition",
+     "covariance",
+     "crt",
+     "discrete_uniform",
+     "distribution_variance",
+     "divisors",
+     "expectation",
+     "factor_integer",
+     "factorial",
+     "fibonacci",
+     "function_antiderivative",
+     "function_differentiate",
+     "function_evaluate",
+     "function_gradient",
+     "function_hessian",
+     "function_integrate",
+     "function_jacobian",
+     "function_limit",
+     "function_partial_diff",
+     "function_taylor",
+     "hypergeometric",
+     "integer_gcd",
+     "integer_lcm",
+     "integer_xgcd",
+     "is_prime",
+     "least_squares",
+     "lu",
+     "mean",
+     "median",
+     "mod_inverse",
+     "moment",
+     "multinomial",
+     "permutations_count",
+     "probability",
+     "quadratic_roots",
+     "rational_antiderivative",
+     "rational_integrate",
+     "rowspace",
+     "stddev",
+     "stirling",
+     "totient",
+     "trace",
+     "variance"
+    ],
+    "type": "string"
+   }
+  },
+  "required": [
+   "operation",
+   "arguments"
+  ],
+  "type": "object"
+ },
+ "mathforge.det": {
+  "additionalProperties": false,
+  "properties": {
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "rows": {
+    "items": {
+     "items": {
+      "maxLength": 1024,
+      "pattern": "^[+-]?[0-9]+(?:/[+-]?[0-9]+)?$",
+      "type": "string"
+     },
+     "maxItems": 4096,
+     "type": "array"
+    },
+    "maxItems": 4096,
+    "type": "array"
+   }
+  },
+  "required": [
+   "rows"
+  ],
+  "type": "object"
+ },
+ "mathforge.differentiate": {
+  "additionalProperties": false,
+  "properties": {
+   "expression": {
+    "maxLength": 16384,
+    "type": "string"
+   },
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "order": {
+    "default": 1,
+    "maximum": 1024,
+    "minimum": 0,
+    "type": "integer"
+   },
+   "symbol_ids": {
+    "anyOf": [
+     {
+      "additionalProperties": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "maxProperties": 64,
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "variable": {
+    "default": "x",
+    "maxLength": 128,
+    "not": {
+     "const": "sqrt"
+    },
+    "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+    "type": "string"
+   }
+  },
+  "required": [
+   "expression"
+  ],
+  "type": "object"
+ },
+ "mathforge.discriminant": {
+  "additionalProperties": false,
+  "properties": {
+   "expression": {
+    "maxLength": 16384,
+    "type": "string"
+   },
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "symbol_ids": {
+    "anyOf": [
+     {
+      "additionalProperties": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "maxProperties": 64,
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "variable": {
+    "default": "x",
+    "maxLength": 128,
+    "not": {
+     "const": "sqrt"
+    },
+    "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+    "type": "string"
+   }
+  },
+  "required": [
+   "expression"
+  ],
+  "type": "object"
+ },
+ "mathforge.evaluate_algebraic": {
+  "additionalProperties": false,
+  "properties": {
+   "bindings": {
+    "additionalProperties": {
+     "anyOf": [
+      {
+       "description": "Closed exact mathematical text; use scalar object envelopes for root reuse.",
+       "maxLength": 1024,
+       "type": "string"
+      },
+      {
+       "additionalProperties": false,
+       "properties": {
+        "data": {
+         "properties": {
+          "type": {
+           "enum": [
+            "rational",
+            "sqrt",
+            "real_algebraic_root",
+            "add",
+            "mul",
+            "pow"
+           ]
+          }
+         },
+         "required": [
+          "type"
+         ],
+         "type": "object"
+        },
+        "format": {
+         "const": "mathforge"
+        },
+        "kind": {
+         "const": "object"
+        },
+        "version": {
+         "enum": [
+          1,
+          2,
+          3,
+          4
+         ],
+         "type": "integer"
+        }
+       },
+       "required": [
+        "format",
+        "version",
+        "kind",
+        "data"
+       ],
+       "type": "object"
+      }
+     ]
+    },
+    "maxProperties": 64,
+    "propertyNames": {
+     "maxLength": 128,
+     "not": {
+      "const": "sqrt"
+     },
+     "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+     "type": "string"
+    },
+    "type": "object"
+   },
+   "expression": {
+    "maxLength": 16384,
+    "type": "string"
+   },
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "symbol_ids": {
+    "anyOf": [
+     {
+      "additionalProperties": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "maxProperties": 64,
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "variables": {
+    "items": {
+     "maxLength": 128,
+     "not": {
+      "const": "sqrt"
+     },
+     "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+     "type": "string"
+    },
+    "maxItems": 64,
+    "minItems": 1,
+    "type": "array",
+    "uniqueItems": true
+   }
+  },
+  "required": [
+   "expression",
+   "variables",
+   "bindings"
+  ],
+  "type": "object"
+ },
+ "mathforge.expand_multivariate": {
+  "additionalProperties": false,
+  "properties": {
+   "expression": {
+    "maxLength": 16384,
+    "type": "string"
+   },
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "symbol_ids": {
+    "anyOf": [
+     {
+      "additionalProperties": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "maxProperties": 64,
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "variables": {
+    "items": {
+     "maxLength": 128,
+     "not": {
+      "const": "sqrt"
+     },
+     "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+     "type": "string"
+    },
+    "maxItems": 64,
+    "minItems": 1,
+    "type": "array",
+    "uniqueItems": true
+   }
+  },
+  "required": [
+   "expression",
+   "variables"
+  ],
+  "type": "object"
+ },
+ "mathforge.extrema_values": {
+  "additionalProperties": false,
+  "properties": {
+   "expression": {
+    "maxLength": 16384,
+    "type": "string"
+   },
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "symbol_ids": {
+    "anyOf": [
+     {
+      "additionalProperties": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "maxProperties": 64,
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "variable": {
+    "default": "x",
+    "maxLength": 128,
+    "not": {
+     "const": "sqrt"
+    },
+    "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+    "type": "string"
+   }
+  },
+  "required": [
+   "expression"
+  ],
+  "type": "object"
+ },
+ "mathforge.factor": {
+  "additionalProperties": false,
+  "properties": {
+   "expression": {
+    "maxLength": 16384,
+    "type": "string"
+   },
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "symbol_ids": {
+    "anyOf": [
+     {
+      "additionalProperties": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "maxProperties": 64,
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "variable": {
+    "default": "x",
+    "maxLength": 128,
+    "not": {
+     "const": "sqrt"
+    },
+    "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+    "type": "string"
+   }
+  },
+  "required": [
+   "expression"
+  ],
+  "type": "object"
+ },
+ "mathforge.gradient": {
+  "additionalProperties": false,
+  "properties": {
+   "expression": {
+    "maxLength": 16384,
+    "type": "string"
+   },
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "symbol_ids": {
+    "anyOf": [
+     {
+      "additionalProperties": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "maxProperties": 64,
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "variables": {
+    "items": {
+     "maxLength": 128,
+     "not": {
+      "const": "sqrt"
+     },
+     "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+     "type": "string"
+    },
+    "maxItems": 64,
+    "minItems": 1,
+    "type": "array",
+    "uniqueItems": true
+   }
+  },
+  "required": [
+   "expression",
+   "variables"
+  ],
+  "type": "object"
+ },
+ "mathforge.hessian": {
+  "additionalProperties": false,
+  "properties": {
+   "expression": {
+    "maxLength": 16384,
+    "type": "string"
+   },
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "symbol_ids": {
+    "anyOf": [
+     {
+      "additionalProperties": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "maxProperties": 64,
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "variables": {
+    "items": {
+     "maxLength": 128,
+     "not": {
+      "const": "sqrt"
+     },
+     "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+     "type": "string"
+    },
+    "maxItems": 64,
+    "minItems": 1,
+    "type": "array",
+    "uniqueItems": true
+   }
+  },
+  "required": [
+   "expression",
+   "variables"
+  ],
+  "type": "object"
+ },
+ "mathforge.integrate": {
+  "additionalProperties": false,
+  "properties": {
+   "expression": {
+    "maxLength": 16384,
+    "type": "string"
+   },
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "lower": {
+    "anyOf": [
+     {
+      "description": "Closed exact mathematical text; use scalar object envelopes for root reuse.",
+      "maxLength": 1024,
+      "type": "string"
+     },
+     {
+      "additionalProperties": false,
+      "properties": {
+       "data": {
+        "properties": {
+         "type": {
+          "enum": [
+           "rational",
+           "sqrt",
+           "real_algebraic_root",
+           "add",
+           "mul",
+           "pow"
+          ]
+         }
+        },
+        "required": [
+         "type"
+        ],
+        "type": "object"
+       },
+       "format": {
+        "const": "mathforge"
+       },
+       "kind": {
+        "const": "object"
+       },
+       "version": {
+        "enum": [
+         1,
+         2,
+         3,
+         4
+        ],
+        "type": "integer"
+       }
+      },
+      "required": [
+       "format",
+       "version",
+       "kind",
+       "data"
+      ],
+      "type": "object"
+     }
+    ]
+   },
+   "symbol_ids": {
+    "anyOf": [
+     {
+      "additionalProperties": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "maxProperties": 64,
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "upper": {
+    "anyOf": [
+     {
+      "description": "Closed exact mathematical text; use scalar object envelopes for root reuse.",
+      "maxLength": 1024,
+      "type": "string"
+     },
+     {
+      "additionalProperties": false,
+      "properties": {
+       "data": {
+        "properties": {
+         "type": {
+          "enum": [
+           "rational",
+           "sqrt",
+           "real_algebraic_root",
+           "add",
+           "mul",
+           "pow"
+          ]
+         }
+        },
+        "required": [
+         "type"
+        ],
+        "type": "object"
+       },
+       "format": {
+        "const": "mathforge"
+       },
+       "kind": {
+        "const": "object"
+       },
+       "version": {
+        "enum": [
+         1,
+         2,
+         3,
+         4
+        ],
+        "type": "integer"
+       }
+      },
+      "required": [
+       "format",
+       "version",
+       "kind",
+       "data"
+      ],
+      "type": "object"
+     }
+    ]
+   },
+   "variable": {
+    "default": "x",
+    "maxLength": 128,
+    "not": {
+     "const": "sqrt"
+    },
+    "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+    "type": "string"
+   }
+  },
+  "required": [
+   "expression",
+   "lower",
+   "upper"
+  ],
+  "type": "object"
+ },
+ "mathforge.jacobian": {
+  "additionalProperties": false,
+  "properties": {
+   "expressions": {
+    "items": {
+     "maxLength": 16384,
+     "type": "string"
+    },
+    "maxItems": 64,
+    "minItems": 1,
+    "type": "array"
+   },
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "symbol_ids": {
+    "anyOf": [
+     {
+      "additionalProperties": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "maxProperties": 64,
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "variables": {
+    "items": {
+     "maxLength": 128,
+     "not": {
+      "const": "sqrt"
+     },
+     "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+     "type": "string"
+    },
+    "maxItems": 64,
+    "minItems": 1,
+    "type": "array",
+    "uniqueItems": true
+   }
+  },
+  "required": [
+   "expressions",
+   "variables"
+  ],
+  "type": "object"
+ },
+ "mathforge.limit": {
+  "additionalProperties": false,
+  "properties": {
+   "expression": {
+    "maxLength": 16384,
+    "type": "string"
+   },
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "point": {
+    "anyOf": [
+     {
+      "description": "Closed exact mathematical text; use scalar object envelopes for root reuse.",
+      "maxLength": 1024,
+      "type": "string"
+     },
+     {
+      "enum": [
+       "-inf",
+       "+inf"
+      ],
+      "type": "string"
+     },
+     {
+      "additionalProperties": false,
+      "properties": {
+       "data": {
+        "properties": {
+         "type": {
+          "enum": [
+           "rational",
+           "sqrt",
+           "real_algebraic_root",
+           "add",
+           "mul",
+           "pow"
+          ]
+         }
+        },
+        "required": [
+         "type"
+        ],
+        "type": "object"
+       },
+       "format": {
+        "const": "mathforge"
+       },
+       "kind": {
+        "const": "object"
+       },
+       "version": {
+        "enum": [
+         1,
+         2,
+         3,
+         4
+        ],
+        "type": "integer"
+       }
+      },
+      "required": [
+       "format",
+       "version",
+       "kind",
+       "data"
+      ],
+      "type": "object"
+     }
+    ]
+   },
+   "side": {
+    "default": "both",
+    "enum": [
+     "both",
+     "left",
+     "right"
+    ],
+    "type": "string"
+   },
+   "symbol_ids": {
+    "anyOf": [
+     {
+      "additionalProperties": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "maxProperties": 64,
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "variable": {
+    "default": "x",
+    "maxLength": 128,
+    "not": {
+     "const": "sqrt"
+    },
+    "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+    "type": "string"
+   }
+  },
+  "required": [
+   "expression",
+   "point"
+  ],
+  "type": "object"
+ },
+ "mathforge.minimal_polynomial": {
+  "additionalProperties": false,
+  "properties": {
+   "expression": {
+    "anyOf": [
+     {
+      "description": "Closed exact mathematical text; use scalar object envelopes for root reuse.",
+      "maxLength": 1024,
+      "type": "string"
+     },
+     {
+      "additionalProperties": false,
+      "properties": {
+       "data": {
+        "properties": {
+         "type": {
+          "enum": [
+           "rational",
+           "sqrt",
+           "real_algebraic_root",
+           "add",
+           "mul",
+           "pow"
+          ]
+         }
+        },
+        "required": [
+         "type"
+        ],
+        "type": "object"
+       },
+       "format": {
+        "const": "mathforge"
+       },
+       "kind": {
+        "const": "object"
+       },
+       "version": {
+        "enum": [
+         1,
+         2,
+         3,
+         4
+        ],
+        "type": "integer"
+       }
+      },
+      "required": [
+       "format",
+       "version",
+       "kind",
+       "data"
+      ],
+      "type": "object"
+     }
+    ]
+   },
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "symbol_ids": {
+    "anyOf": [
+     {
+      "additionalProperties": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "maxProperties": 64,
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "variable": {
+    "default": "x",
+    "maxLength": 128,
+    "not": {
+     "const": "sqrt"
+    },
+    "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+    "type": "string"
+   }
+  },
+  "required": [
+   "expression"
+  ],
+  "type": "object"
+ },
+ "mathforge.parse_function": {
+  "additionalProperties": false,
+  "properties": {
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "symbol_ids": {
+    "anyOf": [
+     {
+      "additionalProperties": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "maxProperties": 64,
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "text": {
+    "maxLength": 16384,
+    "type": "string"
+   },
+   "variables": {
+    "items": {
+     "maxLength": 128,
+     "not": {
+      "const": "sqrt"
+     },
+     "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+     "type": "string"
+    },
+    "maxItems": 64,
+    "type": "array",
+    "uniqueItems": true
+   }
+  },
+  "required": [
+   "text",
+   "variables"
+  ],
+  "type": "object"
+ },
+ "mathforge.partial_diff": {
+  "additionalProperties": false,
+  "properties": {
+   "expression": {
+    "maxLength": 16384,
+    "type": "string"
+   },
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "order": {
+    "default": 1,
+    "maximum": 1024,
+    "minimum": 0,
+    "type": "integer"
+   },
+   "symbol_ids": {
+    "anyOf": [
+     {
+      "additionalProperties": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "maxProperties": 64,
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "variable": {
+    "maxLength": 128,
+    "not": {
+     "const": "sqrt"
+    },
+    "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+    "type": "string"
+   },
+   "variables": {
+    "items": {
+     "maxLength": 128,
+     "not": {
+      "const": "sqrt"
+     },
+     "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+     "type": "string"
+    },
+    "maxItems": 64,
+    "minItems": 1,
+    "type": "array",
+    "uniqueItems": true
+   }
+  },
+  "required": [
+   "expression",
+   "variables",
+   "variable"
+  ],
+  "type": "object"
+ },
+ "mathforge.real_eigenvalues": {
+  "additionalProperties": false,
+  "properties": {
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "rows": {
+    "items": {
+     "items": {
+      "maxLength": 1024,
+      "pattern": "^[+-]?[0-9]+(?:/[+-]?[0-9]+)?$",
+      "type": "string"
+     },
+     "maxItems": 4096,
+     "type": "array"
+    },
+    "maxItems": 4096,
+    "type": "array"
+   }
+  },
+  "required": [
+   "rows"
+  ],
+  "type": "object"
+ },
+ "mathforge.real_roots": {
+  "additionalProperties": false,
+  "properties": {
+   "expression": {
+    "maxLength": 16384,
+    "type": "string"
+   },
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "symbol_ids": {
+    "anyOf": [
+     {
+      "additionalProperties": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "maxProperties": 64,
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "variable": {
+    "default": "x",
+    "maxLength": 128,
+    "not": {
+     "const": "sqrt"
+    },
+    "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+    "type": "string"
+   }
+  },
+  "required": [
+   "expression"
+  ],
+  "type": "object"
+ },
+ "mathforge.resultant": {
+  "additionalProperties": false,
+  "properties": {
+   "f": {
+    "maxLength": 16384,
+    "type": "string"
+   },
+   "g": {
+    "maxLength": 16384,
+    "type": "string"
+   },
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "symbol_ids": {
+    "anyOf": [
+     {
+      "additionalProperties": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "maxProperties": 64,
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "variable": {
+    "default": "x",
+    "maxLength": 128,
+    "not": {
+     "const": "sqrt"
+    },
+    "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+    "type": "string"
+   }
+  },
+  "required": [
+   "f",
+   "g"
+  ],
+  "type": "object"
+ },
+ "mathforge.rref": {
+  "additionalProperties": false,
+  "properties": {
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "ncols": {
+    "anyOf": [
+     {
+      "maximum": 4096,
+      "minimum": 0,
+      "type": "integer"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "rows": {
+    "items": {
+     "items": {
+      "maxLength": 1024,
+      "pattern": "^[+-]?[0-9]+(?:/[+-]?[0-9]+)?$",
+      "type": "string"
+     },
+     "maxItems": 4096,
+     "type": "array"
+    },
+    "maxItems": 4096,
+    "type": "array"
+   }
+  },
+  "required": [
+   "rows"
+  ],
+  "type": "object"
+ },
+ "mathforge.solve": {
+  "additionalProperties": false,
+  "properties": {
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "problem": {
+    "maxLength": 16384,
+    "type": "string"
+   },
+   "symbol_ids": {
+    "anyOf": [
+     {
+      "additionalProperties": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "maxProperties": 64,
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "variable": {
+    "default": "x",
+    "maxLength": 128,
+    "not": {
+     "const": "sqrt"
+    },
+    "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+    "type": "string"
+   }
+  },
+  "required": [
+   "problem"
+  ],
+  "type": "object"
+ },
+ "mathforge.solve_system": {
+  "additionalProperties": false,
+  "properties": {
+   "equations": {
+    "items": {
+     "maxLength": 16384,
+     "type": "string"
+    },
+    "maxItems": 64,
+    "type": "array"
+   },
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "symbol_ids": {
+    "anyOf": [
+     {
+      "additionalProperties": {
+       "format": "uuid",
+       "type": "string"
+      },
+      "maxProperties": 64,
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "variables": {
+    "items": {
+     "maxLength": 128,
+     "not": {
+      "const": "sqrt"
+     },
+     "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+     "type": "string"
+    },
+    "maxItems": 64,
+    "type": "array",
+    "uniqueItems": true
+   }
+  },
+  "required": [
+   "equations",
+   "variables"
+  ],
+  "type": "object"
+ },
+ "mathforge.verify": {
+  "additionalProperties": false,
+  "properties": {
+   "limits": {
+    "anyOf": [
+     {
+      "additionalProperties": false,
+      "properties": {
+       "max_depth": {
+        "maximum": 128,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_evidence_items": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_integer_bits": {
+        "maximum": 65536,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_matrix_entries": {
+        "maximum": 4096,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_nodes": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_refinements": {
+        "maximum": 100000,
+        "minimum": 1,
+        "type": "integer"
+       },
+       "max_work": {
+        "maximum": 2000000,
+        "minimum": 1,
+        "type": "integer"
+       }
+      },
+      "required": [],
+      "type": "object"
+     },
+     {
+      "type": "null"
+     }
+    ],
+    "default": null
+   },
+   "result": {
+    "type": "object"
+   }
+  },
+  "required": [
+   "result"
+  ],
+  "type": "object"
+ }
+}

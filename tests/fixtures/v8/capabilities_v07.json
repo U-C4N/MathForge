@@ -1,0 +1,819 @@
+{
+ "api_version": 1,
+ "excluded": [
+  "network transport",
+  "approximate preview",
+  "plotting",
+  "general CAS",
+  "arbitrary Python execution",
+  "general command dispatcher"
+ ],
+ "input": {
+  "algebraic_bindings": "explicit variables array with a complete matching name-to-scalar bindings map",
+  "algebraic_scalars": "closed math text or canonical scalar envelopes only; root display text, Result envelopes and workspaces are not operands",
+  "compute_operands": "each named argument is a canonical object envelope; explicit registry operation and all arguments including defaults; Result/workspace envelopes are not operands",
+  "domains": [
+   "unconstrained reals",
+   "explicit real function domains",
+   "real algebraic complex components",
+   "integers",
+   "finite rational distributions"
+  ],
+  "expressions": "bounded MathForge text grammar; explicit declared symbols",
+  "function_text": "parse_function requires text and an explicit ordered variables array; symbol_ids reuse identities",
+  "limit_points": "closed real algebraic math text or canonical scalar object envelopes, -inf or +inf",
+  "matrix_entries_and_bounds": "matrix entries: rational strings; finite bounds: closed math text or canonical scalar object envelopes",
+  "multivariate_variables": "explicit nonempty arrays of distinct declared symbols; order determines gradient and matrix coordinates",
+  "state": "stateless; no filesystem or persistent workspace tools",
+  "symbol_identity": "request-local UUIDs; pass symbol_ids to reuse identities",
+  "verification": "canonical MathForge v1/v2/v3/v4/v5 Result envelope only"
+ },
+ "limits": {
+  "max_depth": 128,
+  "max_evidence_items": 100000,
+  "max_integer_bits": 65536,
+  "max_matrix_entries": 4096,
+  "max_nodes": 100000,
+  "max_refinements": 100000,
+  "max_work": 2000000
+ },
+ "operations": [
+  {
+   "mcp_tool": null,
+   "name": "expand",
+   "scope": "rational-coefficient univariate polynomials",
+   "sdk": "operations.expand"
+  },
+  {
+   "mcp_tool": "mathforge.expand_multivariate",
+   "name": "expand_multivariate",
+   "scope": "rational-coefficient multivariate polynomials with explicit variable order",
+   "sdk": "operations.expand_multivariate"
+  },
+  {
+   "mcp_tool": "mathforge.partial_diff",
+   "name": "partial_diff",
+   "scope": "rational-coefficient multivariate polynomials; nonnegative-order partial derivatives",
+   "sdk": "operations.partial_diff"
+  },
+  {
+   "mcp_tool": "mathforge.gradient",
+   "name": "gradient",
+   "scope": "rational-coefficient multivariate polynomials; ordered expression tuples",
+   "sdk": "operations.gradient"
+  },
+  {
+   "mcp_tool": "mathforge.jacobian",
+   "name": "jacobian",
+   "scope": "rational-coefficient polynomial maps; ordered tuples of expression rows",
+   "sdk": "operations.jacobian"
+  },
+  {
+   "mcp_tool": "mathforge.hessian",
+   "name": "hessian",
+   "scope": "rational-coefficient multivariate polynomials; ordered tuples of expression rows",
+   "sdk": "operations.hessian"
+  },
+  {
+   "mcp_tool": null,
+   "name": "poly_divmod",
+   "scope": "same-variable rational polynomials",
+   "sdk": "operations.poly_divmod"
+  },
+  {
+   "mcp_tool": null,
+   "name": "poly_gcd",
+   "scope": "same-variable rational polynomials",
+   "sdk": "operations.poly_gcd"
+  },
+  {
+   "mcp_tool": null,
+   "name": "poly_xgcd",
+   "scope": "same-variable rational polynomials",
+   "sdk": "operations.poly_xgcd"
+  },
+  {
+   "mcp_tool": null,
+   "name": "square_free",
+   "scope": "rational polynomials; not irreducible factorization",
+   "sdk": "operations.square_free"
+  },
+  {
+   "mcp_tool": "mathforge.real_roots",
+   "name": "real_roots",
+   "scope": "real roots of rational-coefficient univariate polynomials",
+   "sdk": "operations.real_roots"
+  },
+  {
+   "mcp_tool": null,
+   "name": "compare_real",
+   "scope": "exact real algebraic scalars; legacy successful representations preserved",
+   "sdk": "operations.compare_real"
+  },
+  {
+   "mcp_tool": null,
+   "name": "rational_function",
+   "scope": "real univariate rational functions preserving excluded points",
+   "sdk": "operations.rational_function"
+  },
+  {
+   "mcp_tool": "mathforge.solve",
+   "name": "solve",
+   "scope": "unconstrained real univariate polynomial/rational equations and inequalities",
+   "sdk": "operations.solve"
+  },
+  {
+   "mcp_tool": "mathforge.solve_system",
+   "name": "solve_system",
+   "scope": "rational linear systems over unconstrained real variables",
+   "sdk": "operations.solve_system"
+  },
+  {
+   "mcp_tool": "mathforge.rref",
+   "name": "rref",
+   "scope": "rational matrices",
+   "sdk": "operations.rref"
+  },
+  {
+   "mcp_tool": null,
+   "name": "rank",
+   "scope": "rational matrices",
+   "sdk": "operations.rank"
+  },
+  {
+   "mcp_tool": "mathforge.det",
+   "name": "det",
+   "scope": "square rational matrices",
+   "sdk": "operations.det"
+  },
+  {
+   "mcp_tool": null,
+   "name": "inverse",
+   "scope": "nonsingular square rational matrices",
+   "sdk": "operations.inverse"
+  },
+  {
+   "mcp_tool": null,
+   "name": "nullspace",
+   "scope": "rational matrices",
+   "sdk": "operations.nullspace"
+  },
+  {
+   "mcp_tool": "mathforge.differentiate",
+   "name": "differentiate",
+   "scope": "polynomial/rational-function nonnegative-order derivatives",
+   "sdk": "operations.differentiate"
+  },
+  {
+   "mcp_tool": null,
+   "name": "antiderivative",
+   "scope": "polynomials; integration constant zero",
+   "sdk": "operations.antiderivative"
+  },
+  {
+   "mcp_tool": "mathforge.integrate",
+   "name": "integrate",
+   "scope": "rational-coefficient polynomials with finite real algebraic bounds",
+   "sdk": "operations.integrate"
+  },
+  {
+   "mcp_tool": "mathforge.limit",
+   "name": "limit",
+   "scope": "real univariate rational functions at real algebraic points (left/right/both) or signed infinity (both)",
+   "sdk": "operations.limit"
+  },
+  {
+   "mcp_tool": "mathforge.analyze_function",
+   "name": "analyze_function",
+   "scope": "real univariate rational functions; exact domains, signs, stationary sets, maximal monotonic regions and strict extrema x-coordinates",
+   "sdk": "operations.analyze_function"
+  },
+  {
+   "mcp_tool": null,
+   "name": "evaluate",
+   "scope": "exact supported expressions and rational functions; complete bindings",
+   "sdk": "operations.evaluate"
+  },
+  {
+   "mcp_tool": null,
+   "name": "substitute",
+   "scope": "exact supported expressions and restricted rational-function substitutions",
+   "sdk": "operations.substitute"
+  },
+  {
+   "mcp_tool": null,
+   "name": "simplify",
+   "scope": "documented domain-preserving local expression rules",
+   "sdk": "operations.simplify"
+  },
+  {
+   "mcp_tool": "mathforge.verify",
+   "name": "verify",
+   "scope": "supported Result provenance and mathematical claims",
+   "sdk": "verify"
+  },
+  {
+   "mcp_tool": "mathforge.factor",
+   "name": "factor",
+   "scope": "complete irreducible factorization over Q of nonzero univariate rational polynomials",
+   "sdk": "operations.factor"
+  },
+  {
+   "mcp_tool": "mathforge.resultant",
+   "name": "resultant",
+   "scope": "same-variable rational polynomial resultant",
+   "sdk": "operations.resultant"
+  },
+  {
+   "mcp_tool": "mathforge.discriminant",
+   "name": "discriminant",
+   "scope": "rational polynomial discriminant; constants give zero",
+   "sdk": "operations.discriminant"
+  },
+  {
+   "mcp_tool": "mathforge.algebraic",
+   "name": "algebraic",
+   "scope": "closed exact real algebraic expressions; canonical rationals or real root descriptors",
+   "sdk": "operations.algebraic"
+  },
+  {
+   "mcp_tool": "mathforge.algebraic_div",
+   "name": "algebraic_div",
+   "scope": "exact real algebraic scalar division with nonzero denominator",
+   "sdk": "operations.algebraic_div"
+  },
+  {
+   "mcp_tool": "mathforge.algebraic_pow",
+   "name": "algebraic_pow",
+   "scope": "exact real algebraic scalars with signed integer exponents",
+   "sdk": "operations.algebraic_pow"
+  },
+  {
+   "mcp_tool": "mathforge.minimal_polynomial",
+   "name": "minimal_polynomial",
+   "scope": "monic minimal polynomial over Q of a real algebraic scalar",
+   "sdk": "operations.minimal_polynomial"
+  },
+  {
+   "mcp_tool": "mathforge.evaluate_algebraic",
+   "name": "evaluate_algebraic",
+   "scope": "exact expressions and rational functions with complete real algebraic symbol bindings",
+   "sdk": "operations.evaluate_algebraic"
+  },
+  {
+   "mcp_tool": "mathforge.apart",
+   "name": "apart",
+   "scope": "partial fractions over irreducible Q factors, retaining source domain exclusions",
+   "sdk": "operations.apart"
+  },
+  {
+   "mcp_tool": "mathforge.extrema_values",
+   "name": "extrema_values",
+   "scope": "exact real algebraic coordinates and values of rational-function strict local extrema",
+   "sdk": "operations.extrema_values"
+  },
+  {
+   "mcp_tool": "mathforge.charpoly",
+   "name": "charpoly",
+   "scope": "det(t I - A) for square rational matrices, including empty 0 by 0 matrices",
+   "sdk": "operations.charpoly"
+  },
+  {
+   "mcp_tool": "mathforge.real_eigenvalues",
+   "name": "real_eigenvalues",
+   "scope": "complete real spectrum of square rational matrices with algebraic multiplicities; complex eigenvalues excluded",
+   "sdk": "operations.real_eigenvalues"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "integer_gcd",
+   "scope": "exact integers; deterministic bounded primality and factorization; modular and CRT certificates; arguments: a, b",
+   "sdk": "integer_gcd"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "integer_lcm",
+   "scope": "exact integers; deterministic bounded primality and factorization; modular and CRT certificates; arguments: a, b",
+   "sdk": "integer_lcm"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "integer_xgcd",
+   "scope": "exact integers; deterministic bounded primality and factorization; modular and CRT certificates; arguments: a, b",
+   "sdk": "integer_xgcd"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "mod_inverse",
+   "scope": "exact integers; deterministic bounded primality and factorization; modular and CRT certificates; arguments: a, modulus",
+   "sdk": "mod_inverse"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "crt",
+   "scope": "exact integers; deterministic bounded primality and factorization; modular and CRT certificates; arguments: congruences",
+   "sdk": "crt"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "is_prime",
+   "scope": "exact integers; deterministic bounded primality and factorization; modular and CRT certificates; arguments: n",
+   "sdk": "is_prime"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "factor_integer",
+   "scope": "exact integers; deterministic bounded primality and factorization; modular and CRT certificates; arguments: n",
+   "sdk": "factor_integer"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "divisors",
+   "scope": "exact integers; deterministic bounded primality and factorization; modular and CRT certificates; arguments: n",
+   "sdk": "divisors"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "totient",
+   "scope": "exact integers; deterministic bounded primality and factorization; modular and CRT certificates; arguments: n",
+   "sdk": "totient"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "factorial",
+   "scope": "nonnegative integer indices; exact bounded counts and recurrences; arguments: n",
+   "sdk": "factorial"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "binomial",
+   "scope": "nonnegative integer indices; exact bounded counts and recurrences; arguments: k, n",
+   "sdk": "binomial"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "multinomial",
+   "scope": "nonnegative integer indices; exact bounded counts and recurrences; arguments: counts",
+   "sdk": "multinomial"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "permutations_count",
+   "scope": "nonnegative integer indices; exact bounded counts and recurrences; arguments: k, n",
+   "sdk": "permutations_count"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "fibonacci",
+   "scope": "nonnegative integer indices; exact bounded counts and recurrences; arguments: n",
+   "sdk": "fibonacci"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "catalan",
+   "scope": "nonnegative integer indices; exact bounded counts and recurrences; arguments: n",
+   "sdk": "catalan"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "stirling",
+   "scope": "nonnegative integer indices; exact bounded counts and recurrences; arguments: k, n",
+   "sdk": "stirling"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "complex_algebraic",
+   "scope": "complex scalars with real algebraic components; exact arithmetic and quadratic roots; no general complex root isolation; arguments: imag, real",
+   "sdk": "complex_algebraic"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "complex_add",
+   "scope": "complex scalars with real algebraic components; exact arithmetic and quadratic roots; no general complex root isolation; arguments: left, right",
+   "sdk": "complex_add"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "complex_sub",
+   "scope": "complex scalars with real algebraic components; exact arithmetic and quadratic roots; no general complex root isolation; arguments: left, right",
+   "sdk": "complex_sub"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "complex_mul",
+   "scope": "complex scalars with real algebraic components; exact arithmetic and quadratic roots; no general complex root isolation; arguments: left, right",
+   "sdk": "complex_mul"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "complex_div",
+   "scope": "complex scalars with real algebraic components; exact arithmetic and quadratic roots; no general complex root isolation; arguments: left, right",
+   "sdk": "complex_div"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "complex_conjugate",
+   "scope": "complex scalars with real algebraic components; exact arithmetic and quadratic roots; no general complex root isolation; arguments: value",
+   "sdk": "complex_conjugate"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "complex_real",
+   "scope": "complex scalars with real algebraic components; exact arithmetic and quadratic roots; no general complex root isolation; arguments: value",
+   "sdk": "complex_real"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "complex_imag",
+   "scope": "complex scalars with real algebraic components; exact arithmetic and quadratic roots; no general complex root isolation; arguments: value",
+   "sdk": "complex_imag"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "complex_norm_squared",
+   "scope": "complex scalars with real algebraic components; exact arithmetic and quadratic roots; no general complex root isolation; arguments: value",
+   "sdk": "complex_norm_squared"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "complex_sqrt",
+   "scope": "complex scalars with real algebraic components; exact arithmetic and quadratic roots; no general complex root isolation; arguments: value",
+   "sdk": "complex_sqrt"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "complex_pow",
+   "scope": "complex scalars with real algebraic components; exact arithmetic and quadratic roots; no general complex root isolation; arguments: base, n",
+   "sdk": "complex_pow"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "quadratic_roots",
+   "scope": "complex scalars with real algebraic components; exact arithmetic and quadratic roots; no general complex root isolation; arguments: a, b, c",
+   "sdk": "quadratic_roots"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "bernoulli",
+   "scope": "finite rational outcome distributions; exact weights, events, conditioning and moments; arguments: p",
+   "sdk": "bernoulli"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "binomial_distribution",
+   "scope": "finite rational outcome distributions; exact weights, events, conditioning and moments; arguments: n, p",
+   "sdk": "binomial_distribution"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "discrete_uniform",
+   "scope": "finite rational outcome distributions; exact weights, events, conditioning and moments; arguments: outcomes",
+   "sdk": "discrete_uniform"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "hypergeometric",
+   "scope": "finite rational outcome distributions; exact weights, events, conditioning and moments; arguments: draws, population, successes",
+   "sdk": "hypergeometric"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "probability",
+   "scope": "finite rational outcome distributions; exact weights, events, conditioning and moments; arguments: distribution, event",
+   "sdk": "probability"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "condition",
+   "scope": "finite rational outcome distributions; exact weights, events, conditioning and moments; arguments: distribution, event",
+   "sdk": "condition"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "cdf",
+   "scope": "finite rational outcome distributions; exact weights, events, conditioning and moments; arguments: distribution, x",
+   "sdk": "cdf"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "moment",
+   "scope": "finite rational outcome distributions; exact weights, events, conditioning and moments; arguments: distribution, order",
+   "sdk": "moment"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "expectation",
+   "scope": "finite rational outcome distributions; exact weights, events, conditioning and moments; arguments: distribution",
+   "sdk": "expectation"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "distribution_variance",
+   "scope": "finite rational outcome distributions; exact weights, events, conditioning and moments; arguments: distribution",
+   "sdk": "distribution_variance"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "mean",
+   "scope": "nonempty finite rational samples; exact descriptive statistics; nonnegative ddof smaller than sample size; arguments: data",
+   "sdk": "mean"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "median",
+   "scope": "nonempty finite rational samples; exact descriptive statistics; nonnegative ddof smaller than sample size; arguments: data",
+   "sdk": "median"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "variance",
+   "scope": "nonempty finite rational samples; exact descriptive statistics; nonnegative ddof smaller than sample size; arguments: data, ddof",
+   "sdk": "variance"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "stddev",
+   "scope": "nonempty finite rational samples; exact descriptive statistics; nonnegative ddof smaller than sample size; arguments: data, ddof",
+   "sdk": "stddev"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "covariance",
+   "scope": "nonempty finite rational samples; exact descriptive statistics; nonnegative ddof smaller than sample size; arguments: ddof, x, y",
+   "sdk": "covariance"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "trace",
+   "scope": "rational matrices; complete subspace bases, singular-safe square PLU and full affine least-squares minimizer families; arguments: A",
+   "sdk": "trace"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "rowspace",
+   "scope": "rational matrices; complete subspace bases, singular-safe square PLU and full affine least-squares minimizer families; arguments: A",
+   "sdk": "rowspace"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "columnspace",
+   "scope": "rational matrices; complete subspace bases, singular-safe square PLU and full affine least-squares minimizer families; arguments: A",
+   "sdk": "columnspace"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "lu",
+   "scope": "rational matrices; complete subspace bases, singular-safe square PLU and full affine least-squares minimizer families; arguments: A",
+   "sdk": "lu"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "least_squares",
+   "scope": "rational matrices; complete subspace bases, singular-safe square PLU and full affine least-squares minimizer families; arguments: A, b",
+   "sdk": "least_squares"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "function_differentiate",
+   "scope": "domain-aware real elementary calculus within the documented rule catalogue; unsupported integrals/limits remain explicitly unevaluated; arguments: expression, n, variable",
+   "sdk": "function_differentiate"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "function_partial_diff",
+   "scope": "domain-aware real elementary calculus within the documented rule catalogue; unsupported integrals/limits remain explicitly unevaluated; arguments: expression, n, variable",
+   "sdk": "function_partial_diff"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "function_gradient",
+   "scope": "domain-aware real elementary calculus within the documented rule catalogue; unsupported integrals/limits remain explicitly unevaluated; arguments: expression, variables",
+   "sdk": "function_gradient"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "function_jacobian",
+   "scope": "domain-aware real elementary calculus within the documented rule catalogue; unsupported integrals/limits remain explicitly unevaluated; arguments: expressions, variables",
+   "sdk": "function_jacobian"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "function_hessian",
+   "scope": "domain-aware real elementary calculus within the documented rule catalogue; unsupported integrals/limits remain explicitly unevaluated; arguments: expression, variables",
+   "sdk": "function_hessian"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "function_taylor",
+   "scope": "domain-aware real elementary calculus within the documented rule catalogue; unsupported integrals/limits remain explicitly unevaluated; arguments: expression, order, point, variable",
+   "sdk": "taylor"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "function_evaluate",
+   "scope": "domain-aware real elementary calculus within the documented rule catalogue; unsupported integrals/limits remain explicitly unevaluated; arguments: bindings, expression",
+   "sdk": "function_evaluate"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "function_antiderivative",
+   "scope": "domain-aware real elementary calculus within the documented rule catalogue; unsupported integrals/limits remain explicitly unevaluated; arguments: expression, variable",
+   "sdk": "function_antiderivative"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "function_limit",
+   "scope": "domain-aware real elementary calculus within the documented rule catalogue; unsupported integrals/limits remain explicitly unevaluated; arguments: expression, point, side, variable",
+   "sdk": "function_limit"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "rational_antiderivative",
+   "scope": "rational functions over Q; exact Hermite reduction and logarithmic root sums; real-domain component restrictions retained; arguments: expression, variable",
+   "sdk": "rational_antiderivative"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "rational_integrate",
+   "scope": "rational functions over Q; exact Hermite reduction and logarithmic root sums; real-domain component restrictions retained; arguments: expression, lower, upper, variable",
+   "sdk": "rational_integrate"
+  },
+  {
+   "mcp_tool": "mathforge.compute",
+   "name": "function_integrate",
+   "scope": "proper finite real integrals; independently checked primitives and whole-interval domain certificates; unsupported or improper requests remain unevaluated; arguments: expression, lower, upper, variable",
+   "sdk": "function_integrate"
+  },
+  {
+   "mcp_tool": "mathforge.parse_function",
+   "name": "parse_function",
+   "scope": "bounded elementary text; declared ordered real axes; exact decimal literals; explicit domain predicates",
+   "sdk": "parse_function"
+  }
+ ],
+ "output": {
+  "deferred": "UnevaluatedIntegral/UnevaluatedLimit carry no value, exactness or verification claim; completed execution is not a solved problem",
+  "mathematics": "canonical MathForge v1/v2/v3/v4/v5 envelopes; legacy bytes preserved",
+  "presentation": [
+   "exact text",
+   "LaTeX"
+  ],
+  "verification": "algorithmic checking, not formal proof"
+ },
+ "package_version": "0.7.0",
+ "tools": [
+  {
+   "description": "Describe supported inputs, tools, limits and exact output.",
+   "name": "mathforge.capabilities",
+   "sdk": "capabilities"
+  },
+  {
+   "description": "Solve a real univariate polynomial/rational equation or inequality.",
+   "name": "mathforge.solve",
+   "sdk": "operations.solve"
+  },
+  {
+   "description": "Solve a rational linear system with an explicit variable order.",
+   "name": "mathforge.solve_system",
+   "sdk": "operations.solve_system"
+  },
+  {
+   "description": "Return all real polynomial roots and multiplicities.",
+   "name": "mathforge.real_roots",
+   "sdk": "operations.real_roots"
+  },
+  {
+   "description": "Differentiate a polynomial or rational function repeatedly.",
+   "name": "mathforge.differentiate",
+   "sdk": "operations.differentiate"
+  },
+  {
+   "description": "Expand an exact multivariate polynomial in an explicit variable order.",
+   "name": "mathforge.expand_multivariate",
+   "sdk": "operations.expand_multivariate"
+  },
+  {
+   "description": "Compute a repeated partial derivative of an exact multivariate polynomial.",
+   "name": "mathforge.partial_diff",
+   "sdk": "operations.partial_diff"
+  },
+  {
+   "description": "Compute a polynomial gradient in an explicit variable order.",
+   "name": "mathforge.gradient",
+   "sdk": "operations.gradient"
+  },
+  {
+   "description": "Compute a polynomial Jacobian with explicit function and variable order.",
+   "name": "mathforge.jacobian",
+   "sdk": "operations.jacobian"
+  },
+  {
+   "description": "Compute a polynomial Hessian in an explicit variable order.",
+   "name": "mathforge.hessian",
+   "sdk": "operations.hessian"
+  },
+  {
+   "description": "Integrate a rational-coefficient polynomial between exact real algebraic finite bounds.",
+   "name": "mathforge.integrate",
+   "sdk": "operations.integrate"
+  },
+  {
+   "description": "Compute a rational-function limit at a real algebraic point or signed infinity.",
+   "name": "mathforge.limit",
+   "sdk": "operations.limit"
+  },
+  {
+   "description": "Analyze a real rational function: domain, signs, derivative, monotonicity and strict extrema.",
+   "name": "mathforge.analyze_function",
+   "sdk": "operations.analyze_function"
+  },
+  {
+   "description": "Compute an exact rational matrix determinant.",
+   "name": "mathforge.det",
+   "sdk": "operations.det"
+  },
+  {
+   "description": "Compute rational reduced row echelon form and pivot columns.",
+   "name": "mathforge.rref",
+   "sdk": "operations.rref"
+  },
+  {
+   "description": "Recheck a canonical v1/v2/v3/v4/v5 Result without trusting stored verification labels.",
+   "name": "mathforge.verify",
+   "sdk": "verify"
+  },
+  {
+   "description": "Factor a nonzero univariate rational polynomial completely over Q.",
+   "name": "mathforge.factor",
+   "sdk": "operations.factor"
+  },
+  {
+   "description": "Compute the exact resultant of two rational polynomials in one variable.",
+   "name": "mathforge.resultant",
+   "sdk": "operations.resultant"
+  },
+  {
+   "description": "Compute a rational polynomial discriminant; constants give zero.",
+   "name": "mathforge.discriminant",
+   "sdk": "operations.discriminant"
+  },
+  {
+   "description": "Normalize a closed exact real algebraic expression, including independent radicals.",
+   "name": "mathforge.algebraic",
+   "sdk": "operations.algebraic"
+  },
+  {
+   "description": "Divide exact real algebraic scalars with a checked nonzero denominator.",
+   "name": "mathforge.algebraic_div",
+   "sdk": "operations.algebraic_div"
+  },
+  {
+   "description": "Raise an exact real algebraic scalar to a bounded signed integer power.",
+   "name": "mathforge.algebraic_pow",
+   "sdk": "operations.algebraic_pow"
+  },
+  {
+   "description": "Return the monic minimal polynomial of an exact real algebraic scalar.",
+   "name": "mathforge.minimal_polynomial",
+   "sdk": "operations.minimal_polynomial"
+  },
+  {
+   "description": "Evaluate exact expressions with complete real algebraic symbol bindings.",
+   "name": "mathforge.evaluate_algebraic",
+   "sdk": "operations.evaluate_algebraic"
+  },
+  {
+   "description": "Decompose a rational function into partial fractions over Q, preserving every excluded point.",
+   "name": "mathforge.apart",
+   "sdk": "operations.apart"
+  },
+  {
+   "description": "Return exact coordinates and values of strict local extrema of a rational function.",
+   "name": "mathforge.extrema_values",
+   "sdk": "operations.extrema_values"
+  },
+  {
+   "description": "Compute det(t I - A) for a square rational matrix.",
+   "name": "mathforge.charpoly",
+   "sdk": "operations.charpoly"
+  },
+  {
+   "description": "Return all real eigenvalues and algebraic multiplicities of a square rational matrix.",
+   "name": "mathforge.real_eigenvalues",
+   "sdk": "operations.real_eigenvalues"
+  },
+  {
+   "description": "Parse a bounded real elementary function with explicit ordered symbols and preserved domains.",
+   "name": "mathforge.parse_function",
+   "sdk": "parse_function"
+  },
+  {
+   "description": "Execute a published v0.7 operation using canonical mathematical object operands; deferred requests make no conclusion.",
+   "name": "mathforge.compute",
+   "sdk": "operations_v5.run"
+  }
+ ],
+ "transports": [
+  "stdio"
+ ]
+}

@@ -1,5 +1,6 @@
 """The structured, value and area modules generated from the registry are current and keep the v0.7 surface."""
 
+import ast
 import contextlib
 from dataclasses import dataclass
 import importlib
@@ -40,6 +41,31 @@ V5_RECORDS = {
     "stats": {"FiniteDistribution"},
     "ntheory": {"CRTResult", "IntegerFactorization"},
 }
+# __all__ of the v0.7 api_v7.py and values_v7.py, in its published order (git show d4c0401:src/mathforge/api_v7.py).
+V07_ORDER = [
+    "integer_gcd", "integer_lcm", "integer_xgcd", "mod_inverse", "crt", "is_prime", "factor_integer",
+    "divisors", "totient", "factorial", "fibonacci", "catalan", "binomial", "permutations_count", "stirling",
+    "multinomial", "complex_algebraic", "complex_add", "complex_sub", "complex_mul", "complex_div",
+    "complex_conjugate", "complex_real", "complex_imag", "complex_norm_squared", "complex_sqrt", "complex_pow",
+    "quadratic_roots", "bernoulli", "binomial_distribution", "discrete_uniform", "hypergeometric",
+    "probability", "condition", "cdf", "moment", "expectation", "distribution_variance", "mean", "median",
+    "variance", "stddev", "covariance", "trace", "rowspace", "columnspace", "lu", "least_squares",
+    "rational_antiderivative", "rational_integrate", "function_differentiate", "function_partial_diff",
+    "function_gradient", "function_jacobian", "function_hessian", "taylor", "function_evaluate",
+    "function_antiderivative", "function_integrate", "function_limit",
+]
+
+
+def module_imports(text):
+    """The names a module's source imports at runtime (top level) and under ``if TYPE_CHECKING:``."""
+    runtime, checking = set(), set()
+    for node in ast.parse(text).body:
+        if isinstance(node, ast.ImportFrom):
+            runtime.update(alias.asname or alias.name for alias in node.names)
+        elif isinstance(node, ast.If) and isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING":
+            checking.update(alias.asname or alias.name for child in node.body if isinstance(child, ast.ImportFrom)
+                            for alias in child.names)
+    return runtime, checking
 
 
 def load_tool():
@@ -107,7 +133,9 @@ class GeneratedApiTests(unittest.TestCase):
                     function = getattr(module, name)
                     self.assertEqual(str(inspect.signature(function)), text)
                     self.assertIn("return", typing.get_type_hints(function))  # Every annotation name is imported.
-        self.assertEqual(values_v7.__all__, api_v7.__all__)
+        # The snapshot is key-sorted; the published export order is pinned here.
+        self.assertEqual(api_v7.__all__, V07_ORDER)
+        self.assertEqual(values_v7.__all__, V07_ORDER)
         # mathforge.operations still exposes all 100 v0.7 operation functions with their signatures.
         for name, text in signatures["operations"].items():
             with self.subTest(module="operations", name=name):
@@ -170,7 +198,7 @@ class GeneratedApiTests(unittest.TestCase):
         self.install_family(demo_spec(), records={"demo_box": DemoBox})
         structured = self.rendered("_generated/structured.py")
         self.assertIn("from ..operations_v6 import run as run_v6\n", structured)
-        self.assertIn("from .._generated_api_test_family import DemoBox\n", structured)
+        self.assertIn("\nif TYPE_CHECKING:\n    from .._generated_api_test_family import DemoBox\n", structured)
         self.assertIn("def demo_triple(n: int, *, limits: ComputationLimits | None = None) -> Result[DemoBox]:\n"
                       '    return run_v6("demo_triple", dict(n=n), limits=limits)\n', structured)
         self.assertIn('    return run("integer_gcd", dict(a=a, b=b), limits=limits)\n', structured)
@@ -181,6 +209,20 @@ class GeneratedApiTests(unittest.TestCase):
         self.assertIn("from ._generated_api_test_family import DemoBox\n", discrete)
         self.assertIn('    "DemoBox",\n', discrete)
         self.assertIn('    "demo_triple",\n', discrete)
+
+    def test_v6_only_annotation_names_are_imported_for_type_checking(self):
+        # A runtime import of a v6 record would load its family module during `import mathforge`.
+        self.install_family(demo_spec(annotation="Rational | int"), records={"demo_box": DemoBox})
+        for relative in ("_generated/structured.py", "_generated/values.py"):
+            with self.subTest(module=relative):
+                runtime, checking = module_imports(self.rendered(relative))
+                self.assertIn("DemoBox", checking)  # Only the v6 operation names it.
+                self.assertNotIn("DemoBox", runtime)
+                self.assertTrue({"Rational", "ComputationLimits", "CRTResult"} <= runtime)  # v5 wrappers use them.
+                self.assertFalse({"Rational", "ComputationLimits", "CRTResult"} & checking)
+        runtime, checking = module_imports(self.rendered("discrete.py"))
+        self.assertIn("DemoBox", runtime)  # Area modules load lazily and import their record classes at runtime.
+        self.assertEqual(checking, set())
 
     def test_check_mode(self):
         with tempfile.TemporaryDirectory() as directory:

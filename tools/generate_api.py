@@ -9,6 +9,10 @@ so that type checkers see real signatures:
 - mathforge/<area>.py for each of the 18 registry.AREAS: the value functions of the area's operations
   and the record classes of its families.
 
+``import mathforge`` loads both _generated modules, so the annotation names that only version-6
+operations use are imported there under TYPE_CHECKING and their family modules stay unloaded; the
+area modules, which load lazily, import their record classes at runtime.
+
 mathforge.api_v7 and mathforge.values_v7 re-export the v0.7 names from mathforge._generated.
 
 Run ``python tools/generate_api.py`` after changing the registry; it rewrites only stale files.
@@ -26,6 +30,7 @@ from collections.abc import Iterable, Mapping, Sequence
 import keyword
 from pathlib import Path
 import sys
+import textwrap
 
 
 REPOSITORY = Path(__file__).resolve().parents[1]
@@ -182,31 +187,49 @@ def _parameters(spec: OperationSpec) -> str:
     return ", ".join([*parameters, "*", LIMITS])
 
 
+def _import_blocks(names: _Names, specs: Sequence[OperationSpec], always: Iterable[str],
+                   tail: Sequence[str]) -> tuple[list[str], list[str]]:
+    """The import blocks of a wrapper module, and the names they bind.
+
+    Names that a version-5 (v0.7) wrapper uses are runtime imports, as in v0.7, so typing.get_type_hints() still
+    resolves those wrappers. Names that only later versions use are imported under TYPE_CHECKING: their record
+    classes live in family modules, which a runtime import would load during ``import mathforge``.
+    """
+    runtime, checking = set(always), set()
+    for spec in specs:
+        (runtime if spec.version == 5 else checking).update(names.of(spec))
+    checking -= runtime
+    lines = [*_import_lines(names.sources, runtime, GENERATED), *tail]
+    if not checking:
+        return ["\n".join(lines)], sorted(runtime)
+    deferred = textwrap.indent("\n".join(_import_lines(names.sources, checking, GENERATED)), "    ")
+    return (["\n".join(["from typing import TYPE_CHECKING", *lines]), "if TYPE_CHECKING:\n" + deferred],
+            [*sorted(runtime), *sorted(checking), "TYPE_CHECKING"])
+
+
 def _structured(specs: Sequence[OperationSpec], names: _Names) -> str:
-    imported = {"Result", "ComputationLimits"}.union(*(names.of(spec) for spec in specs))
     versions = sorted({spec.version for spec in specs})
-    _check_unique("structured.py", [*imported, *(RUNNERS[version][2] for version in versions),
+    runners = [_from_import(_relative(RUNNERS[version][0], GENERATED), [RUNNERS[version][1]]) for version in versions]
+    blocks, bound = _import_blocks(names, specs, ("Result", "ComputationLimits"), runners)
+    _check_unique("structured.py", [*bound, *(RUNNERS[version][2] for version in versions),
                                     *(spec.public_name for spec in specs)])
-    imports = _import_lines(names.sources, imported, GENERATED)
-    imports += [_from_import(_relative(RUNNERS[version][0], GENERATED), [RUNNERS[version][1]]) for version in versions]
     functions = []
     for spec in specs:
         arguments = ", ".join(f"{argument.name}={argument.name}" for argument in spec.arguments)
         functions.append(f"def {spec.public_name}({_parameters(spec)}) -> Result[{spec.returns}]:\n"
                          f'    return {RUNNERS[spec.version][2]}("{spec.name}", dict({arguments}), limits=limits)\n')
-    return _module([_all([spec.public_name for spec in specs]), "\n".join(imports)], functions)
+    return _module([_all([spec.public_name for spec in specs]), *blocks], functions)
 
 
 def _values(specs: Sequence[OperationSpec], names: _Names) -> str:
-    imported = {"ComputationLimits"}.union(*(names.of(spec) for spec in specs))
-    _check_unique("values.py", [*imported, "structured", *(spec.public_name for spec in specs)])
-    imports = [*_import_lines(names.sources, imported, GENERATED), "from . import structured"]
+    blocks, bound = _import_blocks(names, specs, ("ComputationLimits",), ["from . import structured"])
+    _check_unique("values.py", [*bound, "structured", *(spec.public_name for spec in specs)])
     functions = []
     for spec in specs:
         arguments = ", ".join([*(argument.name for argument in spec.arguments), "limits=limits"])
         functions.append(f"def {spec.public_name}({_parameters(spec)}) -> {spec.returns}:\n"
                          f"    return structured.{spec.public_name}({arguments}).unwrap()\n")
-    return _module([_all([spec.public_name for spec in specs]), "\n".join(imports)], functions)
+    return _module([_all([spec.public_name for spec in specs]), *blocks], functions)
 
 
 def _area(area: str, specs: Sequence[OperationSpec]) -> str:

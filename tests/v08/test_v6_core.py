@@ -1,6 +1,7 @@
 """JSON v6 core: the generic Unevaluated record and the v6 run/verify path, driven by a demo family."""
 
 from dataclasses import replace
+import types
 import unittest
 
 import mathforge as m
@@ -107,6 +108,56 @@ class V6CoreTests(unittest.TestCase):
             self.assertEqual(r.error.code, "internal_error")
             self.assertEqual(r.error, ErrorInfo("internal_error", "The producer failed unexpectedly"))
 
+    def test_value_shape_failures_are_internal_errors(self):
+        """A return that cannot become a Result is the producer's bug, not the caller's invalid input."""
+        with registry._testing_families(demo_family):
+            for operation in ("demo_float", "demo_misdefer"):  # A float value; a deferral of another request.
+                with self.subTest(operation=operation):
+                    r = operations_v6.run(operation, {"n": 1})
+                    self.assertIs(r.execution_status, ExecutionStatus.ERROR)
+                    self.assertEqual(r.error, ErrorInfo("internal_error", "The producer failed unexpectedly"))
+
+    def test_scope_and_budget_errors_of_the_producer_keep_their_codes(self):
+        with registry._testing_families(demo_family):
+            for operation, status, error in (
+                    ("demo_unsupported", ExecutionStatus.UNSUPPORTED,
+                     ErrorInfo("unsupported_operation", "demo_unsupported applies to no request")),
+                    ("demo_exhausted", ExecutionStatus.ERROR,
+                     ErrorInfo("resource_limit_exceeded", "demo_exhausted always exceeds the budget"))):
+                with self.subTest(operation=operation):
+                    r = operations_v6.run(operation, {"n": 1})
+                    self.assertIs(r.execution_status, status)
+                    self.assertEqual(r.error, error)  # The producer's own message: raised inside produce.
+            # A value over the budget, found once produce has returned, is a budget error too.
+            r = operations_v6.run("demo_double", {"n": 2**63}, limits=m.ComputationLimits(max_integer_bits=64))
+            self.assertIs(r.execution_status, ExecutionStatus.ERROR)
+            self.assertEqual((r.error.code, r.request.operation), ("resource_limit_exceeded", "demo_double"))
+
+    def test_context_rules_match_the_source_check(self):
+        x = m.Symbol("x")
+        A = m.Matrix(((1, 2), (3, 4), (5, 6)))
+        with registry._testing_families(demo_family):
+            echo = operations_v6.run("demo_echo", {"expression": x**2 + 1, "variable": x})
+            self.assertEqual((echo.value, echo.expression, echo.for_), (x**2 + 1, x**2 + 1, x))
+            self.assertIs(echo.domain, m.Reals)
+            rows = operations_v6.run("demo_rows", {"A": A})
+            self.assertEqual((rows.value, rows.expression, rows.for_, rows.domain), (3, A, None, None))
+            for r in (echo, rows):
+                with self.subTest(operation=r.method):
+                    self.assertTrue(m.verify(r).verified)
+                    self.assertEqual(m.loads(m.dumps(r)), r)
+
+    def test_failures_keep_the_variable_context_that_verification_expects(self):
+        """A failure keeps the variable's own domain and assumptions (operations._failure); verify agrees."""
+        t = m.Symbol("t", domain=m.Integers, assumptions=(m.Assumption("positive", m.Truth.TRUE),))
+        with registry._testing_families(demo_family):
+            r = operations_v6.run("demo_echo", {"expression": t + 1, "variable": t})
+            self.assertIs(r.execution_status, ExecutionStatus.INVALID_INPUT)
+            self.assertEqual((r.expression, r.for_, r.domain, r.assumptions), (t + 1, t, m.Integers, t.assumptions))
+            report = m.verify(r)
+            self.assertIs(statuses(report)["result.source"], CheckStatus.VERIFIED)
+            self.assertNotIn(CheckStatus.FAILED, [check.status for check in report.checks])
+
     def test_invalid_arguments_are_invalid_input(self):
         with registry._testing_families(demo_family):
             # Argument names are checked before the producer runs; the producer rejects a bool itself.
@@ -129,7 +180,9 @@ class V6CoreTests(unittest.TestCase):
 
     def test_testing_families_restore_the_registry(self):
         before = registry.V6_FAMILIES
+        self.assertNotIn("demo_double", registry.specs())  # The tables exist before the block...
         with self.assertRaises(KeyError), registry._testing_families(demo_family):
+            self.assertEqual(registry._tables.cache_info().currsize, 0)  # ...and entering clears them.
             self.assertIn("demo_double", registry.specs())
             self.assertTrue(registry.record_module(DemoPair.__module__))
             self.assertIs(registry.record_types(6)["demo_pair"], DemoPair)
@@ -140,6 +193,14 @@ class V6CoreTests(unittest.TestCase):
         self.assertNotIn("demo_pair", registry.record_types(6))
         self.assertEqual({tag: registry.record_types(6)[tag] for tag in ("reason", "unevaluated")},
                          {"reason": Reason, "unevaluated": Unevaluated})
+
+    def test_testing_families_must_be_imported_modules(self):
+        """The build imports families by name, so a module outside sys.modules is refused up front."""
+        before = registry.V6_FAMILIES
+        with self.assertRaisesRegex(ValueError, "^A testing family must be an imported module: v08_stray$"):
+            with registry._testing_families(types.ModuleType("v08_stray")):
+                self.fail("the block must not run")
+        self.assertEqual(registry.V6_FAMILIES, before)
 
 
 if __name__ == "__main__":

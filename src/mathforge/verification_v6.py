@@ -8,8 +8,8 @@ from . import registry
 from .deferred import KINDS, REASON_CODES, Reason, Unevaluated
 from .errors import InvalidInput, MathForgeError
 from .limits import ResourceLimitError, computation
-from .model import Reals
-from .operations_v6 import validate_arguments
+from .operations import _safe_context
+from .operations_v6 import source_context, validate_arguments
 from .verification_v2 import _symbol_consistency
 
 
@@ -23,12 +23,14 @@ def _unknown(claim, details):
 
 
 def _source(result, request, args):
-    """The result restates its request: method, expression, variable and real domain, consistent symbols."""
-    variable = args.get("variable")
+    """The result restates its request as run() records it; a failure keeps what operations._failure keeps."""
+    context = source_context(args)
+    if result.execution_status is not c.ExecutionStatus.COMPLETED:
+        context = _safe_context(context)  # The variable's own domain and assumptions; a valid expression only.
     return (len(args) == len(request.arguments) and result.method == request.operation and result.problem is None
-            and result.expression == args.get("expression", args.get("A"))
-            and result.for_ == variable and result.domain is (Reals if variable is not None else None)
-            and not result.assumptions and _symbol_consistency(result))
+            and result.expression == context.get("expression") and result.for_ == context.get("for_")
+            and result.domain is context.get("domain") and result.assumptions == context.get("assumptions", ())
+            and _symbol_consistency(result))
 
 
 def _no_error_or_bounds(result):

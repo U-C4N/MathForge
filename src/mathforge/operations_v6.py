@@ -1,12 +1,15 @@
 """Source-bearing v6 operations: run a registered family's producer, then verify its value independently.
 
 The generated wrappers call run() with every argument of the spec, defaults filled in. A producer
-returns (value, evidence), or an Unevaluated record when it reaches no answer. Only an unexpected
-failure inside the producer is an internal error; input, scope and budget errors keep the v5 codes.
+returns (value, evidence), where value may be an Unevaluated record when it reaches no answer.
+A producer bug is an internal error: an exception that produce() raises, other than an input, scope or
+budget error, and any failure to make its return into a Result, other than a budget error. Validation
+before produce() and the independent verification keep the v5 codes.
 """
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
 from dataclasses import replace
 from typing import Any
 
@@ -29,15 +32,28 @@ def validate_arguments(operation, args):
     return registry.family(operation)
 
 
-def _produce(family, operation, args):
-    """Call the family's producer. A failure other than an input, scope or budget error is an internal error."""
+def source_context(args: Mapping[str, Any]) -> dict[str, Any]:
+    """The source fields run() copies into a result: expression (or A), and a Symbol variable with Reals."""
+    context: dict[str, Any] = {}
+    if "expression" in args:
+        context["expression"] = args["expression"]
+    elif "A" in args:
+        context["expression"] = args["A"]
+    variable = args.get("variable")
+    if type(variable) is Symbol:
+        context.update(for_=variable, domain=Reals)
+    return context
+
+
+@contextmanager
+def _producer_failures(*passing: type[Exception]) -> Iterator[None]:
+    """Report an exception other than the passing ones as the producer's internal error."""
     try:
-        value, evidence = family.produce(operation, args)
-    except (InvalidInput, UnsupportedOperation, ResourceLimitError):
+        yield
+    except passing:
         raise
     except Exception as exc:
         raise MathForgeError("The producer failed unexpectedly", code="internal_error") from exc
-    return value, evidence
 
 
 def run(operation: str, arguments: Mapping[str, object], *,
@@ -53,25 +69,23 @@ def run(operation: str, arguments: Mapping[str, object], *,
             budget.inspect(args)
             family = validate_arguments(operation, args)
             request = c.OperationRequest(operation, tuple(args.items()))
-            if "expression" in args:
-                context["expression"] = args["expression"]
-            elif "A" in args:
-                context["expression"] = args["A"]
-            variable = args.get("variable")
-            if type(variable) is Symbol:
-                context.update(for_=variable, domain=Reals)
-            value, evidence = _produce(family, operation, args)
-            budget.inspect(value)
-            budget.inspect(evidence, evidence=True)
-            if type(value) is Unevaluated:
-                return c.Result(execution_status=c.ExecutionStatus.COMPLETED, outcome=c.Outcome.NO_CONCLUSION,
-                                completeness=c.Completeness.UNKNOWN, deferred=value, method=operation,
-                                request=request, **context)
-            result: c.Result[Any] = c.Result(
-                execution_status=c.ExecutionStatus.COMPLETED, outcome=c.Outcome.VALUE, value=value,
-                exactness=c.Exactness.EXACT, completeness=c.Completeness.COMPLETE, method=operation,
-                request=request, **context,
-                steps=(c.Step("v6." + operation, (request,), (value, evidence), relation=c.StepRelation.EVALUATION),))
+            context = source_context(args)
+            with _producer_failures(InvalidInput, UnsupportedOperation, ResourceLimitError):
+                produced = family.produce(operation, args)
+            with _producer_failures(ResourceLimitError):  # Until the Result exists, a bad shape is the producer's.
+                value, evidence = produced
+                budget.inspect(value)
+                budget.inspect(evidence, evidence=True)
+                if type(value) is Unevaluated:
+                    return c.Result(execution_status=c.ExecutionStatus.COMPLETED, outcome=c.Outcome.NO_CONCLUSION,
+                                    completeness=c.Completeness.UNKNOWN, deferred=value, method=operation,
+                                    request=request, **context)
+                result: c.Result[Any] = c.Result(
+                    execution_status=c.ExecutionStatus.COMPLETED, outcome=c.Outcome.VALUE, value=value,
+                    exactness=c.Exactness.EXACT, completeness=c.Completeness.COMPLETE, method=operation,
+                    request=request, **context,
+                    steps=(c.Step("v6." + operation, (request,), (value, evidence),
+                                  relation=c.StepRelation.EVALUATION),))
             from .verification_v6 import verify_result
             report = verify_result(result, limits=limits)
             if not report.verified:

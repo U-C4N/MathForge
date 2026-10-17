@@ -101,7 +101,8 @@ def _context(operation, args):
     return context
 
 
-def _failure(exc, *, method, context, request=None):
+def _safe_context(context):
+    """The context a failure result keeps: a typed problem, a Symbol with its own domain, a valid expression."""
     safe = {}
     problem = context.get("problem")
     if type(problem) in (Eq, Inequality, matrices.LinearSystem):
@@ -117,6 +118,11 @@ def _failure(exc, *, method, context, request=None):
             safe["expression"] = expression if type(expression) in (Polynomial, RationalFunction, matrices.Matrix) else as_expression(expression)
     except (TypeError, ValueError):
         pass
+    return safe
+
+
+def _failure(exc, *, method, context, request=None):
+    safe = _safe_context(context)
     if isinstance(exc, UnsupportedOperation):
         status, code = ExecutionStatus.UNSUPPORTED, "unsupported_operation"
     elif isinstance(exc, (InvalidInput, TypeError, ValueError, ZeroDivisionError)):

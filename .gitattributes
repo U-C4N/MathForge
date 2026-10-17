@@ -6,5 +6,7 @@ tests/fixtures/v2/serialization_v2.py text eol=lf
 # Later working-tree snapshots retain their original mixed line endings.
 tests/fixtures/v5/* -text
 tests/fixtures/v6/* -text
+tests/fixtures/v7/* -text
 tests/fixtures/v5/manifest.json whitespace=cr-at-eol
 tests/fixtures/v6/manifest.json whitespace=cr-at-eol
+tests/fixtures/v7/manifest.json whitespace=cr-at-eol

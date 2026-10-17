@@ -161,6 +161,8 @@ def _assemble(v07_specs: tuple[OperationSpec, ...], legacy: frozenset[str], v5: 
             raise RuntimeError("Duplicate public name: " + spec.public_name)
         if spec.name in legacy:
             raise RuntimeError("Operation name collides with a legacy catalogue entry: " + spec.name)
+        if spec.public_name in legacy:  # Its generated wrapper would shadow mathforge.operations.<name>.
+            raise RuntimeError("Public name collides with a legacy catalogue entry: " + spec.public_name)
         if (spec.version != version or spec.area not in AREAS
                 or any(argument.kind not in KIND_NAMES for argument in spec.arguments)):
             raise RuntimeError("Malformed operation spec: " + spec.name)

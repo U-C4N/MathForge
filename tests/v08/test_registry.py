@@ -271,6 +271,12 @@ class RegistryTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "^Operation name collides with a legacy catalogue entry: factor$"):
             registry.specs()
 
+    def test_build_rejects_public_names_of_the_legacy_catalog(self):
+        """Its generated wrapper would shadow mathforge.operations.limit."""
+        self.install_family(demo_spec("demo_limit", "series", sdk="limit"))
+        with self.assertRaisesRegex(RuntimeError, "^Public name collides with a legacy catalogue entry: limit$"):
+            registry.specs()
+
     def test_build_rejects_records_outside_the_record_modules(self):
         """contracts trusts a static module guard, so every record class must live in a guarded module."""
         self.install_family(demo_spec(), records={"stray": _Stray})

@@ -10,6 +10,7 @@ import unittest
 from unittest.mock import patch
 
 import mathforge as mf
+from mathforge import registry
 from mathforge.capabilities import capabilities
 from mathforge.mcp.boundary import call_tool
 from mathforge.mcp.schemas import input_schemas
@@ -34,10 +35,14 @@ class BoundaryTests(unittest.TestCase):
                     "minimal_polynomial", "evaluate_algebraic", "apart", "extrema_values", "charpoly", "real_eigenvalues",
                     "parse_function", "compute"}
         payload = self.invoke("capabilities").payload
-        self.assertEqual({item["name"].split(".")[1] for item in payload["tools"]}, expected)
-        self.assertEqual(set(input_schemas()), {"mathforge." + name for name in expected})
+        names = [item["name"] for item in payload["tools"]]
+        # The 30 v0.7 tools lead, unchanged; the area tools with operations and the catalog follow.
+        areas = sorted(tool for tool in registry.MCP_TOOLS if registry.tool_operations(tool))
+        self.assertEqual({name.split(".")[1] for name in names[:30]}, expected)
+        self.assertEqual(names[30:], areas + ["mathforge.catalog"])
+        self.assertEqual(list(input_schemas()), names)
         payload["tools"].clear()
-        self.assertEqual(len(capabilities()["tools"]), 30)
+        self.assertEqual(len(capabilities()["tools"]), 30 + len(areas) + 1)
         self.assertEqual(capabilities()["transports"], ["stdio"])
         operations = {item["name"]: item for item in capabilities()["operations"]}
         self.assertIsNone(operations["poly_gcd"]["mcp_tool"])

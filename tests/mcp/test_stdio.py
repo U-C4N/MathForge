@@ -10,6 +10,9 @@ import sys
 import unittest
 
 import mathforge as mf
+from mathforge import registry
+from mathforge.mcp.boundary import _FIELDS
+from mathforge.mcp.schemas import capabilities_schema, catalog_schema, input_schemas, output_schema
 
 
 try:
@@ -31,11 +34,18 @@ class StdioTests(unittest.TestCase):
         parameters = StdioServerParameters(command=sys.executable, args=["-m", "mathforge.mcp"], env=env)
         async with Client(parameters, read_timeout_seconds=30) as client:
             listed = await client.list_tools()
-            names = {tool.name for tool in listed.tools}
-            self.assertEqual(len(names), 30)
-            self.assertTrue({"mathforge.limit", "mathforge.analyze_function"} <= names)
-            self.assertTrue({"mathforge.parse_function", "mathforge.compute"} <= names)
+            tools = {tool.name: tool for tool in listed.tools}
+            # The 30 v0.7 tools lead, unchanged; the area tools with operations and the catalog follow.
+            areas = sorted(tool for tool in registry.MCP_TOOLS if registry.tool_operations(tool))
+            self.assertEqual(list(tools), ["mathforge." + name for name in _FIELDS] + areas + ["mathforge.catalog"])
+            self.assertTrue({"mathforge.limit", "mathforge.analyze_function"} <= set(tools))
+            self.assertTrue({"mathforge.parse_function", "mathforge.compute"} <= set(tools))
             self.assertTrue(all(tool.output_schema is not None for tool in listed.tools))
+            schemas = input_schemas()
+            for name, tool in tools.items():
+                self.assertEqual(tool.input_schema, schemas[name])
+                self.assertEqual(tool.output_schema, {"mathforge.capabilities": capabilities_schema(),
+                                                      "mathforge.catalog": catalog_schema()}.get(name, output_schema()))
             capabilities = await client.call_tool("mathforge.capabilities", {})
             self.assertFalse(capabilities.is_error)
             self.assertEqual(capabilities.structured_content["transports"], ["stdio"])
@@ -130,6 +140,30 @@ class StdioTests(unittest.TestCase):
             self.assertFalse(any(check.status is mf.CheckStatus.FAILED for check in deferred_report.checks))
             bad_operation = await client.call_tool("mathforge.compute", {"operation": "__import__", "arguments": {}})
             self.assertTrue(bad_operation.is_error)
+            # An area tool runs the v6 pilot from friendly JSON; the client checks each payload's output schema.
+            fraction = await client.call_tool("mathforge.ntheory", {
+                "operation": "continued_fraction", "arguments": {"value": "415/93"}})
+            self.assertFalse(fraction.is_error, fraction)
+            self.assertEqual(json.loads(fraction.content[0].text), fraction.structured_content)
+            self.assertEqual(fraction.structured_content["result"]["version"], 6)
+            self.assertIn("[4; 2, 6, 7]", fraction.structured_content["text"])
+            self.assertEqual(mf.from_data(fraction.structured_content["result"]).value.terms, (4, 2, 6, 7))
+            checked_v6 = await client.call_tool("mathforge.verify", {"result": fraction.structured_content["result"]})
+            self.assertFalse(checked_v6.is_error)
+            self.assertTrue(mf.from_data(checked_v6.structured_content["result"]).verified)
+            typed = await client.call_tool("mathforge.analysis", {
+                "operation": "function_differentiate", "symbol_ids": {"x": uid},
+                "arguments": {"expression": {"text": "log(x)+sin(x)", "variables": ["x"]}, "variable": "x"}})
+            self.assertFalse(typed.is_error, typed)
+            self.assertEqual(typed.structured_content["result"], computed.structured_content["result"])
+            inexact = await client.call_tool("mathforge.ntheory", {
+                "operation": "integer_gcd", "arguments": {"a": 0.5, "b": 2}})
+            self.assertTrue(inexact.is_error)
+            self.assertEqual(inexact.structured_content["error"]["field"], "arguments.a")
+            catalog = await client.call_tool("mathforge.catalog", {"query": "continued"})
+            self.assertFalse(catalog.is_error, catalog)
+            entry, = (entry for entry in catalog.structured_content["operations"] if entry["name"] == "continued_fraction")
+            self.assertEqual(entry["tool"], "mathforge.ntheory")
             absent_limit = await client.call_tool("mathforge.limit", {"expression": "1/x", "point": "0"})
             self.assertFalse(absent_limit.is_error)
             absent_result = mf.from_data(absent_limit.structured_content["result"])

@@ -23,20 +23,21 @@ def create_server():
     """Build the curated tool server. No network transport is exposed by this API."""
     types, Server, MCPError = _sdk()
     from .. import __version__
-    from ..capabilities import capabilities
+    from ..capabilities import CATALOG_TOOL, capabilities
     from .boundary import call_tool
-    from .schemas import input_schemas, output_schema, capabilities_schema
+    from .schemas import input_schemas, output_schema, capabilities_schema, catalog_schema
     import anyio
 
     schemas = input_schemas()
     descriptors = capabilities()["tools"]
+    outputs = {"mathforge.capabilities": capabilities_schema(), CATALOG_TOOL: catalog_schema()}
     # Serialize CPU-bound calls per server; the worker keeps the protocol loop responsive.
     limiter = anyio.CapacityLimiter(1)
 
     async def list_tools(ctx, params):
         return types.ListToolsResult(tools=[types.Tool(
             name=item["name"], description=item["description"], inputSchema=schemas[item["name"]],
-            outputSchema=capabilities_schema() if item["name"] == "mathforge.capabilities" else output_schema(),
+            outputSchema=outputs.get(item["name"]) or output_schema(),
             annotations=types.ToolAnnotations(readOnlyHint=True, openWorldHint=False),
         ) for item in descriptors])
 
@@ -49,7 +50,7 @@ def create_server():
                                     structuredContent=response.payload, isError=response.is_error)
 
     return Server("MathForge", version=__version__,
-                  instructions="Exact, bounded mathematics. Use parse_function for domain-aware real functions and compute only for published operation names with canonical object operands. A deferred integral or limit makes no mathematical conclusion. Text/LaTeX presentation never replaces canonical results. No filesystem tools.",
+                  instructions="Exact, bounded mathematics. Find an operation with mathforge.catalog, then call the area tool it names (for example mathforge.ntheory) with the operation name and its typed arguments: friendly JSON such as integers, 'p/q' fractions, mathematical text and variable names, or canonical object envelopes from earlier results. Pass symbol_ids to keep symbol identities across calls. Use parse_function for domain-aware real functions; compute accepts only the published v0.7 operations, with canonical object operands. A deferred result makes no mathematical conclusion. Text/LaTeX presentation never replaces canonical results. No filesystem tools.",
                   get_tool_input_schema=schemas.get, on_list_tools=list_tools, on_call_tool=execute)
 
 

@@ -1,8 +1,11 @@
-"""SDK-independent, bounded adapters for thirty selected tools.
+"""SDK-independent, bounded adapters: the thirty curated v0.7 tools, the area tools and mathforge.catalog.
 
-Only this module translates text and ordinary JSON into core objects. It does
-not implement mathematical algorithms or turn persisted operation names into
-executable code. Responses preserve the core codec and its integer strings.
+The area tools and the catalog derive from the operation registry. An area tool runs one operation of its
+areas, named in the request, with arguments typed by the argument kinds of mcp.kinds.
+
+Only this module and mcp.kinds translate text and ordinary JSON into core objects. They do not implement
+mathematical algorithms or turn persisted operation names into executable code: an operation name selects
+a registry spec, never a Python attribute. Responses preserve the core codec and its integer strings.
 """
 
 from dataclasses import asdict, dataclass
@@ -11,7 +14,7 @@ import re
 from typing import Any, TypedDict
 
 from .. import operations
-from ..capabilities import capabilities
+from ..capabilities import CATALOG_TOOL, area_tools, capabilities
 from ..contracts import Eq, ExecutionStatus, Result, VerificationReport
 from ..errors import InvalidInput, MathForgeError
 from ..limits import ComputationLimits, DecodeLimits, computation, current_budget
@@ -26,6 +29,9 @@ MAX_RESPONSE_BYTES = 4_194_304
 MAX_EQUATIONS = 64
 MAX_VARIABLES = 64
 MAX_SCALAR_CHARACTERS = 1024
+MAX_TEXT_CHARACTERS = 16384  # Function text
+MAX_QUERY_CHARACTERS = 128
+CATALOG_LIMIT, MAX_CATALOG_LIMIT = 50, 200
 
 
 class BoundaryError(TypedDict):
@@ -176,6 +182,47 @@ def operand_tags():
                 "v5_"+tag for tag in record_types()}
 
 
+def _envelope(envelope, field, limits, *, tags, versions=(1, 2, 3, 4, 5)):
+    """Check the shape of a canonical object envelope, then walk its data within the request budget.
+
+    Only the given operand tags may appear: results, workspaces and execution metadata are not operands.
+    """
+    if (type(envelope) is not dict or set(envelope) != {"format", "version", "kind", "data"}
+            or envelope.get("format") != "mathforge" or envelope.get("kind") != "object"
+            or type(envelope.get("version")) is not int or envelope["version"] not in versions
+            or type(envelope.get("data")) is not dict):
+        raise InputError("Each argument must be a canonical mathematical object envelope", field=field)
+    pending = [(envelope["data"], 0)]
+    while pending:
+        node, depth = pending.pop()
+        current_budget().nodes()
+        if depth > limits.max_depth:
+            raise InputError("Operand nesting exceeds the depth limit", code="resource_limit_exceeded", field=field)
+        if type(node) is dict:
+            if "type" in node and (type(node["type"]) is not str or node["type"] not in tags):
+                raise InputError("Results, workspaces and execution metadata are not operands", field=field)
+            current_budget().nodes(len(node))
+            pending.extend((item, depth+1) for item in node.values())
+        elif type(node) is list:
+            current_budget().nodes(len(node))
+            pending.extend((item, depth+1) for item in node)
+
+
+def _decode_envelopes(envelopes, fields, limits):
+    """Decode checked envelopes; each must be in its canonical minimum wire format."""
+    # A single decoder shares symbol metadata and a budget across every operand.
+    document = {"format": "mathforge", "version": max((item["version"] for item in envelopes), default=1),
+                "kind": "object", "data": {"type": "tuple", "items": [item["data"] for item in envelopes]}}
+    values = from_data(document, decode_limits=DecodeLimits(max_bytes=MAX_REQUEST_BYTES,
+                       max_depth=min(128, limits.max_depth), max_nodes=limits.max_nodes),
+                       computation_limits=limits)
+    for field, envelope, value in zip(fields, envelopes, values):
+        current_budget().nodes()
+        if to_data(value) != envelope:
+            raise InputError("Operands must use their canonical minimum wire format", field=field)
+    return values
+
+
 def _compute_arguments(operation, arguments, limits):
     from ..dispatch_v5 import operation_arguments
     contracts = operation_arguments()
@@ -184,43 +231,10 @@ def _compute_arguments(operation, arguments, limits):
     if type(arguments) is not dict or set(arguments) != contracts[operation]:
         raise InputError("arguments must contain exactly the operation's published arguments", field="arguments")
     allowed_tags = operand_tags()
-    envelopes, names = [], []
-    for name, envelope in arguments.items():
-        field = "arguments." + name
-        if (type(envelope) is not dict or set(envelope) != {"format", "version", "kind", "data"}
-                or envelope.get("format") != "mathforge" or envelope.get("kind") != "object"
-                or type(envelope.get("version")) is not int or envelope["version"] not in (1, 2, 3, 4, 5)
-                or type(envelope.get("data")) is not dict):
-            raise InputError("Each argument must be a canonical mathematical object envelope", field=field)
-        pending = [(envelope["data"], 0)]
-        while pending:
-            node, depth = pending.pop()
-            current_budget().nodes()
-            if depth > limits.max_depth:
-                raise InputError("Operand nesting exceeds the depth limit", code="resource_limit_exceeded", field=field)
-            if type(node) is dict:
-                if "type" in node and (type(node["type"]) is not str or node["type"] not in allowed_tags):
-                    raise InputError("Results, workspaces and execution metadata are not operands", field=field)
-                current_budget().nodes(len(node))
-                pending.extend((item, depth+1) for item in node.values())
-            elif type(node) is list:
-                current_budget().nodes(len(node))
-                pending.extend((item, depth+1) for item in node)
-        envelopes.append(envelope)
-        names.append(name)
-    # A single decoder shares symbol metadata and a budget across every operand.
-    document = {"format": "mathforge", "version": max((item["version"] for item in envelopes), default=1),
-                "kind": "object", "data": {"type": "tuple", "items": [item["data"] for item in envelopes]}}
-    values = from_data(document, decode_limits=DecodeLimits(max_bytes=MAX_REQUEST_BYTES,
-                       max_depth=min(128, limits.max_depth), max_nodes=limits.max_nodes),
-                       computation_limits=limits)
-    result = {}
-    for name, envelope, value in zip(names, envelopes, values):
-        current_budget().nodes()
-        if to_data(value) != envelope:
-            raise InputError("Operands must use their canonical minimum wire format", field="arguments."+name)
-        result[name] = value
-    return result
+    fields = ["arguments." + name for name in arguments]
+    for field, envelope in zip(fields, arguments.values()):
+        _envelope(envelope, field, limits, tags=allowed_tags)
+    return dict(zip(arguments, _decode_envelopes(list(arguments.values()), fields, limits)))
 
 
 _FIELDS = {
@@ -257,6 +271,7 @@ _FIELDS = {
     "parse_function": ({"text", "variables"}, {"text", "variables", "symbol_ids", "limits"}),
     "compute": ({"operation", "arguments"}, {"operation", "arguments", "limits"}),
 }
+_AREA_FIELDS = ({"operation", "arguments"}, {"operation", "arguments", "symbol_ids", "limits"})
 
 
 def call_tool(name: str, arguments: dict[str, Any]) -> ToolResponse:
@@ -271,12 +286,17 @@ def call_tool(name: str, arguments: dict[str, Any]) -> ToolResponse:
 
 def _call_tool(name: str, arguments: dict[str, Any]) -> ToolResponse:
     """Execute one curated boundary call, without importing the optional SDK."""
+    if name == CATALOG_TOOL:
+        return _catalog(arguments)
     stage, field, symbols = "input", None, {}
     try:
-        if type(name) is not str or not name.startswith("mathforge.") or name[10:] not in _FIELDS:
+        # The v0.7 table first: a v0.7 tool call never needs the registry.
+        curated = type(name) is str and name.startswith("mathforge.") and name[10:] in _FIELDS
+        area = not curated and type(name) is str and name in area_tools()
+        if not curated and not area:
             raise InputError("Unknown MathForge tool", code="unknown_tool")
         operation = name[10:]
-        required, allowed = _FIELDS[operation]
+        required, allowed = _AREA_FIELDS if area else _FIELDS[operation]
         if type(arguments) is not dict or not required <= set(arguments) or set(arguments) - allowed:
             raise InputError(f"Expected required fields {sorted(required)} and optional fields {sorted(allowed-required)}")
         if len(json.dumps(arguments, ensure_ascii=True, allow_nan=False).encode("utf-8")) > MAX_REQUEST_BYTES:
@@ -284,6 +304,19 @@ def _call_tool(name: str, arguments: dict[str, Any]) -> ToolResponse:
         if operation == "capabilities":
             return ToolResponse(dict(capabilities()))
         limits = _limits(arguments.get("limits"))
+        if area:
+            from .. import operations_v5, operations_v6, registry
+            from .kinds import Context, decode_arguments
+            specs = {spec.name: spec for spec in registry.tool_operations(name)}
+            if type(arguments["operation"]) is not str or arguments["operation"] not in specs:
+                raise InputError("operation must name an operation of this tool", field="operation")
+            spec = specs[arguments["operation"]]
+            context = Context(limits, arguments.get("symbol_ids"))
+            stage, symbols = "decoding", context.symbols  # The table fills while the arguments decode.
+            decoded = decode_arguments(spec, arguments["arguments"], context)
+            stage = "computation"
+            run = operations_v6.run if spec.version == 6 else operations_v5.run
+            return _operation_response(run(spec.name, decoded, limits=limits), symbols)
         if operation == "parse_function":
             from ..functions import parse_function
             names = arguments["variables"]
@@ -291,7 +324,7 @@ def _call_tool(name: str, arguments: dict[str, Any]) -> ToolResponse:
                 raise InputError("variables must be an ordered array of declared names", field="variables")
             symbols = _symbols(names, arguments.get("symbol_ids"))
             text = _text(arguments["text"], "text")
-            if len(text) > 16384:
+            if len(text) > MAX_TEXT_CHARACTERS:
                 raise InputError("Function text exceeds the character limit", code="resource_limit_exceeded", field="text")
             stage, field = "parsing", "text"
             value = parse_function(text, symbols=symbols, variables=tuple(symbols.values()), limits=limits)
@@ -497,3 +530,39 @@ def _operation_response(result, symbols):
     if failed and result.error is not None:
         error = _error(MathForgeError(result.error.message, code=result.error.code), "computation")
     return _response(result, symbols=symbols, error=error, is_error=failed)
+
+
+def _catalog(arguments: Any) -> ToolResponse:
+    """Search the registry operations and the pre-registry ones; errors keep the catalog payload shape.
+
+    A registry operation names the area tool that serves it, even when mathforge.compute also runs it.
+    """
+    from .. import registry
+    from ..registry_v07 import LEGACY_CATALOG
+    from .kinds import encoded_default
+    try:
+        if type(arguments) is not dict or set(arguments) - {"query", "area", "limit"}:
+            raise InputError("Expected optional fields ['area', 'limit', 'query']")
+        query, area = arguments.get("query", ""), arguments.get("area")
+        limit = arguments.get("limit", CATALOG_LIMIT)
+        if type(query) is not str or len(query) > MAX_QUERY_CHARACTERS:
+            raise InputError(f"query must be text of at most {MAX_QUERY_CHARACTERS} characters", field="query")
+        if area is not None and (type(area) is not str or area not in registry.AREAS):
+            raise InputError("area must name one of the registry areas", field="area")
+        if type(limit) is not int or not 1 <= limit <= MAX_CATALOG_LIMIT:
+            raise InputError(f"limit must be an integer from 1 through {MAX_CATALOG_LIMIT}", field="limit")
+        tools = {served: tool for tool, areas in registry.MCP_TOOLS.items() for served in areas}
+        entries = [{"name": spec.name, "area": spec.area, "tool": tools[spec.area] if spec.mcp else "",
+                    "summary": spec.summary,
+                    "arguments": [{"name": argument.name, "kind": argument.kind, "required": argument.default is None,
+                                   "default": encoded_default(argument)} for argument in spec.arguments],
+                    "returns": spec.returns} for spec in registry.specs().values()]
+        entries += [{"name": entry.name, "area": entry.area, "tool": entry.tool, "summary": entry.summary,
+                     "arguments": [], "returns": ""} for entry in LEGACY_CATALOG]
+        needle = query.casefold()
+        found = sorted((entry for entry in entries if area in (None, entry["area"])
+                        and any(needle in entry[key].casefold() for key in ("name", "summary", "area"))),
+                       key=lambda entry: (entry["area"], entry["name"]))
+        return ToolResponse({"api_version": 1, "operations": found[:limit], "error": None})
+    except (MathForgeError, TypeError, ValueError, ZeroDivisionError, RecursionError, OverflowError) as exc:
+        return ToolResponse({"api_version": 1, "operations": [], "error": _error(exc, "input")}, True)

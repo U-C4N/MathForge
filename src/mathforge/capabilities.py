@@ -1,4 +1,8 @@
-"""Dependency-free, machine-readable scope of the curated v0.7 interface."""
+"""Dependency-free, machine-readable scope of the curated v0.7 interface, the area tools and the catalog.
+
+The thirty v0.7 tools and the v0.7 operation entries are frozen. The area tools, the v6 operation entries
+and the scope texts derive from the operation registry.
+"""
 
 from dataclasses import asdict
 from typing import TypedDict
@@ -107,44 +111,54 @@ _OPERATIONS = (
 )
 
 
-_V7_SCOPES = {
-    "number_theory": "exact integers; deterministic bounded primality and factorization; modular and CRT certificates",
-    "combinatorics": "nonnegative integer indices; exact bounded counts and recurrences",
-    "complex_numbers": "complex scalars with real algebraic components; exact arithmetic and quadratic roots; no general complex root isolation",
-    "probability": "finite rational outcome distributions; exact weights, events, conditioning and moments",
-    "statistics": "nonempty finite rational samples; exact descriptive statistics; nonnegative ddof smaller than sample size",
-    "linear_extensions": "rational matrices; complete subspace bases, singular-safe square PLU and full affine least-squares minimizer families",
-    "functions": "exact real elementary expressions with preserved explicit domain predicates",
-    "function_calculus": "domain-aware real elementary calculus within the documented rule catalogue; unsupported integrals/limits remain explicitly unevaluated",
-    "rational_integration": "rational functions over Q; exact Hermite reduction and logarithmic root sums; real-domain component restrictions retained",
-    "function_integration": "proper finite real integrals; independently checked primitives and whole-interval domain certificates; unsupported or improper requests remain unevaluated",
-}
+CATALOG_TOOL = "mathforge.catalog"
+_CATALOG_DESCRIPTION = ("Search operations by name, summary or area. Each entry lists its argument kinds and defaults "
+                        "and names the tool that runs it: registry operations point to their typed area tool, also "
+                        "those that mathforge.compute accepts.")
+
+
+def area_tools() -> list[str]:
+    """The MCP area tools of registry.MCP_TOOLS that serve at least one operation, sorted by name."""
+    from . import registry
+    return sorted(tool for tool in registry.MCP_TOOLS if registry.tool_operations(tool))
+
+
+def _area_tool(tool: str) -> ToolCapability:
+    from . import registry
+    areas = registry.MCP_TOOLS[tool]
+    named = areas[0] + " area" if len(areas) == 1 else ", ".join(areas[:-1]) + " and " + areas[-1] + " areas"
+    return dict(name=tool, sdk=", ".join(areas),
+                description=f"Run an operation of the {named} by name, with typed arguments: friendly JSON or "
+                            "canonical object envelopes. Deferred requests make no conclusion; mathforge.catalog "
+                            "lists the operations.")
 
 
 def capabilities() -> Capabilities:
     """Return fresh metadata; representability is not a promise of solver support."""
-    from . import __version__
-    from .dispatch_v5 import modules
+    from . import __version__, registry
     exposed = {name for name, _, _ in _TOOLS}
-    extra_operations = []
-    for module in modules():
-        scope = _V7_SCOPES[module.__name__.rsplit(".", 1)[-1]]
-        for name in getattr(module, "ARGUMENTS", {}):
-            parameters = ", ".join(sorted(module.ARGUMENTS[name]))
-            extra_operations.append(dict(name=name, sdk="taylor" if name == "function_taylor" else name, mcp_tool="mathforge.compute",
-                                         scope=scope+"; arguments: "+parameters))
+    tools = {served: tool for tool, areas in registry.MCP_TOOLS.items() for served in areas}
+    registered: dict[int, list[OperationCapability]] = {5: [], 6: []}
+    for spec in registry.specs().values():  # The v0.7 operations first, in their published order.
+        parameters = ", ".join(sorted(argument.name for argument in spec.arguments))
+        # mathforge.compute keeps the v0.7 operations; a later operation runs only through its area tool.
+        tool = "mathforge.compute" if spec.version == 5 else (tools[spec.area] if spec.mcp else None)
+        registered[spec.version].append(dict(name=spec.name, sdk=spec.public_name, mcp_tool=tool,
+                                             scope=spec.scope + "; arguments: " + parameters))
 
     return {
         "api_version": 1,
         "package_version": __version__,
         "transports": ["stdio"],
         "tools": [dict(name="mathforge." + name, sdk=sdk, description=description)
-                  for name, sdk, description in _TOOLS],
+                  for name, sdk, description in _TOOLS] + [_area_tool(tool) for tool in area_tools()] + [
+                      dict(name=CATALOG_TOOL, sdk="registry.specs", description=_CATALOG_DESCRIPTION)],
         "operations": [dict(name=name, sdk=name if name == "verify" else "operations." + name,
                             mcp_tool="mathforge." + name if name in exposed else None, scope=scope)
-                       for name, scope in _OPERATIONS] + extra_operations + [
+                       for name, scope in _OPERATIONS] + registered[5] + [
                            dict(name="parse_function", sdk="parse_function", mcp_tool="mathforge.parse_function",
-                                scope="bounded elementary text; declared ordered real axes; exact decimal literals; explicit domain predicates")],
+                                scope="bounded elementary text; declared ordered real axes; exact decimal literals; explicit domain predicates")
+                       ] + registered[6],
         "input": {
             "expressions": "bounded MathForge text grammar; explicit declared symbols",
             "domains": ["unconstrained reals", "explicit real function domains", "real algebraic complex components", "integers", "finite rational distributions"],

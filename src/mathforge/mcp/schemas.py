@@ -1,8 +1,11 @@
-"""Small explicit JSON schemas for the curated tools (no optional dependency)."""
+"""Small explicit JSON schemas for the curated tools, the area tools and the catalog (no optional dependency)."""
 
 from dataclasses import asdict
+from ..capabilities import CATALOG_TOOL, area_tools
 from ..limits import ComputationLimits
-from .boundary import MAX_EQUATIONS, MAX_SCALAR_CHARACTERS, MAX_VARIABLES, operand_tags
+from ..registry import AREAS, KIND_NAMES, tool_operations
+from .boundary import (CATALOG_LIMIT, MAX_CATALOG_LIMIT, MAX_EQUATIONS, MAX_QUERY_CHARACTERS, MAX_SCALAR_CHARACTERS,
+                       MAX_TEXT_CHARACTERS, MAX_VARIABLES, operand_tags)
 
 
 def _object(properties, required=()):
@@ -12,7 +15,7 @@ def _object(properties, required=()):
 
 def input_schemas() -> dict[str, dict]:
     from ..dispatch_v5 import operation_arguments
-    text = {"type": "string", "maxLength": 16384}
+    text = {"type": "string", "maxLength": MAX_TEXT_CHARACTERS}
     name = {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$", "maxLength": 128, "not": {"const": "sqrt"}}
     rational = {"type": "string", "pattern": "^[+-]?[0-9]+(?:/[+-]?[0-9]+)?$",
                 "maxLength": MAX_SCALAR_CHARACTERS}
@@ -40,7 +43,7 @@ def input_schemas() -> dict[str, dict]:
         "data": {"type": "object", "required": ["type"],
                  "properties": {"type": {"enum": sorted(operand_tags())}}}},
         ["format", "version", "kind", "data"])
-    return {
+    schemas = {
         "mathforge.capabilities": _object({}),
         "mathforge.solve": _object(dict(common, problem=text), ["problem"]),
         "mathforge.solve_system": _object({
@@ -94,18 +97,57 @@ def input_schemas() -> dict[str, dict]:
                           "description": "Exactly the selected operation's named arguments, each a canonical object envelope. Include explicit defaults."},
             "limits": optional_limits}, ["operation", "arguments"]),
     }
+    area_ids = dict(ids, description="Optional name-to-UUID table. Each name the arguments use resolves through it; "
+                                     "other names get fresh identities. The response lists the symbols used.")
+    for tool in area_tools():
+        schemas[tool] = _area_schema(tool, area_ids, optional_limits)
+    schemas[CATALOG_TOOL] = _object({
+        "query": {"type": "string", "maxLength": MAX_QUERY_CHARACTERS,
+                  "description": "Case-insensitive text to find in operation names, summaries or areas."},
+        "area": {"type": "string", "enum": list(AREAS)},
+        "limit": {"type": "integer", "minimum": 1, "maximum": MAX_CATALOG_LIMIT, "default": CATALOG_LIMIT}})
+    return schemas
+
+
+def _area_schema(tool, ids, limits):
+    """One operation of the tool's areas; each operation binds its own typed arguments schema."""
+    from .kinds import arguments_schema
+    operations = tool_operations(tool)
+    schema = _object({"operation": {"type": "string", "enum": [spec.name for spec in operations]},
+                      "arguments": {"type": "object", "description": "The operation's named arguments: friendly "
+                                    "JSON or canonical object envelopes. Arguments with a default may be omitted."},
+                      "symbol_ids": ids, "limits": limits}, ["operation", "arguments"])
+    # Each if requires its discriminator, so a request without an operation never runs every branch.
+    schema["allOf"] = [{"if": {"properties": {"operation": {"const": spec.name}}, "required": ["operation"]},
+                        "then": {"properties": {"arguments": arguments_schema(spec)}}} for spec in operations]
+    return schema
+
+
+def _error_schema() -> dict:
+    nullable_text = {"type": ["string", "null"]}
+    return _object({"stage": {"type": "string"}, "code": {"type": "string"}, "message": {"type": "string"},
+                    "field": nullable_text, "start": {"type": ["integer", "null"]},
+                    "end": {"type": ["integer", "null"]}}, ["stage", "code", "message", "field", "start", "end"])
 
 
 def output_schema() -> dict:
     nullable_text = {"type": ["string", "null"]}
-    error = _object({"stage": {"type": "string"}, "code": {"type": "string"}, "message": {"type": "string"},
-                     "field": nullable_text, "start": {"type": ["integer", "null"]},
-                     "end": {"type": ["integer", "null"]}}, ["stage", "code", "message", "field", "start", "end"])
     return _object({"api_version": {"const": 1}, "result": {"type": ["object", "null"]},
                     "text": {"type": "string"}, "latex": nullable_text,
                     "symbols": {"type": "array", "items": _object({"name": {"type": "string"}, "uid": {"type": "string"}}, ["name", "uid"])},
-                    "error": {"anyOf": [error, {"type": "null"}]}},
+                    "error": {"anyOf": [_error_schema(), {"type": "null"}]}},
                    ["api_version", "result", "text", "latex", "symbols", "error"])
+
+
+def catalog_schema() -> dict:
+    text = {"type": "string"}
+    argument = _object({"name": text, "kind": {"type": "string", "enum": list(KIND_NAMES)},
+                        "required": {"type": "boolean"}, "default": {}}, ["name", "kind", "required", "default"])
+    entry = _object({"name": text, "area": {"type": "string", "enum": list(AREAS)}, "tool": text, "summary": text,
+                     "arguments": {"type": "array", "items": argument}, "returns": text},
+                    ["name", "area", "tool", "summary", "arguments", "returns"])
+    return _object({"api_version": {"const": 1}, "operations": {"type": "array", "items": entry},
+                    "error": {"anyOf": [_error_schema(), {"type": "null"}]}}, ["api_version", "operations", "error"])
 
 
 def capabilities_schema() -> dict:

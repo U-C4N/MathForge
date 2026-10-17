@@ -5,7 +5,8 @@ import unittest
 from unittest.mock import patch
 
 import mathforge as mf
-from mathforge.mcp.boundary import MAX_EQUATIONS, MAX_VARIABLES, call_tool
+from mathforge import registry
+from mathforge.mcp.boundary import _FIELDS, MAX_EQUATIONS, MAX_VARIABLES, call_tool
 from mathforge.mcp.schemas import input_schemas
 
 
@@ -157,7 +158,10 @@ class MultivariateBoundaryTests(unittest.TestCase):
 
     def test_capabilities_and_schemas_publish_bounded_polynomial_scope(self):
         capabilities = mf.capabilities()
-        self.assertEqual(len(capabilities["tools"]), 30)
+        # The 30 v0.7 tools lead, unchanged; the area tools with operations and the catalog follow.
+        names = [item["name"] for item in capabilities["tools"]]
+        areas = sorted(tool for tool in registry.MCP_TOOLS if registry.tool_operations(tool))
+        self.assertEqual(names, ["mathforge." + name for name in _FIELDS] + areas + ["mathforge.catalog"])
         operations = {item["name"]: item for item in capabilities["operations"]}
         schemas = input_schemas()
         for name in TOOLS:

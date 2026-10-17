@@ -1,4 +1,5 @@
-"""Independent checkers cannot reach producer code, directly or through imports of trusted code."""
+"""Independent checkers cannot reach producer code through any chain of imports that starts in mathforge.certify,
+nor import modules dynamically."""
 
 import ast
 import contextlib
@@ -6,12 +7,31 @@ import importlib.util
 import io
 from pathlib import Path
 import tempfile
+import tokenize
 import unittest
 
 import mathforge
 
 REPOSITORY = Path(__file__).resolve().parents[2]
 LAYER_PACKAGES = ("trusted", "kernels", "certify", "areas")
+
+
+def dynamic_imports(source):
+    """The ways around the static import check that some source code uses: importlib, __import__, sys.modules.
+
+    The code is read token by token, so comments and strings do not count.
+    """
+    found, statement = set(), []
+    for token in tokenize.generate_tokens(io.StringIO(source).readline):
+        if token.type in (tokenize.NEWLINE, tokenize.ENDMARKER):
+            found.update(name for name in ("importlib", "__import__") if name in statement)
+            if any(statement[index:index + 3] == ["sys", ".", "modules"] for index in range(len(statement))) or (
+                    statement[:3] == ["from", "sys", "import"] and "modules" in statement):
+                found.add("sys.modules")
+            statement = []
+        elif token.type in (tokenize.NAME, tokenize.OP):
+            statement.append(token.string)
+    return found
 
 
 def load_tool(name):
@@ -46,6 +66,28 @@ class LayeringTests(unittest.TestCase):
 
     def test_repository_has_no_layering_violations(self):
         self.assertEqual(self.tool.violations(repository_package()), [])
+
+    def test_checkers_import_nothing_dynamically(self):
+        """check_layering follows import statements only: no checker names importlib, __import__ or sys.modules."""
+        paths = sorted((repository_package() / "certify").rglob("*.py"))
+        self.assertTrue(paths)
+        for path in paths:
+            with self.subTest(path=path.relative_to(repository_package()).as_posix()):
+                self.assertEqual(dynamic_imports(path.read_text(encoding="utf-8")), set())
+
+    def test_dynamic_imports_are_found_in_code_only(self):
+        sources = {
+            "import importlib\n": {"importlib"},
+            "from importlib import import_module\n": {"importlib"},
+            "module = __import__('mathforge.kernels')\n": {"__import__"},
+            "import sys\nproducer = sys.modules['mathforge.kernels']\n": {"sys.modules"},
+            "from sys import path, modules\n": {"sys.modules"},
+            "x = (importlib\n     .import_module('m'))\n": {"importlib"},
+            "# importlib and sys.modules in a comment\n'''__import__ in a docstring'''\nmodules = 1\n": set(),
+        }
+        for source, expected in sources.items():
+            with self.subTest(source=source):
+                self.assertEqual(dynamic_imports(source), expected)
 
     def test_layer_packages_exist_and_are_documented(self):
         # A renamed or deleted layer package would make the check above pass vacuously.

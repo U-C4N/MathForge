@@ -27,7 +27,6 @@ import argparse
 import ast
 import builtins
 from collections.abc import Iterable, Mapping, Sequence
-import keyword
 from pathlib import Path
 import sys
 import textwrap
@@ -170,11 +169,27 @@ def _check_unique(label: str, names: Iterable[str]) -> None:
 
 
 def _check_spec(spec: OperationSpec) -> None:
-    for name in (spec.name, spec.public_name, *(argument.name for argument in spec.arguments)):
-        if not name.isidentifier() or keyword.iskeyword(name):
-            raise ValueError(f"Operation {spec.name!r}: {name!r} is not a Python identifier")
+    """The registry build has checked the names and defaults of every spec; the run function is the generator's."""
     if spec.version not in RUNNERS:
         raise ValueError(f"Operation {spec.name!r}: no run function for result format version {spec.version}")
+
+
+def _check_wrapper_names(label: str, text: str) -> None:
+    """Fail when a generated wrapper uses a name, besides its own arguments, that registry.WRAPPER_NAMES lacks.
+
+    The registry build keeps arguments and public names out of WRAPPER_NAMES, so that no operation can shadow a
+    name the wrappers rely on; a wrapper that starts using another name needs it reserved there first.
+    """
+    for function in ast.parse(text).body:
+        if isinstance(function, ast.FunctionDef):
+            own = {argument.arg for argument in function.args.args}
+            used = {argument.arg for argument in function.args.kwonlyargs}
+            used.update(node.id for statement in function.body for node in ast.walk(statement)
+                        if isinstance(node, ast.Name))
+            stray = sorted(used - own - set(registry.WRAPPER_NAMES))
+            if stray:
+                raise ValueError(f"Generated {label}: {function.name} uses {', '.join(stray)}, which "
+                                 "registry.WRAPPER_NAMES must reserve")
 
 
 def _parameters(spec: OperationSpec) -> str:
@@ -195,7 +210,8 @@ def _import_blocks(names: _Names, specs: Sequence[OperationSpec], always: Iterab
     resolves those wrappers. Names that only later versions use are imported under TYPE_CHECKING: their record
     classes live in family modules, which a runtime import would load during ``import mathforge``.
     """
-    runtime, checking = set(always), set()
+    runtime = set(always)
+    checking: set[str] = set()
     for spec in specs:
         (runtime if spec.version == 5 else checking).update(names.of(spec))
     checking -= runtime
@@ -280,6 +296,8 @@ def render_files(src_root: Path) -> dict[Path, str]:
             compile(text, label, "exec", dont_inherit=True)
         except SyntaxError as error:
             raise ValueError(f"Generated {label} is not valid Python: {error}") from None
+        if path.parent.name == "_generated":
+            _check_wrapper_names(label, text)
     return files
 
 

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import importlib
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 import threading
@@ -19,17 +20,24 @@ from mathforge.errors import UnsupportedOperation
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "v8"
 FAMILY = "mathforge._registry_test_family"
-CHECKER = "mathforge._registry_test_checker"
+CHECKER = "mathforge.certify._registry_test_checker"  # A production family's checker lives below mathforge.certify.
+OUTSIDE = "mathforge._registry_test_outside_checker"  # A checker path outside mathforge.certify.
 
 
 def published(name):
     return json.loads((FIXTURES / name).read_text(encoding="utf-8"))
 
 
-def demo_spec(name="demo_triple", area="discrete", **options):
+def demo_spec(name="demo_triple", area="discrete", arguments=(registry.Argument("n", "int", None, "int"),),
+              **options):
     """A throwaway v6 spec; options override sdk/mcp."""
-    return registry.OperationSpec(name, area, (registry.Argument("n", "int", None, "int"),), "int",
-                                  "Triple an exact integer.", "test only", version=6, **options)
+    return registry.OperationSpec(name, area, arguments, "int", "Triple an exact integer.", "test only", version=6,
+                                  **options)
+
+
+def record(name):
+    """A record class of the throwaway family, with the given class name."""
+    return dataclass(frozen=True)(type(name, (), {"__module__": FAMILY, "__annotations__": {"n": int}}))
 
 
 def run_probe(code):
@@ -100,14 +108,24 @@ class _Stray:  # A record class outside every family module.
 
 
 class RegistryTests(unittest.TestCase):
-    def install_family(self, *specs, records=None):
-        """Register a throwaway v6 family (string CHECKER) for the rest of this test; the cache starts cold."""
-        family, checker = types.ModuleType(FAMILY), types.ModuleType(CHECKER)
-        family.SPECS, family.TYPES, family.CHECKER = specs, dict(records or {}), CHECKER
-        for module in (family, checker):
+    def modules(self, *names):
+        """Fresh empty modules, each its own sys.modules entry for the rest of this test."""
+        created = tuple(types.ModuleType(name) for name in names)
+        for module in created:
             sys.modules[module.__name__] = module
             self.addCleanup(sys.modules.pop, module.__name__, None)
-        patcher = patch.object(registry, "V6_FAMILIES", (FAMILY,))
+        return created
+
+    def install_family(self, *specs, records=None, name=FAMILY):
+        """Register a throwaway production v6 family for the rest of this test; the cache starts cold.
+
+        It replaces the production families, as an entry of V6_FAMILIES, and names its checker by a path below
+        mathforge.certify, as a production family must.
+        """
+        family, checker = self.modules(name, CHECKER)
+        family.SPECS, family.TYPES, family.CHECKER = specs, dict(records or {}), CHECKER
+        family.produce = lambda operation, args: (3 * args["n"], ())
+        patcher = patch.object(registry, "V6_FAMILIES", (name,))
         patcher.start()
         self.addCleanup(patcher.stop)
         self.addCleanup(registry._clear_caches)
@@ -340,6 +358,111 @@ class RegistryTests(unittest.TestCase):
         family.RENDER = {_Box: "box {n}"}
         with self.assertRaisesRegex(RuntimeError, f"^RENDER values must be callable: {FAMILY}$"):
             registry.specs()
+
+    def test_production_checkers_live_below_certify(self):
+        """tools/check_layering.py guards mathforge.certify only, so a production checker must be a path there."""
+        (outside,) = self.modules(OUTSIDE)
+        family, checker = self.install_family(demo_spec())
+        self.assertIs(registry.checker("demo_triple"), checker)
+        message = f"^v6 family {FAMILY} must name its CHECKER by an import path below mathforge.certify, other "
+        for value in (OUTSIDE, outside, checker, FAMILY, "mathforge.certifying.checker", None):
+            with self.subTest(checker=value):
+                family.CHECKER = value
+                registry._clear_caches()
+                with self.assertRaisesRegex(RuntimeError, message):
+                    registry.specs()
+
+    def test_production_checkers_are_not_their_own_family(self):
+        name = "mathforge.certify._registry_test_family"  # A family module inside the checker package.
+        family, _ = self.install_family(demo_spec(), name=name)
+        family.CHECKER = name
+        with self.assertRaisesRegex(RuntimeError, f"^v6 family {name} must name its CHECKER .* own module: "):
+            registry.specs()
+
+    def test_testing_families_may_give_any_checker(self):
+        """Only _testing_families may name a checker by a module object or by a path outside mathforge.certify."""
+        family, outside = self.modules(FAMILY, OUTSIDE)
+        family.SPECS, family.TYPES, family.produce = (demo_spec(),), {}, lambda operation, args: (3 * args["n"], ())
+        for value, expected in ((outside, outside), (OUTSIDE, outside)):
+            with self.subTest(checker=value), registry._testing_families(family):
+                family.CHECKER = value
+                self.assertIs(registry.checker("demo_triple"), expected)
+        self.assertNotIn("demo_triple", registry.specs())
+
+    def test_build_rejects_v6_families_missing_part_of_the_contract(self):
+        self.assertEqual(registry.V6_CONTRACT, ("SPECS", "TYPES", "CHECKER", "produce"))
+        for name in registry.V6_CONTRACT:
+            with self.subTest(missing=name):
+                family, _ = self.install_family(demo_spec())
+                delattr(family, name)
+                with self.assertRaisesRegex(RuntimeError, f"^v6 family {FAMILY} does not define {name}$"):
+                    registry.specs()
+
+    def test_build_rejects_names_of_mcp_schema_definitions(self):
+        """An area tool's $defs hold each operation under its name, beside the kinds and the envelope."""
+        self.assertEqual(registry.DEFINITION_NAMES, (*registry.KIND_NAMES, "envelope"))
+        for name in ("rational", "envelope"):
+            with self.subTest(operation=name):
+                self.install_family(demo_spec(name))
+                with self.assertRaisesRegex(RuntimeError, f"^Operation name collides with an MCP schema definition: "
+                                                          f"{name}$"):
+                    registry.specs()
+            with self.subTest(public=name):
+                self.install_family(demo_spec(sdk=name))
+                with self.assertRaisesRegex(RuntimeError, f"^Public name collides with an MCP schema definition: "
+                                                          f"{name}$"):
+                    registry.specs()
+
+    def test_build_rejects_names_the_generated_wrappers_use(self):
+        self.assertEqual(registry.WRAPPER_NAMES, ("limits", "dict", "run", "run_v6", "structured"))
+        for name in registry.WRAPPER_NAMES:
+            with self.subTest(argument=name):
+                self.install_family(demo_spec(arguments=(registry.Argument(name, "int", None, "int"),)))
+                with self.assertRaisesRegex(RuntimeError, "^Argument name of demo_triple collides with a name the "
+                                                          f"generated wrappers use: {name}$"):
+                    registry.specs()
+            with self.subTest(public=name):
+                self.install_family(demo_spec(sdk=name))
+                with self.assertRaisesRegex(RuntimeError, "^Public name collides with a name the generated wrappers "
+                                                          f"use: {name}$"):
+                    registry.specs()
+
+    def test_build_rejects_names_that_are_not_identifiers(self):
+        for name in ("2n", "class", "n-1", ""):
+            with self.subTest(argument=name):
+                self.install_family(demo_spec(arguments=(registry.Argument(name, "int", None, "int"),)))
+                with self.assertRaisesRegex(RuntimeError, "^Argument name of demo_triple is not a Python identifier: "
+                                                          f"{re.escape(repr(name))}$"):
+                    registry.specs()
+        for label, spec in (("Operation name", demo_spec("demo-triple")), ("Public name", demo_spec(sdk="lambda"))):
+            with self.subTest(label=label):
+                self.install_family(spec)
+                with self.assertRaisesRegex(RuntimeError, f"^{label} is not a Python identifier: "):
+                    registry.specs()
+
+    def test_build_accepts_only_literal_defaults(self):
+        """A wrapper copies the default's text into its signature; the MCP tools evaluate it with literal_eval."""
+        for default in ("x", "Rational(1, 2)", "1e999", "[1, 2", "", "...", "1 if True else 2"):
+            with self.subTest(default=default):
+                self.install_family(demo_spec(arguments=(registry.Argument("n", "int", default, "int"),)))
+                with self.assertRaisesRegex(RuntimeError, "^Default of argument n of demo_triple is not a Python "
+                                                          f"literal: {re.escape(repr(default))}$"):
+                    registry.specs()
+        for default in ("0", "-1", "'both'", "(1, 2)", "None", "True"):
+            with self.subTest(default=default):
+                self.install_family(demo_spec(arguments=(registry.Argument("n", "int", default, "int"),)))
+                self.assertEqual(registry.spec("demo_triple").arguments[0].default, default)
+
+    def test_build_rejects_record_classes_that_share_a_name(self):
+        """The generator and the area modules find record classes by name, across v5 and v6."""
+        for records, first in (({"demo_crt": record("CRTResult")}, "mathforge.number_theory"),
+                               ({"demo_a": record("DemoBox"), "demo_b": record("DemoBox")}, FAMILY)):
+            name = next(iter(records.values())).__name__
+            with self.subTest(name=name):
+                self.install_family(demo_spec(), records=records)
+                with self.assertRaisesRegex(RuntimeError, f"^Two record classes are named {name}: in {first} and "
+                                                          f"{FAMILY}$"):
+                    registry.specs()
 
     def test_concurrent_first_build_shares_one_table(self):
         """Review Focus 5: threads racing on a cold registry all receive the same tables."""

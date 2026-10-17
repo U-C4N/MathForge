@@ -13,11 +13,13 @@ memoized. Family modules must not call into the registry at import time.
 
 from __future__ import annotations
 
+import ast
 from collections.abc import Callable, Iterator, Mapping
 import contextlib
 from dataclasses import dataclass
 import functools
 import importlib
+import keyword
 import sys
 import threading
 from types import MappingProxyType, ModuleType
@@ -73,6 +75,14 @@ KIND_NAMES = ("int", "int_list", "int_pairs", "rational", "rational_list", "scal
               "distribution", "function", "function_list", "rational_function", "symbol", "symbols",
               "bindings", "point", "side", "object")
 
+# Names that the build keeps operations and arguments from taking. The $defs of an MCP area-tool schema hold
+# each operation's arguments under the operation's name, beside the argument kinds and the canonical envelope.
+DEFINITION_NAMES = (*KIND_NAMES, "envelope")
+# The names that a wrapper written by tools/generate_api.py uses besides its own arguments: its keyword-only
+# limits, the dict builtin, the run functions and the structured module. An argument or a public name equal
+# to one of them would shadow it; the generator checks that its wrappers use no other name.
+WRAPPER_NAMES = ("limits", "dict", "run", "run_v6", "structured")
+
 # v0.7 producer modules. Their ARGUMENTS must match the v0.7 specs; their TYPES are the v5 records.
 V5_FAMILIES = tuple("mathforge." + name for name in (
     "number_theory", "combinatorics", "complex_numbers", "probability", "statistics",
@@ -82,9 +92,15 @@ V5_FAMILIES = tuple("mathforge." + name for name in (
 # function_calculus.TYPES re-exports.
 V5_RECORD_MODULES = V5_FAMILIES + ("mathforge.function_limits",)
 
-# v6 family modules; each defines SPECS, TYPES, CHECKER (a module or its import path) and produce(), and
-# optionally RENDER: {record class of its TYPES: render(value, renderer, child) -> str}, checked by the build.
+# v6 family modules; each defines SPECS, TYPES, CHECKER (the import path of its checker below CHECKER_PACKAGE)
+# and produce(), and optionally RENDER: {record class of its TYPES: render(value, renderer, child) -> str}. The
+# build checks all of them.
 V6_FAMILIES: tuple[str, ...] = ("mathforge.areas.ntheory.continued_fraction",)
+V6_CONTRACT = ("SPECS", "TYPES", "CHECKER", "produce")
+# tools/check_layering.py keeps every module of this package away from producer code.
+CHECKER_PACKAGE = "mathforge.certify"
+# The V6_FAMILIES entries that _testing_families added: only they may give CHECKER as a module or another path.
+_TESTING_FAMILIES: frozenset[str] = frozenset()
 
 # The generic deferral records (Reason, Unevaluated): their TYPES lead record_types(6).
 DEFERRED_MODULE = "mathforge.deferred"
@@ -124,8 +140,7 @@ def _tables() -> _Tables:
     from .registry_v07 import LEGACY_CATALOG, V07_SPECS
     v5 = tuple(importlib.import_module(name) for name in V5_FAMILIES)
     v6 = tuple(importlib.import_module(name) for name in V6_FAMILIES)
-    checkers = tuple(importlib.import_module(module.CHECKER) if isinstance(module.CHECKER, str)
-                     else module.CHECKER for module in v6)
+    checkers = tuple(_checker(module) for module in v6)
     deferred = importlib.import_module(DEFERRED_MODULE)
     legacy = frozenset(entry.name for entry in LEGACY_CATALOG)
     with _LOCK:
@@ -149,20 +164,39 @@ def _testing_families(*modules: ModuleType) -> Iterator[None]:
 
     The modules join V6_FAMILIES, the one list that both record_module() and the table build read, so
     the two always agree. The build imports families by name, so each module must be its own sys.modules
-    entry. The caches are cleared on entry and on exit; V6_FAMILIES is restored even when the block raises.
+    entry. Unlike a production family, a testing family may give CHECKER as a module object or as any import
+    path. The caches are cleared on entry and on exit; V6_FAMILIES is restored even when the block raises.
     """
-    global V6_FAMILIES
+    global V6_FAMILIES, _TESTING_FAMILIES
     stray = [module.__name__ for module in modules if sys.modules.get(module.__name__) is not module]
     if stray:
         raise ValueError("A testing family must be an imported module: " + ", ".join(stray))
-    previous = V6_FAMILIES
-    V6_FAMILIES = previous + tuple(module.__name__ for module in modules)
+    previous, testing = V6_FAMILIES, _TESTING_FAMILIES
+    names = tuple(module.__name__ for module in modules)
+    V6_FAMILIES, _TESTING_FAMILIES = previous + names, testing | frozenset(names)
     try:
         _clear_caches()
         yield
     finally:
-        V6_FAMILIES = previous
+        V6_FAMILIES, _TESTING_FAMILIES = previous, testing
         _clear_caches()
+
+
+def _checker(family: ModuleType) -> ModuleType:
+    """The checker module of a v6 family, imported once the family is known to define the whole contract.
+
+    A production family names its checker by an import path below CHECKER_PACKAGE, never its own module, so
+    that tools/check_layering.py covers the checker and the checker is not the code it verifies.
+    """
+    missing = [name for name in V6_CONTRACT if not hasattr(family, name)]
+    if missing:
+        raise RuntimeError(f"v6 family {family.__name__} does not define {', '.join(missing)}")
+    checker = family.CHECKER
+    if family.__name__ not in _TESTING_FAMILIES and (
+            type(checker) is not str or not checker.startswith(CHECKER_PACKAGE + ".") or checker == family.__name__):
+        raise RuntimeError(f"v6 family {family.__name__} must name its CHECKER by an import path below "
+                           f"{CHECKER_PACKAGE}, other than its own module: {checker!r}")
+    return importlib.import_module(checker) if isinstance(checker, str) else checker
 
 
 def _record_types(modules: tuple[ModuleType, ...], version: int) -> dict[str, type]:
@@ -200,6 +234,45 @@ def _renderers(families: tuple[ModuleType, ...],
     return renderers
 
 
+def _identifier(name: object) -> bool:
+    return type(name) is str and name.isidentifier() and not keyword.iskeyword(name)
+
+
+def _literal(text: object) -> bool:
+    """Whether a default's source text is a Python literal whose value repr() writes back as an equal literal.
+
+    The generated wrappers copy the text into their signatures and the MCP tools evaluate it with
+    ast.literal_eval, so anything else would break ``import mathforge`` or the server's start.
+    """
+    if type(text) is not str:
+        return False
+    try:
+        value = ast.literal_eval(text)
+        return bool(ast.literal_eval(repr(value)) == value)
+    except (ValueError, TypeError, SyntaxError, MemoryError, RecursionError):
+        return False
+
+
+def _check_names(spec: OperationSpec) -> None:
+    """Reject the names and defaults that the generated wrappers or the MCP area-tool schemas cannot carry."""
+    for label, name in (("Operation name", spec.name), ("Public name", spec.public_name)):
+        if not _identifier(name):
+            raise RuntimeError(f"{label} is not a Python identifier: {name!r}")
+        if name in DEFINITION_NAMES:
+            raise RuntimeError(f"{label} collides with an MCP schema definition: {name}")
+    if spec.public_name in WRAPPER_NAMES:  # A wrapper named dict, say, would shadow the builtin in every wrapper.
+        raise RuntimeError("Public name collides with a name the generated wrappers use: " + spec.public_name)
+    for argument in spec.arguments:
+        if not _identifier(argument.name):
+            raise RuntimeError(f"Argument name of {spec.name} is not a Python identifier: {argument.name!r}")
+        if argument.name in WRAPPER_NAMES:
+            raise RuntimeError(f"Argument name of {spec.name} collides with a name the generated wrappers use: "
+                               f"{argument.name}")
+        if argument.default is not None and not _literal(argument.default):
+            raise RuntimeError(f"Default of argument {argument.name} of {spec.name} is not a Python literal: "
+                               f"{argument.default!r}")
+
+
 def _assemble(v07_specs: tuple[OperationSpec, ...], legacy: frozenset[str], v5: tuple[ModuleType, ...],
               v6: tuple[ModuleType, ...], v6_checkers: tuple[ModuleType, ...], deferred: ModuleType) -> _Tables:
     specs: dict[str, OperationSpec] = {}
@@ -219,6 +292,7 @@ def _assemble(v07_specs: tuple[OperationSpec, ...], legacy: frozenset[str], v5: 
         if (spec.version != version or spec.area not in AREAS
                 or any(argument.kind not in KIND_NAMES for argument in spec.arguments)):
             raise RuntimeError("Malformed operation spec: " + spec.name)
+        _check_names(spec)
         specs[spec.name], families[spec.name], checkers[spec.name] = spec, family, checker
         public.add(spec.public_name)
 
@@ -245,6 +319,11 @@ def _assemble(v07_specs: tuple[OperationSpec, ...], legacy: frozenset[str], v5: 
             argument.name for argument in spec.arguments)
     # A family tag equal to a deferral tag ("reason", "unevaluated") is a duplicate v6 type.
     types = {5: _record_types(v5, 5), 6: _record_types((deferred, *v6), 6)}
+    named: dict[str, type] = {}  # The generator and the area modules find record classes by their names.
+    for cls in (cls for table in types.values() for cls in table.values()):
+        if named.setdefault(cls.__name__, cls) is not cls:
+            raise RuntimeError(f"Two record classes are named {cls.__name__}: in {named[cls.__name__].__module__} "
+                               f"and {cls.__module__}")
     renderers = _renderers(v6, types[6])
     areas = {area: tuple(sorted((spec for spec in specs.values() if spec.area == area),
                                 key=lambda spec: spec.public_name)) for area in AREAS}

@@ -9,7 +9,8 @@ reaches it. Names are matched on whole dotted components: mathforge.modelling is
 
 Every import statement counts, including those inside functions, try blocks and TYPE_CHECKING
 blocks. The top-level mathforge/__init__.py is never searched, but importing a name from it is itself
-a violation. Calls to importlib.import_module and __import__ are not followed.
+a violation. Calls to importlib.import_module and __import__ are not followed; instead,
+tests/v08/test_layering.py fails when a checker module names importlib, __import__ or sys.modules at all.
 
 Run `python tools/check_layering.py`; it exits with status 1 and prints each offending import path.
 """

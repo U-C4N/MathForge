@@ -8,7 +8,7 @@ use no "not" either, which the frozen v0.7 name schema keeps.
 from dataclasses import asdict
 from ..capabilities import CATALOG_TOOL, area_tools
 from ..limits import ComputationLimits
-from ..registry import AREAS, KIND_NAMES, tool_operations
+from ..registry import AREAS, DEFINITION_NAMES, KIND_NAMES, tool_operations
 from .boundary import (CATALOG_LIMIT, MAX_CATALOG_LIMIT, MAX_EQUATIONS, MAX_QUERY_CHARACTERS, MAX_SCALAR_CHARACTERS,
                        MAX_TEXT_CHARACTERS, MAX_VARIABLES, operand_tags)
 
@@ -121,23 +121,20 @@ def _area_schema(tool, ids, limits):
     """One operation of the tool's areas and its arguments.
 
     $defs holds each operation's arguments schema once, under the operation's name, and each argument kind and
-    the envelope once, under their names. "arguments" may match any operation's schema: the server checks the
-    arguments against the named operation.
+    the envelope once, under their names, which the registry build keeps operations from taking. "arguments"
+    may match any operation's schema: the server checks the arguments against the named operation.
     """
     from .kinds import arguments_schema
     operations, shared = {}, {}
     for spec in tool_operations(tool):
         operations[spec.name] = arguments_schema(spec)
         shared.update(operations[spec.name].pop("$defs"))
-    clashes = sorted(set(operations) & set(shared))
-    if clashes:
-        raise RuntimeError("Operations named like argument kinds: " + ", ".join(clashes))
     schema = _object({"operation": {"type": "string", "enum": list(operations)},
                       "arguments": {"type": "object", "anyOf": [{"$ref": "#/$defs/" + name} for name in operations],
                                     "description": "The named arguments of the operation: friendly JSON or canonical "
                                                    "object envelopes. Arguments with a default may be omitted."},
                       "symbol_ids": ids, "limits": limits}, ["operation", "arguments"])
-    schema["$defs"] = operations | {name: shared[name] for name in (*KIND_NAMES, "envelope") if name in shared}
+    schema["$defs"] = operations | {name: shared[name] for name in DEFINITION_NAMES if name in shared}
     return schema
 
 

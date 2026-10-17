@@ -1,17 +1,18 @@
 """Capture, or check, the v0.7 public surface before v0.8 changes anything.
 
 Three reference snapshots are written to tests/fixtures/v8/. api_v7_signatures.json is
-{"api_v7": {name: signature}, "values_v7": {name: signature}, "operations": [name, ...]}:
-each signature is str(inspect.signature(f)) for a name in mathforge.api_v7.__all__ or
-mathforge.values_v7.__all__, and the operations list holds the sorted callable public
-names of mathforge.operations (every name without a leading underscore for which
-callable() is true, so re-exported classes and helpers are listed with the operation
-functions). mcp_v7_input_schemas.json holds mathforge.mcp.schemas.input_schemas() and
-capabilities_v07.json holds mathforge.capabilities().
+{"api_v7": {name: signature}, "values_v7": {name: signature}, "operations": {name: signature}},
+where each signature is str(inspect.signature(f)). The api_v7 and values_v7 maps cover the
+names in mathforge.api_v7.__all__ and mathforge.values_v7.__all__. The operations map covers
+exactly the operation functions of mathforge.operations: its public (no leading underscore)
+functions that are defined in mathforge.operations or in mathforge.api_v7, so imported
+classes, helpers and type aliases are not listed. mcp_v7_input_schemas.json holds
+mathforge.mcp.schemas.input_schemas() and capabilities_v07.json holds mathforge.capabilities().
 
 Run it once, on the unmodified v0.7 sources. Afterwards the files are the reference that
-v0.8 tests compare against, and they are not regenerated. --check recomputes the values
-and fails, showing what differs, when they do not match the files on disk.
+v0.8 tests compare against, and they are not regenerated: writing refuses to replace a saved
+snapshot whose content differs unless --force is given. --check recomputes the values and
+fails, showing what differs, when they do not match the files on disk.
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ import sys
 
 REPOSITORY = Path(__file__).resolve().parents[1]
 DESTINATION = REPOSITORY / "tests" / "fixtures" / "v8"
+OPERATION_MODULES = {"mathforge.operations", "mathforge.api_v7"}
 MAXIMUM_DIFF_LINES = 40
 sys.path.insert(0, str(REPOSITORY / "src"))
 
@@ -34,9 +36,14 @@ def signatures(module) -> dict[str, str]:
     return {name: str(inspect.signature(getattr(module, name))) for name in module.__all__}
 
 
-def public_callables(module) -> list[str]:
-    return sorted(name for name in dir(module)
-                  if not name.startswith("_") and callable(getattr(module, name)))
+def operation_signatures(module) -> dict[str, str]:
+    result = {}
+    for name in dir(module):
+        function = getattr(module, name)
+        if (not name.startswith("_") and inspect.isfunction(function)
+                and function.__module__ in OPERATION_MODULES):
+            result[name] = str(inspect.signature(function))
+    return result
 
 
 def surface() -> dict[str, object]:
@@ -46,7 +53,7 @@ def surface() -> dict[str, object]:
     from mathforge.mcp.schemas import input_schemas
     return {
         "api_v7_signatures.json": {"api_v7": signatures(api_v7), "values_v7": signatures(values_v7),
-                                   "operations": public_callables(operations)},
+                                   "operations": operation_signatures(operations)},
         "mcp_v7_input_schemas.json": input_schemas(),
         "capabilities_v07.json": mathforge.capabilities(),
     }
@@ -69,8 +76,11 @@ def difference(name: str, saved: str | None, current: str) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check", action="store_true",
-                        help="Write nothing; fail if the recomputed surface differs from the saved snapshots")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--check", action="store_true",
+                      help="Write nothing; fail if the recomputed surface differs from the saved snapshots")
+    mode.add_argument("--force", action="store_true",
+                      help="Overwrite saved snapshots whose content differs (the reference is normally kept)")
     arguments = parser.parse_args()
     texts = {name: json.dumps(document, sort_keys=True, indent=1) + "\n"
              for name, document in surface().items()}
@@ -81,6 +91,15 @@ def main() -> None:
             raise SystemExit("\n".join(problems))
         print("v0.7 surface snapshot matches")
         return
+    differing = [name for name, text in texts.items() if saved[name] is not None and saved[name] != text]
+    if differing and not arguments.force:
+        # Nothing is written, so a refused run never leaves a half-updated reference.
+        paths = [(DESTINATION / name).relative_to(REPOSITORY).as_posix() for name in differing]
+        raise SystemExit("\n".join([
+            "Refusing to overwrite saved snapshots that differ from the current surface; nothing was written:",
+            *("  " + path for path in paths),
+            "They are the frozen v0.7 reference. Run with --check to see the differences; "
+            "pass --force only to replace the reference on purpose."]))
     DESTINATION.mkdir(parents=True, exist_ok=True)
     for name, text in texts.items():
         if saved[name] != text:

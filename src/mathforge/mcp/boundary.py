@@ -14,7 +14,7 @@ import re
 from typing import Any, TypedDict
 
 from .. import operations
-from ..capabilities import CATALOG_TOOL, area_tools, capabilities
+from ..capabilities import CATALOG_TOOL, area_tool, area_tools, capabilities
 from ..contracts import Eq, ExecutionStatus, Result, VerificationReport
 from ..errors import InvalidInput, MathForgeError
 from ..limits import ComputationLimits, DecodeLimits, computation, current_budget
@@ -272,22 +272,24 @@ _FIELDS = {
     "compute": ({"operation", "arguments"}, {"operation", "arguments", "limits"}),
 }
 _AREA_FIELDS = ({"operation", "arguments"}, {"operation", "arguments", "symbol_ids", "limits"})
+# The failures that a call reports as an error response.
+_FAILURES = (MathForgeError, TypeError, ValueError, ZeroDivisionError, RecursionError, OverflowError)
 
 
 def call_tool(name: str, arguments: dict[str, Any]) -> ToolResponse:
     """Give every request its own budget, including inherited worker contexts."""
+    if name == CATALOG_TOOL:  # It takes no limits; every catalog error keeps the catalog payload shape.
+        return _catalog(arguments)
     try:
         limits = _limits(arguments.get("limits")) if type(arguments) is dict else None
         with computation(limits, fresh=True):
             return _call_tool(name, arguments)
-    except (MathForgeError, TypeError, ValueError, ZeroDivisionError, RecursionError, OverflowError) as exc:
+    except _FAILURES as exc:
         return _response(error=_error(exc, "input"), is_error=True)
 
 
 def _call_tool(name: str, arguments: dict[str, Any]) -> ToolResponse:
     """Execute one curated boundary call, without importing the optional SDK."""
-    if name == CATALOG_TOOL:
-        return _catalog(arguments)
     stage, field, symbols = "input", None, {}
     try:
         # The v0.7 table first: a v0.7 tool call never needs the registry.
@@ -520,7 +522,7 @@ def _call_tool(name: str, arguments: dict[str, Any]) -> ToolResponse:
                     field = None
                     result = operations.integrate(expression, variable, lower, upper, limits=limits)
         return _operation_response(result, symbols)
-    except (MathForgeError, TypeError, ValueError, ZeroDivisionError, RecursionError, OverflowError) as exc:
+    except _FAILURES as exc:
         return _response(symbols=symbols, error=_error(exc, stage, field), is_error=True)
 
 
@@ -547,13 +549,11 @@ def _catalog(arguments: Any) -> ToolResponse:
         limit = arguments.get("limit", CATALOG_LIMIT)
         if type(query) is not str or len(query) > MAX_QUERY_CHARACTERS:
             raise InputError(f"query must be text of at most {MAX_QUERY_CHARACTERS} characters", field="query")
-        if area is not None and (type(area) is not str or area not in registry.AREAS):
+        if "area" in arguments and (type(area) is not str or area not in registry.AREAS):  # null is not an area
             raise InputError("area must name one of the registry areas", field="area")
         if type(limit) is not int or not 1 <= limit <= MAX_CATALOG_LIMIT:
             raise InputError(f"limit must be an integer from 1 through {MAX_CATALOG_LIMIT}", field="limit")
-        tools = {served: tool for tool, areas in registry.MCP_TOOLS.items() for served in areas}
-        entries = [{"name": spec.name, "area": spec.area, "tool": tools[spec.area] if spec.mcp else "",
-                    "summary": spec.summary,
+        entries = [{"name": spec.name, "area": spec.area, "tool": area_tool(spec) or "", "summary": spec.summary,
                     "arguments": [{"name": argument.name, "kind": argument.kind, "required": argument.default is None,
                                    "default": encoded_default(argument)} for argument in spec.arguments],
                     "returns": spec.returns} for spec in registry.specs().values()]
@@ -564,5 +564,5 @@ def _catalog(arguments: Any) -> ToolResponse:
                         and any(needle in entry[key].casefold() for key in ("name", "summary", "area"))),
                        key=lambda entry: (entry["area"], entry["name"]))
         return ToolResponse({"api_version": 1, "operations": found[:limit], "error": None})
-    except (MathForgeError, TypeError, ValueError, ZeroDivisionError, RecursionError, OverflowError) as exc:
+    except _FAILURES as exc:
         return ToolResponse({"api_version": 1, "operations": [], "error": _error(exc, "input")}, True)

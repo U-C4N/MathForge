@@ -19,6 +19,9 @@ from . import demo_family
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "v8"
 X_ID = "00000000-0000-4000-8000-000000000701"  # The UUIDs of the symbols in the v0.7 frontend samples.
 Y_ID = "00000000-0000-4000-8000-000000000702"
+SCHEMA_MAPS = ("properties", "$defs")  # Keyword values that map names to schemas
+SUBSCHEMAS = ("items", "additionalProperties", "propertyNames", "not", "if", "then", "else", "contains")
+SCHEMA_LISTS = ("anyOf", "oneOf", "allOf", "prefixItems")
 
 
 def published(name):
@@ -41,6 +44,24 @@ def area_tools():
 
 def tool_of(operation):
     return next(tool for tool in area_tools() if operation in {s.name for s in registry.tool_operations(tool)})
+
+
+def schema_keywords(schema):
+    """(keyword, value) for each keyword of a schema and of its subschemas; enum, const and default hold data."""
+    found, pending = [], [schema]
+    while pending:
+        node = pending.pop()
+        if type(node) is not dict:  # For example "additionalProperties": false
+            continue
+        for key, value in node.items():
+            found.append((key, value))
+            if key in SCHEMA_MAPS:
+                pending.extend(value.values())
+            elif key in SUBSCHEMAS:
+                pending.append(value)
+            elif key in SCHEMA_LISTS:
+                pending.extend(value)
+    return found
 
 
 def symbol_ids(values):
@@ -106,7 +127,9 @@ class AreaToolTests(unittest.TestCase):
 
     def test_area_tools_match_compute(self):
         from mathforge.mcp.kinds import KINDS
-        for operation, positional in frontend_samples().items():
+        samples = frontend_samples()
+        self.assertEqual(set(samples), set(registry.operation_arguments(5)))  # Every v0.7 operation is compared.
+        for operation, positional in samples.items():
             spec = registry.spec(operation)
             given = dict(zip((argument.name for argument in spec.arguments), positional))
             complete = {argument.name: given[argument.name] if argument.name in given
@@ -248,17 +271,36 @@ class AreaToolTests(unittest.TestCase):
             "expression": {"text": "x^2", "variables": ["x"]}, "bindings": {"x": m.to_data(m.sqrt(2))}})
         self.assertEqual(self.result(nested).value, m.functions.as_real_expr(m.Rational(2)))
 
+    def test_one_identity_has_one_symbol_across_arguments(self):
+        """Envelopes decode one by one, so decoding ends by checking every symbol together, as compute does."""
+        x, other = m.Symbol("x", uid=X_ID), m.Symbol("other", uid=X_ID)
+        f = m.parse_function("x*x", symbols={"x": x})
+        compute = call_tool("mathforge.compute", {"operation": "function_differentiate", "arguments": {
+            "expression": m.to_data(f), "variable": m.to_data(other), "n": m.to_data(1)}})
+        expected = self.error(compute)
+        self.assertEqual((expected["stage"], expected["field"]), ("decoding", "arguments"))
+        for symbol_ids, expression in ((None, m.to_data(f)), ({"x": X_ID}, {"text": "x*x", "variables": ["x"]})):
+            with self.subTest(friendly=symbol_ids is not None):
+                response = self.call("mathforge.analysis", "function_differentiate",
+                                     {"expression": expression, "variable": m.to_data(other)}, symbol_ids=symbol_ids)
+                self.assertEqual(self.error(response), expected)
+
     def test_kinds_cover_the_registry(self):
-        from mathforge.mcp.kinds import KINDS
+        from mathforge.mcp.kinds import KINDS, definitions
         self.assertEqual(tuple(KINDS), registry.KIND_NAMES)
-        envelope = KINDS["object"].schema["anyOf"][-1]
-        self.assertEqual(envelope["properties"]["format"], {"const": "mathforge"})
+        envelope = {"$ref": "#/$defs/envelope"}
         self.assertEqual(KINDS["object"].schema, {"anyOf": [envelope]})
+        table = definitions(registry.KIND_NAMES)
+        self.assertEqual(list(table), [*registry.KIND_NAMES, "envelope"])
+        self.assertEqual(table["envelope"]["properties"]["format"], {"const": "mathforge"})
+        self.assertEqual(definitions(["int_pairs"]), {"int_pairs": KINDS["int_pairs"].schema,
+                                                      "int": KINDS["int"].schema, "envelope": table["envelope"]})
         for name, kind in KINDS.items():
             with self.subTest(kind=name):
                 self.assertEqual(kind.name, name)
                 self.assertEqual(kind.schema["anyOf"][-1], envelope)
                 self.assertEqual(len(kind.schema["anyOf"]), 1 if name == "object" else 2)
+                self.assertTrue(set(definitions([name])) <= set(table))
 
     def test_encode_rules(self):
         from mathforge.limits import ComputationLimits
@@ -324,8 +366,8 @@ class AreaToolTests(unittest.TestCase):
                 with self.subTest(operation=operation, envelope=envelope["data"]["type"]):
                     self.assertTrue(self.call(tool, operation, arguments).is_error)
 
-    def test_area_schemas_bind_typed_arguments_per_operation(self):
-        from mathforge.mcp.kinds import KINDS, arguments_schema
+    def test_area_schemas_define_each_operation_and_kind_once(self):
+        from mathforge.mcp.kinds import arguments_schema, definitions
         schemas = input_schemas()
         for tool in area_tools():
             operations = registry.tool_operations(tool)
@@ -335,24 +377,63 @@ class AreaToolTests(unittest.TestCase):
                 self.assertFalse(schema["additionalProperties"])
                 self.assertEqual(set(schema["properties"]), {"operation", "arguments", "symbol_ids", "limits"})
                 self.assertEqual(schema["properties"]["operation"]["enum"], [spec.name for spec in operations])
-                self.assertEqual(schema["allOf"], [
-                    {"if": {"properties": {"operation": {"const": spec.name}}, "required": ["operation"]},
-                     "then": {"properties": {"arguments": arguments_schema(spec)}}} for spec in operations])
+                self.assertEqual(schema["properties"]["arguments"]["anyOf"],
+                                 [{"$ref": "#/$defs/" + spec.name} for spec in operations])
+                kinds = definitions(argument.kind for spec in operations for argument in spec.arguments)
+                entries = {spec.name: {key: value for key, value in arguments_schema(spec).items() if key != "$defs"}
+                           for spec in operations}
+                self.assertEqual(list(schema["$defs"]), [*entries, *kinds])
+                self.assertEqual(schema["$defs"], entries | kinds)
+                for spec in operations:
+                    self.assertTrue(schema["$defs"][spec.name]["description"].startswith(spec.name + ": "))
         variance = arguments_schema(registry.spec("variance"))
         self.assertEqual(variance["required"], ["data"])
         self.assertFalse(variance["additionalProperties"])
-        self.assertEqual(variance["properties"]["data"], KINDS["rational_list"].schema)
-        self.assertEqual(variance["properties"]["ddof"], dict(KINDS["int"].schema, default=0))
+        self.assertEqual(variance["properties"], {"data": {"$ref": "#/$defs/rational_list"},
+                                                  "ddof": {"$ref": "#/$defs/int", "default": 0}})
+        self.assertEqual(variance["$defs"], definitions(["rational_list", "int"]))
         catalog = schemas["mathforge.catalog"]
         self.assertEqual((catalog["required"], set(catalog["properties"])), ([], {"query", "area", "limit"}))
         self.assertEqual(catalog["properties"]["area"]["enum"], list(registry.AREAS))
+
+    def test_input_schemas_are_portable(self):
+        """Every tool: an object root without a combinator, no if/then/else, single type names, resolvable $refs.
+
+        The new tools keep to the keywords of the frozen v0.7 schemas plus $defs and $ref, without "not"; the v0.7
+        name schema keeps its frozen {"not": {"const": "sqrt"}}.
+        """
+        frozen = published("mcp_v7_input_schemas.json")
+        allowed = {key for schema in frozen.values() for key, _ in schema_keywords(schema)} - {"not"}
+        allowed |= {"$defs", "$ref"}
+        schemas = input_schemas()
+        self.assertGreaterEqual(len(schemas), 37)
+        for name, schema in schemas.items():
+            with self.subTest(tool=name):
+                self.assertEqual(schema["type"], "object")
+                self.assertFalse({"anyOf", "oneOf", "allOf", "not", "if", "then", "else", "$ref"} & set(schema))
+                used = schema_keywords(schema)
+                self.assertFalse({"if", "then", "else"} & {key for key, _ in used})
+                for key, value in used:
+                    if key == "type":
+                        self.assertIs(type(value), str)
+                    elif key == "$ref":
+                        self.assertTrue(value.startswith("#/$defs/"), value)
+                        self.assertIn(value.removeprefix("#/$defs/"), schema["$defs"])
+                    elif key == "not":
+                        self.assertIn(name, frozen)
+                        self.assertEqual(value, {"const": "sqrt"})
+                if name not in frozen:
+                    self.assertLessEqual({key for key, _ in used}, allowed)
+                if "$defs" in schema:  # Each definition is used.
+                    references = {value for key, value in used if key == "$ref"}
+                    self.assertEqual(references, {"#/$defs/" + entry for entry in schema["$defs"]})
 
     def test_schemas_accept_what_the_tools_accept(self):
         try:
             from jsonschema import Draft202012Validator
         except ImportError:
             self.skipTest("Development-only jsonschema is unavailable")
-        from mathforge.mcp.kinds import KINDS
+        from mathforge.mcp.kinds import KINDS, arguments_schema
         from mathforge.mcp.schemas import catalog_schema, output_schema
         schemas = input_schemas()
         for schema in (*schemas.values(), output_schema(), catalog_schema()):
@@ -365,6 +446,10 @@ class AreaToolTests(unittest.TestCase):
                         {"operation": "integer_gcd", "arguments": {"a": 6, "b": 4, "c": 1}},
                         {"operation": "binomial", "arguments": {"n": 5, "k": 2}}):
             self.assertFalse(ntheory.is_valid(invalid), invalid)
+        # The schema lets "arguments" match another operation of the tool; the server checks the operation named.
+        crossed = {"operation": "integer_gcd", "arguments": {"n": 5}}
+        self.assertTrue(ntheory.is_valid(crossed))
+        self.assertEqual(self.error(call_tool("mathforge.ntheory", crossed))["field"], "arguments.n")
         for operation, positional in frontend_samples().items():
             spec = registry.spec(operation)
             arguments = {argument.name: KINDS[argument.kind].encode(value)
@@ -372,6 +457,7 @@ class AreaToolTests(unittest.TestCase):
             with self.subTest(operation=operation):
                 Draft202012Validator(schemas[tool_of(operation)]).validate(
                     {"operation": operation, "arguments": arguments, "symbol_ids": {"x": X_ID, "y": Y_ID}})
+                Draft202012Validator(arguments_schema(spec)).validate(arguments)  # Complete on its own
         payload = self.call("mathforge.ntheory", "continued_fraction", {"value": "415/93"}).payload
         Draft202012Validator(output_schema()).validate(payload)
         catalog = Draft202012Validator(catalog_schema())
@@ -404,14 +490,18 @@ class AreaToolTests(unittest.TestCase):
             "query": "CONTINUED Fraction"}).payload["operations"]])
         by_area = call_tool("mathforge.catalog", {"query": "NTHEORY", "limit": 200}).payload["operations"]
         self.assertIn("integer_gcd", [entry["name"] for entry in by_area])
+        # Every error keeps the catalog payload shape, also for limits, which the catalog does not take.
         for request, field in (({"limit": 0}, "limit"), ({"limit": 201}, "limit"), ({"limit": True}, "limit"),
-                               ({"area": "calculus"}, "area"), ({"query": "x" * 129}, "query"),
-                               ({"query": 5}, "query"), ({"unexpected": 1}, None)):
+                               ({"limit": None}, "limit"), ({"area": "calculus"}, "area"), ({"area": None}, "area"),
+                               ({"query": "x" * 129}, "query"), ({"query": 5}, "query"), ({"query": None}, "query"),
+                               ({"unexpected": 1}, None), ({"limits": "bad"}, None), ({"limits": {"max_work": 1}}, None)):
             with self.subTest(request=request):
                 response = call_tool("mathforge.catalog", request)
                 self.assertTrue(response.is_error)
+                self.assertEqual(set(response.payload), {"api_version", "operations", "error"})
                 self.assertEqual((response.payload["api_version"], response.payload["operations"]), (1, []))
                 self.assertEqual(response.payload["error"]["field"], field)
+        self.assertTrue(call_tool("mathforge.catalog", None).is_error)
 
     def test_failures_keep_the_symbol_table(self):
         response = self.call("mathforge.analysis", "function_differentiate",
@@ -435,6 +525,13 @@ class AreaToolTests(unittest.TestCase):
         padded = {"n": 5, "padding": "x" * 1_100_000}  # Beyond the request byte limit.
         self.assertEqual(self.error(self.call("mathforge.discrete", "factorial", padded))["code"],
                          "resource_limit_exceeded")
+        # A friendly list costs one node per item while it decodes, as an envelope's walk does.
+        error = self.error(self.call("mathforge.stats", "mean", {"data": [1] * 150_000}))
+        self.assertEqual((error["stage"], error["code"], error["field"]),
+                         ("decoding", "resource_limit_exceeded", "arguments.data"))
+        error = self.error(self.call("mathforge.stats", "mean", {"data": [1, 2]}, limits={"max_nodes": 1}))
+        self.assertEqual((error["stage"], error["code"], error["field"]),
+                         ("decoding", "resource_limit_exceeded", "arguments.data"))
 
 
 if __name__ == "__main__":

@@ -11,12 +11,16 @@ and the canonical minimum format.
 Decoding runs no code. Integer and fraction strings are bounded digit strings; scalar, function and
 rational-function text goes through the bounded MathForge parsers; names resolve through one request-local
 symbol table that symbol_ids seeds. JSON decimal numbers and true/false are never exact numbers.
+
+Schemas are definitions: a kind's schema refers to the kinds it is made of, and to the envelope, as
+"#/$defs/<name>", and definitions() collects the $defs table they need. arguments_schema(spec) carries its
+own table, and an area tool's schema collects the tables of its operations once.
 """
 
 from __future__ import annotations
 
 import ast
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 import re
@@ -25,25 +29,32 @@ from typing import Any
 
 from .. import registry
 from ..complex_numbers import ComplexAlgebraic
-from ..errors import MathForgeError
+from ..errors import MathForgeError, SerializationError
 from ..functions import RealFunction, parse_function
 from ..limits import ComputationLimits, computation
 from ..matrices import Matrix
 from ..model import Expression, Rational, Symbol
+from ..operations_v5 import _freeze
 from ..probability import FiniteDistribution
 from ..rational_function import RationalFunction, as_rational_function
 from ..serialization import to_data
 from .boundary import (MAX_SCALAR_CHARACTERS, MAX_TEXT_CHARACTERS, MAX_VARIABLES, InputError, _decode_envelopes,
                        _envelope, _rational, _scalar, _symbols, operand_tags)
+from .schemas import NAME, TEXT
 
 ENVELOPE_VERSIONS = (1, 2, 3, 4, 5, 6)
 _INTEGER = re.compile(r"[+-]?[0-9]+")
 _SIDES = ("both", "left", "right")
-_NAME = {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$", "maxLength": 128, "not": {"const": "sqrt"}}
-_TEXT = {"type": "string", "maxLength": MAX_TEXT_CHARACTERS}
 _ENVELOPE = {"type": "object", "additionalProperties": False, "required": ["format", "version", "kind", "data"],
+             "description": "A canonical MathForge object envelope, exactly as to_data returns it.",
              "properties": {"format": {"const": "mathforge"}, "version": {"enum": list(ENVELOPE_VERSIONS)},
                             "kind": {"const": "object"}, "data": {"type": "object", "required": ["type"]}}}
+_DEFINITION = "#/$defs/"
+
+
+def _ref(name: str) -> dict[str, str]:
+    """A reference to the $defs entry of a kind, or of the envelope."""
+    return {"$ref": _DEFINITION + name}
 
 
 class Context:
@@ -109,7 +120,8 @@ class Context:
 @dataclass(frozen=True)
 class Kind:
     name: str
-    schema: dict[str, Any]                 # JSON Schema: always anyOf[friendly form, canonical object envelope]
+    # The kind's $defs entry, anyOf[friendly form, canonical object envelope]; references point to #/$defs/<name>.
+    schema: dict[str, Any]
     decode: Callable[[Any, Context], Any]
     encode: Callable[[Any], Any]           # The friendly form; the envelope when that would not round-trip
 
@@ -127,7 +139,8 @@ def _kind(name: str, friendly: dict[str, Any] | None, decode_friendly: Callable[
     def encode(value: Any) -> Any:
         return _encode(value, decode, encode_friendly)
 
-    return Kind(name, {"anyOf": [_ENVELOPE] if friendly is None else [friendly, _ENVELOPE]}, decode, encode)
+    envelope = _ref("envelope")
+    return Kind(name, {"anyOf": [envelope] if friendly is None else [friendly, envelope]}, decode, encode)
 
 
 def _encode(value: Any, decode: Callable[[Any, Context], Any], friendly: Callable[[Any], Any] | None) -> Any:
@@ -135,7 +148,6 @@ def _encode(value: Any, decode: Callable[[Any, Context], Any], friendly: Callabl
 
     "Identical" compares canonical JSON, after the freezing that the runners apply to their arguments.
     """
-    from ..operations_v5 import _freeze
     envelope = to_data(_freeze(value))
     if friendly is not None:
         try:
@@ -168,6 +180,8 @@ def _symbol_ids(envelope: dict[str, Any]) -> dict[str, Any]:
 def _items(raw: Any, context: Context, decode: Callable[[Any, Context], Any], message: str) -> tuple[Any, ...]:
     if type(raw) is not list:
         raise context.error(message)
+    with computation() as budget:  # As compute's walk charges containers, so a huge list fails at its field.
+        budget.nodes(len(raw))
     values = []
     for index, item in enumerate(raw):
         with context.at(f"[{index}]"):
@@ -343,30 +357,38 @@ def _encode_bindings(value: Any) -> Any:
     return {key.name: SCALAR.encode(item) for key, item in value.items()}
 
 
-INT = _kind("int", {"type": ["integer", "string"], "pattern": "^[+-]?[0-9]+$", "maxLength": MAX_SCALAR_CHARACTERS},
-            _decode_int, _encode_int)
-RATIONAL = _kind("rational", {"type": ["integer", "string"], "pattern": "^[+-]?[0-9]+(?:/[+-]?[0-9]+)?$",
-                              "maxLength": MAX_SCALAR_CHARACTERS}, _decode_rational, _encode_rational)
-SCALAR = _kind("scalar", {"type": ["integer", "string"], "maxLength": MAX_SCALAR_CHARACTERS,
-                          "description": "A JSON integer or closed exact mathematical text."},
+def _number(pattern: str | None = None, description: str | None = None) -> dict[str, Any]:
+    """A JSON integer or a bounded string; anyOf rather than a list of types keeps the schema portable."""
+    text: dict[str, Any] = {"type": "string", "maxLength": MAX_SCALAR_CHARACTERS}
+    if pattern is not None:
+        text["pattern"] = pattern
+    schema: dict[str, Any] = {"anyOf": [{"type": "integer"}, text]}
+    if description is not None:
+        schema["description"] = description
+    return schema
+
+
+INT = _kind("int", _number("^[+-]?[0-9]+$"), _decode_int, _encode_int)
+RATIONAL = _kind("rational", _number("^[+-]?[0-9]+(?:/[+-]?[0-9]+)?$"), _decode_rational, _encode_rational)
+SCALAR = _kind("scalar", _number(description="A JSON integer or closed exact mathematical text."),
                _decode_scalar, _encode_scalar)
-RATIONAL_LIST = _kind("rational_list", {"type": "array", "items": RATIONAL.schema},
+RATIONAL_LIST = _kind("rational_list", {"type": "array", "items": _ref("rational")},
                       lambda raw, context: _items(raw, context, RATIONAL.decode, "An array of rationals is required"),
                       _encode_items(RATIONAL.encode))
-SYMBOL = _kind("symbol", _NAME, lambda raw, context: context.symbol(raw),
+SYMBOL = _kind("symbol", NAME, lambda raw, context: context.symbol(raw),
                lambda value: value.name if type(value) is Symbol else None)
 FUNCTION = _kind("function", {"type": "object", "additionalProperties": False, "required": ["text", "variables"],
-                              "properties": {"text": _TEXT, "variables": {"type": "array", "items": _NAME,
-                                                                          "maxItems": MAX_VARIABLES,
-                                                                          "uniqueItems": True}}},
+                              "properties": {"text": TEXT, "variables": {"type": "array", "items": NAME,
+                                                                         "maxItems": MAX_VARIABLES,
+                                                                         "uniqueItems": True}}},
                  _decode_function, _encode_function)
 
 KINDS: Mapping[str, Kind] = MappingProxyType({kind.name: kind for kind in (
     INT,
-    _kind("int_list", {"type": "array", "items": INT.schema},
+    _kind("int_list", {"type": "array", "items": _ref("int")},
           lambda raw, context: _items(raw, context, INT.decode, "An array of integers is required"),
           _encode_items(INT.encode)),
-    _kind("int_pairs", {"type": "array", "items": {"type": "array", "items": INT.schema, "minItems": 2,
+    _kind("int_pairs", {"type": "array", "items": {"type": "array", "items": _ref("int"), "minItems": 2,
                                                    "maxItems": 2}},
           lambda raw, context: _items(raw, context, _decode_pair, "An array of integer pairs is required"),
           _encode_items(lambda pair: [INT.encode(item) for item in pair]
@@ -374,44 +396,73 @@ KINDS: Mapping[str, Kind] = MappingProxyType({kind.name: kind for kind in (
     RATIONAL,
     RATIONAL_LIST,
     SCALAR,
-    _kind("complex", {"type": "array", "items": SCALAR.schema, "minItems": 2, "maxItems": 2,
+    _kind("complex", {"type": "array", "items": _ref("scalar"), "minItems": 2, "maxItems": 2,
                       "description": "[real part, imaginary part]"},
           _decode_complex,
           lambda value: [SCALAR.encode(value.real), SCALAR.encode(value.imag)]
           if type(value) is ComplexAlgebraic else None),
     _kind("matrix", {"type": "array", "maxItems": 4096, "items": {"type": "array", "maxItems": 4096,
-                                                                  "items": RATIONAL.schema}},
+                                                                  "items": _ref("rational")}},
           _decode_matrix,
           lambda value: [[RATIONAL.encode(item) for item in row] for row in value.rows]
           if type(value) is Matrix else None),
     _kind("distribution", {"type": "object", "additionalProperties": False,
                            "required": ["outcomes", "probabilities"],
-                           "properties": {"outcomes": RATIONAL_LIST.schema, "probabilities": RATIONAL_LIST.schema}},
+                           "properties": {"outcomes": _ref("rational_list"), "probabilities": _ref("rational_list")}},
           _decode_distribution,
           lambda value: {"outcomes": [RATIONAL.encode(item) for item in value.outcomes],
                          "probabilities": [RATIONAL.encode(item) for item in value.probabilities]}
           if type(value) is FiniteDistribution else None),
     FUNCTION,
-    _kind("function_list", {"type": "array", "items": FUNCTION.schema},
+    _kind("function_list", {"type": "array", "items": _ref("function")},
           lambda raw, context: _items(raw, context, FUNCTION.decode, "An array of functions is required"),
           _encode_items(FUNCTION.encode)),
     _kind("rational_function", {"type": "object", "additionalProperties": False, "required": ["text", "variable"],
-                                "properties": {"text": _TEXT, "variable": _NAME}},
+                                "properties": {"text": TEXT, "variable": NAME}},
           _decode_rational_function, _encode_rational_function),
     SYMBOL,
-    _kind("symbols", {"type": "array", "items": _NAME, "maxItems": MAX_VARIABLES},
+    _kind("symbols", {"type": "array", "items": NAME, "maxItems": MAX_VARIABLES},
           lambda raw, context: _items(raw, context, lambda name, context: context.symbol(name),
                                       "symbols are an array of names"),
           _encode_items(lambda symbol: symbol.name if type(symbol) is Symbol else None)),
-    _kind("bindings", {"type": "object", "propertyNames": _NAME, "additionalProperties": SCALAR.schema,
+    _kind("bindings", {"type": "object", "propertyNames": NAME, "additionalProperties": _ref("scalar"),
                        "maxProperties": MAX_VARIABLES}, _decode_bindings, _encode_bindings),
-    _kind("point", {"type": ["integer", "string"], "maxLength": MAX_SCALAR_CHARACTERS,
-                    "description": "A JSON integer, closed exact mathematical text, '-inf' or '+inf'."},
+    _kind("point", _number(description="A JSON integer, closed exact mathematical text, '-inf' or '+inf'."),
           _decode_point, lambda value: value if type(value) is str else _encode_scalar(value)),
     _kind("side", {"type": "string", "enum": list(_SIDES)}, _decode_side,
           lambda value: value if type(value) is str else None),
     _kind("object", None, None, None),
 )})
+
+
+def definitions(kinds: Iterable[str]) -> dict[str, dict[str, Any]]:
+    """The $defs entries that the schemas of some kinds need, in KIND_NAMES order, then the envelope's.
+
+    They cover the kinds given and every kind that their schemas refer to.
+    """
+    needed: set[str] = set()
+    pending = list(kinds)
+    while pending:
+        name = pending.pop()
+        if name not in needed:
+            needed.add(name)
+            pending.extend(_references(KINDS[name].schema))
+    return {name: KINDS[name].schema for name in registry.KIND_NAMES if name in needed} | {"envelope": _ENVELOPE}
+
+
+def _references(schema: Any) -> set[str]:
+    """The kinds that a schema refers to."""
+    found, pending = set(), [schema]
+    while pending:
+        node = pending.pop()
+        if type(node) is dict:
+            reference = node.get("$ref")
+            if type(reference) is str and reference != _DEFINITION + "envelope":
+                found.add(reference.removeprefix(_DEFINITION))
+            pending.extend(node.values())
+        elif type(node) is list:
+            pending.extend(node)
+    return found
 
 
 def encoded_default(argument: registry.Argument) -> Any:
@@ -422,13 +473,20 @@ def encoded_default(argument: registry.Argument) -> Any:
 
 
 def arguments_schema(spec: registry.OperationSpec) -> dict[str, Any]:
-    """The JSON Schema of an operation's arguments object; an argument with a default may be omitted."""
-    properties = {argument.name: KINDS[argument.kind].schema if argument.default is None
-                  else dict(KINDS[argument.kind].schema, default=encoded_default(argument))
-                  for argument in spec.arguments}
-    return {"type": "object", "description": spec.summary, "properties": properties,
+    """The JSON Schema of an operation's arguments object, complete with its own $defs.
+
+    An argument with a default may be omitted. An area tool's schema keeps this schema, without its $defs, as
+    the $defs entry of the operation, and gathers the $defs of all its operations at its root, where every
+    reference resolves to the same definition.
+    """
+    properties = {}
+    for argument in spec.arguments:
+        reference = _ref(argument.kind)
+        properties[argument.name] = (reference if argument.default is None
+                                     else dict(reference, default=encoded_default(argument)))
+    return {"type": "object", "description": f"{spec.name}: {spec.summary}", "properties": properties,
             "required": [argument.name for argument in spec.arguments if argument.default is None],
-            "additionalProperties": False}
+            "additionalProperties": False, "$defs": definitions(argument.kind for argument in spec.arguments)}
 
 
 def decode_arguments(spec: registry.OperationSpec, raw: Mapping[str, Any], context: Context) -> dict[str, Any]:
@@ -451,4 +509,10 @@ def decode_arguments(spec: registry.OperationSpec, raw: Mapping[str, Any], conte
                     values[argument.name] = KINDS[argument.kind].decode(raw[argument.name], context)
             elif argument.default is not None:  # Always, once the required arguments are present.
                 values[argument.name] = ast.literal_eval(argument.default)
+    # Each envelope has its own decoder, so one encoder checks every symbol together, as compute's single
+    # decoder does: a symbol identity has one name, domain and set of assumptions in a request.
+    try:
+        to_data(_freeze(tuple(values.values())))
+    except SerializationError as exc:
+        raise InputError(str(exc), code=exc.code, field="arguments") from exc
     return values

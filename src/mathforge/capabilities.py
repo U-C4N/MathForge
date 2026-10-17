@@ -5,9 +5,12 @@ and the scope texts derive from the operation registry.
 """
 
 from dataclasses import asdict
-from typing import TypedDict
+from typing import TYPE_CHECKING, TypedDict
 
 from .limits import ComputationLimits
+
+if TYPE_CHECKING:
+    from .registry import OperationSpec
 
 
 class ToolCapability(TypedDict):
@@ -123,6 +126,14 @@ def area_tools() -> list[str]:
     return sorted(tool for tool in registry.MCP_TOOLS if registry.tool_operations(tool))
 
 
+def area_tool(spec: "OperationSpec") -> str | None:
+    """The area tool that runs a registry operation; None for an operation that MCP does not expose."""
+    from . import registry
+    if not spec.mcp:
+        return None
+    return next(tool for tool, areas in registry.MCP_TOOLS.items() if spec.area in areas)
+
+
 def _area_tool(tool: str) -> ToolCapability:
     from . import registry
     areas = registry.MCP_TOOLS[tool]
@@ -137,12 +148,11 @@ def capabilities() -> Capabilities:
     """Return fresh metadata; representability is not a promise of solver support."""
     from . import __version__, registry
     exposed = {name for name, _, _ in _TOOLS}
-    tools = {served: tool for tool, areas in registry.MCP_TOOLS.items() for served in areas}
     registered: dict[int, list[OperationCapability]] = {5: [], 6: []}
     for spec in registry.specs().values():  # The v0.7 operations first, in their published order.
         parameters = ", ".join(sorted(argument.name for argument in spec.arguments))
         # mathforge.compute keeps the v0.7 operations; a later operation runs only through its area tool.
-        tool = "mathforge.compute" if spec.version == 5 else (tools[spec.area] if spec.mcp else None)
+        tool = "mathforge.compute" if spec.version == 5 else area_tool(spec)
         registered[spec.version].append(dict(name=spec.name, sdk=spec.public_name, mcp_tool=tool,
                                              scope=spec.scope + "; arguments: " + parameters))
 

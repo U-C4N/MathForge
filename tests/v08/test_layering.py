@@ -114,6 +114,10 @@ class LayeringTests(unittest.TestCase):
                               "from .sibling import helper\n"),
             "certify/sibling.py": "from mathforge.errors import InvalidInput\n",
             "trusted/arithmetic.py": "from mathforge.model import Rational\n",
+            # The allowed leaves import only each other, as in the real tree.
+            "errors.py": "",
+            "limits.py": "from mathforge.errors import MathForgeError\n",
+            "model.py": "from mathforge.errors import InvalidInput\nfrom mathforge.limits import current_budget\n",
         })
         self.assertEqual(self.tool.violations(package), [])
 
@@ -124,12 +128,38 @@ class LayeringTests(unittest.TestCase):
             ("mathforge.certify.p", "mathforge.modelling"),
         ])
 
-    def test_search_advances_only_through_checker_and_trusted_modules(self):
+    def test_allowed_leaf_modules_are_searched_too(self):
+        leaves = {"errors": "InvalidInput", "limits": "computation", "model": "Rational"}
+        for leaf, name in leaves.items():
+            with self.subTest(leaf):
+                package = self.tree({
+                    "certify/a.py": f"from mathforge.{leaf} import {name}\n",
+                    f"{leaf}.py": "from mathforge.kernels import c\n",
+                    "kernels/c.py": "",
+                })
+                self.assertEqual(self.tool.violations(package), [("mathforge.certify.a", "mathforge.kernels.c")])
+
+    def test_chains_between_allowed_modules_are_followed(self):
+        package = self.tree({
+            "certify/a.py": "from mathforge.model import Rational\n",
+            "model.py": "from mathforge.limits import computation\n",
+            "limits.py": "from mathforge.errors import InvalidInput\n",
+            "errors.py": "from mathforge.kernels import c\n",
+            "kernels/c.py": "",
+        })
+        pair = ("mathforge.certify.a", "mathforge.kernels.c")
+        self.assertEqual(self.tool.violations(package), [pair])
+        self.assertEqual(self.tool.find_violations(package)[pair], [
+            "mathforge.certify.a", "mathforge.model", "mathforge.limits", "mathforge.errors", "mathforge.kernels.c"])
+
+    def test_the_top_level_facade_is_not_searched(self):
+        # Every import of mathforge.* runs mathforge/__init__.py, which imports everything; that implicit
+        # path is not what the rule forbids, so only explicit imports of the facade's names are violations.
         package = self.tree({
             "__init__.py": "from mathforge.kernels import c\n",
-            "model.py": "from mathforge.kernels import c\n",
-            "certify/a.py": "from mathforge.model import Rational\nfrom mathforge.trusted import b\n",
-            "trusted/b.py": "",
+            "certify/a.py": "from mathforge.model import Rational\n",
+            "model.py": "from mathforge.errors import InvalidInput\n",
+            "errors.py": "",
             "kernels/c.py": "",
         })
         self.assertEqual(self.tool.violations(package), [])

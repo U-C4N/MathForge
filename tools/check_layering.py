@@ -1,12 +1,11 @@
 """Fail when an independent checker can reach producer code through imports.
 
-Modules of the packages in CHECKER_PACKAGES may import from mathforge only the packages in ALLOWED;
-imports from outside mathforge (standard library, third party) are not layers and are ignored. The
-search is transitive: it starts from every checker module and follows imports through the checker
-packages and through mathforge.trusted, so a forbidden import hidden in trusted code is reported
-against every checker that reaches it. The other allowed modules (errors, limits, model) are leaves
-and are not searched. Names are matched on whole dotted components, so mathforge.modelling is not
-mathforge.model.
+Modules of the packages in CHECKER_PACKAGES may import from mathforge only the packages and modules in
+ALLOWED; imports from outside mathforge (standard library, third party) are not layers and are
+ignored. The search is transitive: it starts from every checker module and follows imports through
+every allowed module (the checker packages, mathforge.trusted, mathforge.errors, mathforge.limits and
+mathforge.model), so a forbidden import hidden in any of them is reported against every checker that
+reaches it. Names are matched on whole dotted components: mathforge.modelling is not mathforge.model.
 
 Every import statement counts, including those inside functions, try blocks and TYPE_CHECKING
 blocks. The top-level mathforge/__init__.py is never searched, but importing a name from it is itself
@@ -27,7 +26,6 @@ TOP_PACKAGE = "mathforge"
 PACKAGE_ROOT = Path(__file__).resolve().parents[1] / "src" / TOP_PACKAGE
 CHECKER_PACKAGES = ("mathforge.certify",)
 ALLOWED = ("mathforge.certify", "mathforge.trusted", "mathforge.errors", "mathforge.limits", "mathforge.model")
-SEARCHED = CHECKER_PACKAGES + ("mathforge.trusted",)
 
 
 def within(name: str, packages: tuple[str, ...]) -> bool:
@@ -67,13 +65,14 @@ def imported_names(path: Path, module: str) -> list[str]:
 
 
 def executed_modules(name: str, modules: dict[str, Path]) -> list[str]:
-    """Searched modules that importing `name` runs: the __init__ of each parent package, then the module.
+    """Allowed modules that importing `name` runs: the __init__ of each parent package, then the module.
 
-    The top-level mathforge/__init__.py, the public facade that imports everything, is not in SEARCHED.
+    The top-level mathforge/__init__.py, the public facade that imports everything, is not allowed,
+    so it is never searched.
     """
     parts = name.split(".")
     steps = (".".join(parts[:end]) for end in range(1, len(parts) + 1))
-    return [step for step in steps if within(step, SEARCHED) and step in modules]
+    return [step for step in steps if within(step, ALLOWED) and step in modules]
 
 
 def path_to(reached: dict[str, str | None], module: str) -> list[str]:

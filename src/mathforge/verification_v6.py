@@ -1,7 +1,8 @@
 """Independent checks of v6 results: source, contract, trace, and the family checker's own verdict.
 
 An operation that this build does not register as v6 lies outside its verification scope: the report
-is a single UNKNOWN check, never a FAILED one, so documents of later builds degrade gracefully.
+is a single UNKNOWN check, never a FAILED one, so documents of later builds degrade gracefully. The
+mathematics check is FAILED only when the family checker answers False; a checker that raises leaves it UNKNOWN.
 """
 from . import contracts as c
 from . import registry
@@ -48,6 +49,24 @@ def _unevaluated(result, request):
             and not result.steps and _no_error_or_bounds(result))
 
 
+def _mathematics(request, args, result):
+    """The family checker's verdict: VERIFIED for True and FAILED for False only.
+
+    A checker that raises, or answers anything but a bool, has a bug that says nothing about the result, so its
+    check is UNKNOWN. A checker out of budget still ends the whole report as exhausted resources.
+    """
+    try:
+        verdict = registry.checker(request.operation).check_operation(
+            request.operation, args, result.value, result.steps[0].outputs[1])
+    except (ResourceLimitError, RecursionError):
+        raise
+    except Exception as exc:
+        return _unknown("result.mathematics", "The checker raised " + type(exc).__name__)
+    if type(verdict) is not bool:
+        return _unknown("result.mathematics", "The checker returned no verdict: " + type(verdict).__name__)
+    return _check("result.mathematics", verdict)
+
+
 def _trace(result, request):
     """Exactly one v6.<operation> step, from the request to the value and its evidence tuple."""
     if len(result.steps) != 1:
@@ -85,9 +104,7 @@ def verify_result(result, *, limits=None):
                 connected = _trace(result, request)
                 checks.append(_check("result.trace", connected))
                 if connected:
-                    verdict = registry.checker(request.operation).check_operation(
-                        request.operation, args, result.value, result.steps[0].outputs[1])
-                    checks.append(_check("result.mathematics", verdict is True))
+                    checks.append(_mathematics(request, args, result))
             return c.VerificationReport(tuple(checks))
     except (ResourceLimitError, RecursionError) as exc:
         return c.VerificationReport((_unknown("result.resources", str(exc)),))

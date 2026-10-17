@@ -10,8 +10,7 @@ import unittest
 from unittest.mock import patch
 
 import mathforge as mf
-from mathforge import registry
-from mathforge.capabilities import capabilities
+from mathforge.capabilities import area_tools, capabilities
 from mathforge.mcp.boundary import call_tool
 from mathforge.mcp.schemas import input_schemas
 
@@ -37,7 +36,7 @@ class BoundaryTests(unittest.TestCase):
         payload = self.invoke("capabilities").payload
         names = [item["name"] for item in payload["tools"]]
         # The 30 v0.7 tools lead, unchanged; the area tools with operations and the catalog follow.
-        areas = sorted(tool for tool in registry.MCP_TOOLS if registry.tool_operations(tool))
+        areas = area_tools()
         self.assertEqual({name.split(".")[1] for name in names[:30]}, expected)
         self.assertEqual(names[30:], areas + ["mathforge.catalog"])
         self.assertEqual(list(input_schemas()), names)

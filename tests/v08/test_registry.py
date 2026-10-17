@@ -478,7 +478,7 @@ class RegistryTests(unittest.TestCase):
 
         def read():
             try:
-                barrier.wait()
+                barrier.wait(30)  # A thread that never arrives breaks the barrier instead of hanging the test.
                 seen.append(registry.specs())
             except BaseException as exc:
                 errors.append(exc)

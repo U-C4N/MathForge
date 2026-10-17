@@ -4,7 +4,7 @@ from dataclasses import FrozenInstanceError, replace
 import unittest
 
 import mathforge as mf
-from mathforge import registry
+from mathforge.capabilities import area_tools
 from mathforge.mcp.boundary import _FIELDS
 
 
@@ -99,7 +99,7 @@ class AnalysisFrontendTests(unittest.TestCase):
         tools = {item["name"]: item for item in capabilities["tools"]}
         # The 30 v0.7 tools lead, unchanged; the area tools with operations and the catalog follow.
         names = ["mathforge." + name for name in _FIELDS]
-        names += sorted(tool for tool in registry.MCP_TOOLS if registry.tool_operations(tool)) + ["mathforge.catalog"]
+        names += area_tools() + ["mathforge.catalog"]
         self.assertEqual(list(tools), names)
         for name in ("limit", "analyze_function"):
             self.assertEqual(tools["mathforge." + name]["sdk"], "operations." + name)

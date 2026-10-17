@@ -4,10 +4,12 @@ import ast
 import importlib.util
 import json
 from pathlib import Path
+import sys
 import unittest
 
 import mathforge as m
 from mathforge import operations_v6, registry
+from mathforge.capabilities import area_tools
 from mathforge.contracts import CheckStatus
 from mathforge.mcp.boundary import call_tool
 from mathforge.mcp.schemas import input_schemas
@@ -19,6 +21,8 @@ from . import demo_family
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "v8"
 X_ID = "00000000-0000-4000-8000-000000000701"  # The UUIDs of the symbols in the v0.7 frontend samples.
 Y_ID = "00000000-0000-4000-8000-000000000702"
+AREA_SCHEMA_BUDGET = 16 * 1024  # Bytes of compact JSON: one area tool's input schema...
+SCHEMA_BUDGET = 128 * 1024  # ...and the input schemas of all tools together.
 SCHEMA_MAPS = ("properties", "$defs")  # Keyword values that map names to schemas
 SUBSCHEMAS = ("items", "additionalProperties", "propertyNames", "not", "if", "then", "else", "contains")
 SCHEMA_LISTS = ("anyOf", "oneOf", "allOf", "prefixItems")
@@ -35,11 +39,6 @@ def frontend_samples():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module.samples()
-
-
-def area_tools():
-    """The area tools that serve at least one operation, derived here from the registry."""
-    return sorted(tool for tool in registry.MCP_TOOLS if registry.tool_operations(tool))
 
 
 def tool_of(operation):
@@ -124,6 +123,23 @@ class AreaToolTests(unittest.TestCase):
         self.assertEqual(list(input_schemas()), names)
         self.assertIn("mathforge.ntheory", names)
         self.assertNotIn("mathforge.logic", names)  # No operation serves the logic area yet.
+        self.assertEqual(area_tools(), sorted(area_tools()))  # The tools serving at least one operation, by name.
+        for tool in registry.MCP_TOOLS:
+            self.assertEqual(tool in area_tools(), bool(registry.tool_operations(tool)), tool)
+
+    # No docstring: unittest would print it on its own line, between the test's name and the measurement.
+    def test_input_schemas_stay_within_their_size_budget(self):
+        # Every MCP client holds the tool schemas in its context. Sizes are those of compact JSON.
+        sizes = {name: len(json.dumps(schema, separators=(",", ":")).encode("utf-8"))
+                 for name, schema in input_schemas().items()}
+        total = sum(sizes.values())
+        print("MCP input schemas: " + ", ".join(f"{tool} {sizes[tool] / 1024:.1f} KB" for tool in area_tools())
+              + f"; all {len(sizes)} tools {total / 1024:.1f} KB (budgets: {AREA_SCHEMA_BUDGET // 1024} KB per area "
+              f"tool, {SCHEMA_BUDGET // 1024} KB in all)", file=sys.stderr)
+        for tool in area_tools():
+            with self.subTest(tool=tool):
+                self.assertLessEqual(sizes[tool], AREA_SCHEMA_BUDGET)
+        self.assertLessEqual(total, SCHEMA_BUDGET)
 
     def test_area_tools_match_compute(self):
         from mathforge.mcp.kinds import KINDS
@@ -482,7 +498,17 @@ class AreaToolTests(unittest.TestCase):
                                     ("function_differentiate", "n"): 1, ("function_partial_diff", "n"): 1,
                                     ("function_taylor", "point"): 0, ("function_taylor", "order"): 5,
                                     ("function_limit", "side"): "both"})
-        self.assertEqual(len(call_tool("mathforge.catalog", {}).payload["operations"]), 50)
+        default = call_tool("mathforge.catalog", {}).payload
+        self.assertEqual(len(default["operations"]), 50)
+        self.assertEqual(default["operations"], everything[:50])
+        # "total" counts every match, beyond the limit too: there is no paging, so a client narrows or raises limit.
+        self.assertEqual(default["total"], len(everything))
+        self.assertGreater(default["total"], 50)
+        for request in ({"limit": 3}, {"area": "stats", "limit": 1}, {"query": "continued", "limit": 1}):
+            with self.subTest(request=request):
+                payload = call_tool("mathforge.catalog", request).payload
+                matches = call_tool("mathforge.catalog", dict(request, limit=200)).payload["operations"]
+                self.assertEqual((payload["total"], payload["operations"]), (len(matches), matches[:request["limit"]]))
         stats = call_tool("mathforge.catalog", {"area": "stats", "limit": 200}).payload["operations"]
         self.assertEqual({entry["area"] for entry in stats}, {"stats"})
         self.assertEqual(len(stats), len(registry.area_operations("stats")))
@@ -498,8 +524,9 @@ class AreaToolTests(unittest.TestCase):
             with self.subTest(request=request):
                 response = call_tool("mathforge.catalog", request)
                 self.assertTrue(response.is_error)
-                self.assertEqual(set(response.payload), {"api_version", "operations", "error"})
-                self.assertEqual((response.payload["api_version"], response.payload["operations"]), (1, []))
+                self.assertEqual(set(response.payload), {"api_version", "operations", "total", "error"})
+                self.assertEqual((response.payload["api_version"], response.payload["operations"],
+                                  response.payload["total"]), (1, [], 0))
                 self.assertEqual(response.payload["error"]["field"], field)
         self.assertTrue(call_tool("mathforge.catalog", None).is_error)
 

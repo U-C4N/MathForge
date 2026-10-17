@@ -4,6 +4,7 @@ from copy import deepcopy
 from dataclasses import replace
 import types
 import unittest
+from unittest.mock import patch
 
 import mathforge as m
 from mathforge import operations_v6, registry
@@ -13,7 +14,7 @@ from mathforge.deferred import Reason, Unevaluated
 from mathforge.errors import OperationError, SerializationError
 from mathforge.limits import Budget
 
-from . import demo_family
+from . import demo_checker, demo_family
 from .demo_family import DemoPair
 
 UNKNOWN_OPERATION = Check("result.operation", CheckStatus.UNKNOWN, VerificationLevel.NONE, "verification_scope",
@@ -35,6 +36,28 @@ class V6CoreTests(unittest.TestCase):
             self.assertEqual(m.to_data(r)["version"], 6)
             self.assertEqual(m.loads(m.dumps(r)), r)
             self.assertTrue(m.verify(m.loads(m.dumps(r))).verified)
+
+    def test_checker_bugs_are_unknown_and_only_false_is_failed(self):
+        """A checker that raises or answers no bool says nothing about the result; False means a wrong value."""
+        with registry._testing_families(demo_family):
+            r = operations_v6.run("demo_double", {"n": 21})
+            for behaviour, status, details in (
+                    ({"side_effect": RuntimeError("bug")}, CheckStatus.UNKNOWN, "The checker raised RuntimeError"),
+                    ({"side_effect": KeyError("n")}, CheckStatus.UNKNOWN, "The checker raised KeyError"),
+                    ({"return_value": None}, CheckStatus.UNKNOWN, "The checker returned no verdict: NoneType"),
+                    ({"return_value": 1}, CheckStatus.UNKNOWN, "The checker returned no verdict: int"),
+                    ({"return_value": False}, CheckStatus.FAILED, ""),
+                    ({"return_value": True}, CheckStatus.VERIFIED, "")):
+                with self.subTest(behaviour=behaviour), patch.object(demo_checker, "check_operation", **behaviour):
+                    report = m.verify(r)
+                    mathematics = next(check for check in report.checks if check.claim == "result.mathematics")
+                    self.assertEqual((mathematics.status, mathematics.details), (status, details))
+                    others = [check.status for check in report.checks if check is not mathematics]
+                    self.assertEqual(others, [CheckStatus.VERIFIED] * 3)  # Source, contract and trace.
+                    self.assertIs(report.verified, status is CheckStatus.VERIFIED)
+            # A checker out of budget still makes the whole report a resources UNKNOWN, as before.
+            with patch.object(demo_checker, "check_operation", side_effect=m.ResourceLimitError("out of budget")):
+                self.assertEqual(statuses(m.verify(r)), {"result.resources": CheckStatus.UNKNOWN})
 
     def test_v6_record_tag(self):
         with registry._testing_families(demo_family):
@@ -136,7 +159,8 @@ class V6CoreTests(unittest.TestCase):
         del unmarked["data"]["version"]
         tampered.append(("registered v6 operation without its version", unmarked, "^Noncanonical operation_request"))
         x = m.Symbol("x")
-        for operation, arguments, version in (("integer_gcd", (("a", 84), ("b", 30)), 5), ("solve", (("problem", 1),), 2),
+        for operation, arguments, version in (("integer_gcd", (("a", 84), ("b", 30)), 5),
+                                              ("solve", (("problem", 1),), 2),
                                               ("factor", (("f", m.Polynomial((-2, 0, 1), x)),), 4)):
             document = m.to_data(m.OperationRequest(operation, arguments))
             self.assertEqual(document["version"], version)

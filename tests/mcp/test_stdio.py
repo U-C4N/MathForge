@@ -10,7 +10,7 @@ import sys
 import unittest
 
 import mathforge as mf
-from mathforge import registry
+from mathforge.capabilities import area_tools
 from mathforge.mcp.boundary import _FIELDS
 from mathforge.mcp.schemas import capabilities_schema, catalog_schema, input_schemas, output_schema
 
@@ -36,7 +36,7 @@ class StdioTests(unittest.TestCase):
             listed = await client.list_tools()
             tools = {tool.name: tool for tool in listed.tools}
             # The 30 v0.7 tools lead, unchanged; the area tools with operations and the catalog follow.
-            areas = sorted(tool for tool in registry.MCP_TOOLS if registry.tool_operations(tool))
+            areas = area_tools()
             self.assertEqual(list(tools), ["mathforge." + name for name in _FIELDS] + areas + ["mathforge.catalog"])
             self.assertTrue({"mathforge.limit", "mathforge.analyze_function"} <= set(tools))
             self.assertTrue({"mathforge.parse_function", "mathforge.compute"} <= set(tools))

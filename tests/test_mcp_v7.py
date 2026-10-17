@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 
 import mathforge as m
-from mathforge import registry
+from mathforge.capabilities import area_tools
 from mathforge.dispatch_v5 import operation_arguments
 from mathforge.mcp.boundary import _FIELDS, call_tool
 from mathforge.mcp.schemas import input_schemas
@@ -32,7 +32,7 @@ class V7BoundaryTests(unittest.TestCase):
     def test_v07_curated_tools_and_registry_enum(self):
         schemas, capabilities = input_schemas(), m.capabilities()
         # The 30 v0.7 tools lead, unchanged; the area tools with operations and the catalog follow.
-        areas = sorted(tool for tool in registry.MCP_TOOLS if registry.tool_operations(tool))
+        areas = area_tools()
         self.assertEqual(list(schemas), ["mathforge."+name for name in _FIELDS] + areas + ["mathforge.catalog"])
         self.assertEqual(list(schemas), [tool["name"] for tool in capabilities["tools"]])
         published = schemas["mathforge.compute"]["properties"]["operation"]["enum"]

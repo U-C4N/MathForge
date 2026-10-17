@@ -2,7 +2,7 @@
 
 The input schemas of the area tools and the catalog stay within a portable subset of JSON Schema, that of
 the v0.7 tools: a plain object at the root, no if/then/else, single type names, plus $defs and $ref. They
-use no "not" either, which the frozen v0.7 name schema keeps.
+do not use "not" either; only the frozen name schema of the v0.7 tools keeps its {"not": {"const": "sqrt"}}.
 """
 
 from dataclasses import asdict
@@ -162,7 +162,9 @@ def catalog_schema() -> dict:
                      "arguments": {"type": "array", "items": argument}, "returns": text},
                     ["name", "area", "tool", "summary", "arguments", "returns"])
     return _object({"api_version": {"const": 1}, "operations": {"type": "array", "items": entry},
-                    "error": {"anyOf": [_error_schema(), {"type": "null"}]}}, ["api_version", "operations", "error"])
+                    "total": {"type": "integer", "minimum": 0, "description": "Every match, also those beyond limit."},
+                    "error": {"anyOf": [_error_schema(), {"type": "null"}]}},
+                   ["api_version", "operations", "total", "error"])
 
 
 def capabilities_schema() -> dict:

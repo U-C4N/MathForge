@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import patch
 
 import mathforge as mf
-from mathforge import registry
+from mathforge.capabilities import area_tools
 from mathforge.mcp.boundary import _FIELDS, MAX_EQUATIONS, MAX_VARIABLES, call_tool
 from mathforge.mcp.schemas import input_schemas
 
@@ -160,7 +160,7 @@ class MultivariateBoundaryTests(unittest.TestCase):
         capabilities = mf.capabilities()
         # The 30 v0.7 tools lead, unchanged; the area tools with operations and the catalog follow.
         names = [item["name"] for item in capabilities["tools"]]
-        areas = sorted(tool for tool in registry.MCP_TOOLS if registry.tool_operations(tool))
+        areas = area_tools()
         self.assertEqual(names, ["mathforge." + name for name in _FIELDS] + areas + ["mathforge.catalog"])
         operations = {item["name"]: item for item in capabilities["operations"]}
         schemas = input_schemas()

@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 
 import mathforge as mf
-from mathforge import registry
+from mathforge.capabilities import area_tools
 from mathforge.exact_dispatch import NEW_OPERATIONS
 from mathforge.mcp.boundary import MAX_SCALAR_CHARACTERS, MAX_VARIABLES, _FIELDS, call_tool
 from mathforge.mcp.schemas import input_schemas
@@ -184,7 +184,7 @@ class ExactAlgebraBoundaryTests(unittest.TestCase):
         schemas = input_schemas()
         capabilities = mf.capabilities()
         # The 30 v0.7 tools lead, unchanged; the area tools with operations and the catalog follow.
-        areas = sorted(tool for tool in registry.MCP_TOOLS if registry.tool_operations(tool))
+        areas = area_tools()
         self.assertEqual(list(schemas), ["mathforge."+name for name in _FIELDS] + areas + ["mathforge.catalog"])
         self.assertEqual(list(schemas), [tool["name"] for tool in capabilities["tools"]])
         for name, (required, allowed) in _FIELDS.items():

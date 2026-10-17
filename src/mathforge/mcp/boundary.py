@@ -537,7 +537,8 @@ def _operation_response(result, symbols):
 def _catalog(arguments: Any) -> ToolResponse:
     """Search the registry operations and the pre-registry ones; errors keep the catalog payload shape.
 
-    A registry operation names the area tool that serves it, even when mathforge.compute also runs it.
+    A registry operation names the area tool that serves it, even when mathforge.compute also runs it. "total"
+    counts every match, also those beyond the limit; there is no paging.
     """
     from .. import registry
     from ..registry_v07 import LEGACY_CATALOG
@@ -563,6 +564,6 @@ def _catalog(arguments: Any) -> ToolResponse:
         found = sorted((entry for entry in entries if area in (None, entry["area"])
                         and any(needle in entry[key].casefold() for key in ("name", "summary", "area"))),
                        key=lambda entry: (entry["area"], entry["name"]))
-        return ToolResponse({"api_version": 1, "operations": found[:limit], "error": None})
+        return ToolResponse({"api_version": 1, "operations": found[:limit], "total": len(found), "error": None})
     except _FAILURES as exc:
-        return ToolResponse({"api_version": 1, "operations": [], "error": _error(exc, "input")}, True)
+        return ToolResponse({"api_version": 1, "operations": [], "total": 0, "error": _error(exc, "input")}, True)

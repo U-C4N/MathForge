@@ -162,12 +162,14 @@ class LazyAreaTests(unittest.TestCase):
 
     # No docstring: unittest would print it on its own line, between the test's name and the measurement.
     def test_import_time_ceiling(self):
-        timings = [probe("""
+        timed_import = """
             import json, time
             start = time.perf_counter()
             import mathforge
             print(json.dumps(time.perf_counter() - start))
-            """) for _ in range(IMPORT_RUNS)]
+            """
+        probe(timed_import)  # Untimed warm-up: a cold run may still write bytecode and fill the file cache.
+        timings = [probe(timed_import) for _ in range(IMPORT_RUNS)]
         median = statistics.median(timings)
         print(f"import mathforge: median {median:.3f} s over {IMPORT_RUNS} fresh interpreters "
               f"(ceiling {IMPORT_CEILING:.2f} s)", file=sys.stderr)

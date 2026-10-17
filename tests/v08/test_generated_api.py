@@ -10,6 +10,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -289,6 +290,23 @@ class GeneratedApiTests(unittest.TestCase):
         runtime, checking = module_imports(self.rendered("discrete.py"))
         self.assertIn("DemoBox", runtime)  # Area modules load lazily and import their record classes at runtime.
         self.assertEqual(checking, set())
+
+    def test_a_broken_generated_file_prints_how_to_recover(self):
+        """The generator imports mathforge, which a conflicted generated file breaks; it says how to recover."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shutil.copytree(SRC / "mathforge", root / "src" / "mathforge", ignore=shutil.ignore_patterns("__pycache__"))
+            (root / "tools").mkdir()
+            shutil.copy(TOOL, root / "tools" / "generate_api.py")
+            values = root / "src" / "mathforge" / "_generated" / "values.py"
+            values.write_text("<<<<<<< HEAD\n" + values.read_text(encoding="utf-8"), encoding="utf-8")
+            # -I: the tool's own copy of src/ comes first on sys.path, before any installed mathforge.
+            output = subprocess.run([sys.executable, "-I", str(root / "tools" / "generate_api.py"), "--check"],
+                                    capture_output=True, text=True)
+        self.assertEqual(output.returncode, 1, output.stderr)
+        self.assertIn("\n  SyntaxError: ", output.stderr)
+        self.assertIn("\n  git checkout -- src/mathforge/_generated src/mathforge/<area>.py\n"
+                      "  python tools/generate_api.py\n", output.stderr)
 
     def test_check_mode(self):
         with tempfile.TemporaryDirectory() as directory:

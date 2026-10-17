@@ -101,9 +101,9 @@ assert metadata.version("mcp").split(".", 1)[0] == "2"
 x = mf.symbol("x")
 assert mf.verify(mf.solve(mf.Eq(x**2, 2), for_=x)).verified
 # The 30 v0.7 tools lead, unchanged; the area tools with operations and the catalog follow.
-from mathforge import registry
+from mathforge.capabilities import area_tools
 from mathforge.mcp.boundary import _FIELDS
-areas = sorted(tool for tool in registry.MCP_TOOLS if registry.tool_operations(tool))
+areas = area_tools()
 tools = [tool["name"] for tool in mf.capabilities()["tools"]]
 assert len(_FIELDS) == 30 and tools == ["mathforge." + name for name in _FIELDS] + areas + ["mathforge.catalog"]
 assert mf.verify(mf.operations.analyze_function(x**3, x)).verified

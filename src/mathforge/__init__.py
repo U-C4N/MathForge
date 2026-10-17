@@ -7,7 +7,10 @@ Use ``mathforge.operations`` for structured results from every operation.
 
 from __future__ import annotations
 
-from . import operations
+import importlib
+from types import ModuleType
+
+from . import operations, registry
 from .contracts import (
     Check, CheckStatus, Completeness, Condition, EmptySet, Eq, ErrorInfo,
     Exactness, ExecutionStatus, FiniteSet, Outcome, Result, Step, StepRelation,
@@ -36,7 +39,7 @@ from .rendering import RenderLimits, render_text, to_latex
 from .parsing import ParseError, ParseLimits, parse_expression, parse_problem
 from .capabilities import Capabilities, ToolCapability, capabilities
 from .analysis_types import ExcludedPoint, FunctionAnalysis, LimitValue, LocalExtremum, MonotonicRegion, ExtremumValue
-from typing import Literal, overload
+from typing import TYPE_CHECKING, Literal, overload
 from collections.abc import Iterable
 
 __version__ = "0.7.0"
@@ -278,3 +281,22 @@ __all__ += _v7_names + ["functions", "RealExpr", "RealFunction", "DomainPredicat
     "UnevaluatedIntegral", "UnevaluatedLimit", "real_function", "parse_function",
     "TaylorPolynomial", "FunctionLimitValue", "CRTResult", "IntegerFactorization", "ComplexAlgebraic", "ComplexRoot",
     "FiniteDistribution", "LUDecomposition", "LeastSquaresResult", "LogRootSum", "RationalPrimitive"]
+
+# The area modules (mathforge.ntheory, mathforge.stats, ...) load on first attribute access (PEP 562), so
+# that importing mathforge loads none of them. Type checkers see them through the hand-written import block
+# below, which must name every entry of registry.AREAS (tests/v08/test_lazy_areas.py checks that). They
+# never see __getattr__: a module-level one would make them accept any misspelled mathforge.<name>.
+if TYPE_CHECKING:
+    from . import (
+        expr, algebra, sets, logic, equations, analysis, series, integrals, ode,
+        special, linalg, stats, ntheory, discrete, geometry, vector, numeric, crypto,
+    )
+else:
+    def __getattr__(name: str) -> ModuleType:
+        if name in registry.AREAS:
+            return importlib.import_module("." + name, __name__)
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return sorted({*globals(), *registry.AREAS})

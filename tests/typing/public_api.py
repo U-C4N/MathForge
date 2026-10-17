@@ -122,6 +122,13 @@ assert_type(mf.rational_integrate(mf.rational_function(1, x, variable=x), x, 1, 
 assert_type(mf.integer_gcd(84, 30), int)
 assert_type(mf.operations.crt(((2, 6), (8, 9))).unwrap(), mf.CRTResult)
 
+# v0.8: area modules load lazily at runtime; type checkers resolve them statically from mathforge/__init__.py.
+assert_type(mf.ntheory.integer_gcd(84, 30), int)
+assert_type(mf.ntheory.crt(((2, 6), (8, 9))), mf.CRTResult)
+assert_type(mf.stats.mean((1, 2, 3)), mf.Rational)
+assert_type(mf.linalg.lu(A), mf.LUDecomposition)
+assert_type(mf.discrete.binomial(12, 5), int)
+
 # Expected static failures; --warn-unused-ignores catches accidental Any leaks.
 def reject_invalid_inputs() -> None:
     mf.det("not a matrix")  # type: ignore[arg-type]
@@ -138,3 +145,5 @@ def reject_invalid_inputs() -> None:
     mf.ComplexAlgebraic(1.5)  # type: ignore[arg-type]
     wrong_prime: str = mf.is_prime(7)  # type: ignore[assignment]
     wrong_distribution: mf.Matrix = mf.binomial_distribution(4, mf.Rational(1, 2))  # type: ignore[assignment]
+    mf.ntheory.integer_gcd(1.5, 2)  # type: ignore[arg-type]
+    mf.integer_gcdd  # type: ignore[attr-defined]  # The lazy-area __getattr__ must stay invisible to type checkers.

@@ -8,19 +8,38 @@ from pathlib import Path
 import subprocess
 import sys
 import threading
+import time
 import types
 import unittest
 from unittest.mock import patch
 
 import mathforge as m
-from mathforge import dispatch_v5, registry, registry_v07
+from mathforge import contracts, dispatch_v5, registry, registry_v07
 from mathforge.errors import UnsupportedOperation
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "v8"
+FAMILY = "mathforge._registry_test_family"
+CHECKER = "mathforge._registry_test_checker"
 
 
 def published(name):
     return json.loads((FIXTURES / name).read_text(encoding="utf-8"))
+
+
+def demo_spec(name="demo_triple", area="discrete", **options):
+    """A throwaway v6 spec; options override sdk/mcp."""
+    return registry.OperationSpec(name, area, (registry.Argument("n", "int", None, "int"),), "int",
+                                  "Triple an exact integer.", "test only", version=6, **options)
+
+
+def run_probe(code):
+    """Run code in a fresh isolated interpreter that imports this checkout's mathforge; return stdout."""
+    root = str(Path(m.__file__).resolve().parents[1])
+    output = subprocess.run([sys.executable, "-I", "-c", "import sys; sys.path.insert(0, sys.argv[1]); " + code, root],
+                            capture_output=True, text=True)
+    if output.returncode:
+        raise AssertionError(output.stderr)
+    return output.stdout.strip()
 
 
 def family_tables(attribute):
@@ -71,10 +90,30 @@ def expected_kind(operation, argument):
 
 @dataclass(frozen=True)
 class _Box:
+    __module__ = FAMILY  # v6 records are defined in their family module.
+    n: int
+
+
+@dataclass(frozen=True)
+class _Stray:  # A record class outside every family module.
     n: int
 
 
 class RegistryTests(unittest.TestCase):
+    def install_family(self, *specs, records=None):
+        """Register a throwaway v6 family (string CHECKER) for the rest of this test; the cache starts cold."""
+        family, checker = types.ModuleType(FAMILY), types.ModuleType(CHECKER)
+        family.SPECS, family.TYPES, family.CHECKER = specs, dict(records or {}), CHECKER
+        for module in (family, checker):
+            sys.modules[module.__name__] = module
+            self.addCleanup(sys.modules.pop, module.__name__, None)
+        patcher = patch.object(registry, "V6_FAMILIES", (FAMILY,))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.addCleanup(registry._clear_caches)
+        registry._clear_caches()
+        return family, checker
+
     def test_v07_specs_match_published_arguments(self):
         expected = {name: frozenset(keys) for name, keys in family_tables("ARGUMENTS").items()}
         specs = {name: frozenset(a.name for a in s.arguments)
@@ -179,6 +218,8 @@ class RegistryTests(unittest.TestCase):
             with self.subTest(operation=entry.name):
                 self.assertEqual(entry.tool, item["mcp_tool"] or "")
                 self.assertIn(entry.area, registry.AREAS)
+        areas = {entry.name: entry.area for entry in catalog}  # Controller rulings, Task 2 fix round 1.
+        self.assertEqual((areas["verify"], areas["expand"], areas["expand_multivariate"]), ("expr", "algebra", "algebra"))
 
     def test_summaries_are_single_sentences(self):
         summaries = [spec.summary for spec in registry_v07.V07_SPECS] + [e.summary for e in registry_v07.LEGACY_CATALOG]
@@ -201,34 +242,49 @@ class RegistryTests(unittest.TestCase):
             self.assertIs(registry.checker(name), registry.family(name))
 
     def test_v6_families_join_the_registry_but_not_the_v5_views(self):
-        family = types.ModuleType("mathforge._registry_test_family")
-        checker = types.ModuleType("mathforge._registry_test_checker")
-        family.SPECS = (registry.OperationSpec("demo_triple", "discrete", (registry.Argument("n", "int", None, "int"),),
-                                               "int", "Triple an exact integer.", "test only", version=6, mcp=False),)
-        family.TYPES = {"demo_box": _Box}
-        family.CHECKER = checker.__name__
-        for module in (family, checker):
-            sys.modules[module.__name__] = module
-            self.addCleanup(sys.modules.pop, module.__name__, None)
-        self.addCleanup(registry._clear_caches)
-        with patch.object(registry, "V6_FAMILIES", (family.__name__,)):
-            registry._clear_caches()
-            self.assertIs(registry.family("demo_triple"), family)
-            self.assertIs(registry.checker("demo_triple"), checker)
-            self.assertEqual(dict(registry.operation_arguments(6)), {"demo_triple": frozenset({"n"})})
-            self.assertIn("demo_triple", registry.operation_arguments())
-            self.assertNotIn("demo_triple", registry.operation_arguments(5))
-            self.assertEqual(dict(registry.record_types(6)), {"demo_box": _Box})
-            self.assertIn(_Box, registry.all_record_types())
-            self.assertIn("demo_triple", [spec.name for spec in registry.area_operations("discrete")])
-            self.assertNotIn("demo_triple", [spec.name for spec in registry.tool_operations("mathforge.discrete")])
-            # mathforge.compute stays v0.7-only: the dispatch_v5 views never include v6 families.
-            self.assertEqual(dict(dispatch_v5.operation_arguments()), dict(registry.operation_arguments(5)))
-            self.assertNotIn("demo_box", dispatch_v5.record_types())
-            with self.assertRaisesRegex(UnsupportedOperation, "^Unknown v5 operation$"):
-                dispatch_v5.module_for("demo_triple")
+        family, checker = self.install_family(demo_spec(mcp=False), records={"demo_box": _Box})
+        self.assertIs(registry.family("demo_triple"), family)
+        self.assertIs(registry.checker("demo_triple"), checker)
+        self.assertEqual(dict(registry.operation_arguments(6)), {"demo_triple": frozenset({"n"})})
+        self.assertIn("demo_triple", registry.operation_arguments())
+        self.assertNotIn("demo_triple", registry.operation_arguments(5))
+        self.assertEqual(dict(registry.record_types(6)), {"demo_box": _Box})
+        self.assertIn(_Box, registry.all_record_types())
+        self.assertIn("demo_triple", [spec.name for spec in registry.area_operations("discrete")])
+        self.assertNotIn("demo_triple", [spec.name for spec in registry.tool_operations("mathforge.discrete")])
+        # The contracts guard admits a v6 record (its family is a record module) and nothing else from outside.
+        self.assertTrue(contracts._extended_value(_Box(1)))
+        self.assertFalse(contracts._extended_value(_Stray(1)))
+        # mathforge.compute stays v0.7-only: the dispatch_v5 views never include v6 families.
+        self.assertEqual(dict(dispatch_v5.operation_arguments()), dict(registry.operation_arguments(5)))
+        self.assertNotIn("demo_box", dispatch_v5.record_types())
+        with self.assertRaisesRegex(UnsupportedOperation, "^Unknown v5 operation$"):
+            dispatch_v5.module_for("demo_triple")
+
+    def test_build_rejects_duplicate_public_names(self):
+        self.install_family(demo_spec("demo_taylor", "series", sdk="taylor"))
+        with self.assertRaisesRegex(RuntimeError, "^Duplicate public name: taylor$"):
+            registry.specs()
+
+    def test_build_rejects_operation_names_of_the_legacy_catalog(self):
+        self.install_family(demo_spec("factor", "algebra"))
+        with self.assertRaisesRegex(RuntimeError, "^Operation name collides with a legacy catalogue entry: factor$"):
+            registry.specs()
+
+    def test_build_rejects_records_outside_the_record_modules(self):
+        """contracts trusts a static module guard, so every record class must live in a guarded module."""
+        self.install_family(demo_spec(), records={"stray": _Stray})
+        with self.assertRaisesRegex(RuntimeError, "^Record type stray is defined outside the record modules: "):
+            registry.specs()
 
     def test_concurrent_first_build_shares_one_table(self):
+        """Review Focus 5: threads racing on a cold registry all receive the same tables."""
+        import_module = importlib.import_module
+
+        def slow_import(name, package=None):
+            time.sleep(0.005)  # Widen the race window of the import phase, which runs before the lock.
+            return import_module(name, package)
+
         self.addCleanup(registry._clear_caches)
         registry._clear_caches()
         barrier, seen, errors = threading.Barrier(8), [], []
@@ -240,14 +296,15 @@ class RegistryTests(unittest.TestCase):
             except BaseException as exc:
                 errors.append(exc)
 
-        threads = [threading.Thread(target=read) for _ in range(8)]
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join()
+        with patch("importlib.import_module", slow_import):
+            threads = [threading.Thread(target=read) for _ in range(8)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
         self.assertEqual(errors, [])
         self.assertEqual(len(seen), 8)
-        self.assertTrue(all(table is seen[0] for table in seen))
+        self.assertEqual(len({id(table) for table in seen}), 1)
 
     def test_registry_import_stays_light(self):
         """mathforge/__init__.py will import the registry, so it must not import families or tables at import time."""
@@ -259,11 +316,18 @@ class RegistryTests(unittest.TestCase):
             elif isinstance(node, ast.ImportFrom) and (node.level or (node.module or "").split(".")[0] == "mathforge"):
                 internal.add("." * node.level + (node.module or ""))
         self.assertLessEqual(internal, {".errors"})
-        root = str(Path(m.__file__).resolve().parents[1])
-        probe = ("import sys; sys.path.insert(0, sys.argv[1]); import mathforge.registry as r; "
-                 "print(r._tables.cache_info().currsize)")
-        output = subprocess.run([sys.executable, "-I", "-c", probe, root], capture_output=True, text=True)
-        self.assertEqual((output.returncode, output.stdout.strip()), (0, "0"), output.stderr)
+        self.assertEqual(run_probe("import mathforge.registry as r; print(r._tables.cache_info().currsize)"), "0")
+
+    def test_v1_to_v4_results_leave_the_registry_unbuilt(self):
+        """contracts consults the registry only for values defined in a record module (the v0.7 guard)."""
+        probe = (
+            "import mathforge as m, mathforge.registry as r; x = m.Symbol('x'); "
+            "results = (m.operations.solve(m.Eq(x**2, 2), for_=x), m.operations.det(m.Matrix(((1, 2), (3, 4)))), "
+            "m.operations.limit(m.rational_function(1, x, variable=x), x, '+inf'), "
+            "m.operations.factor(m.Polynomial((-2, 0, 1), x)), m.operations.minimal_polynomial(m.sqrt(2), x)); "
+            "assert all(res.execution_status is m.ExecutionStatus.COMPLETED for res in results), results; "
+            "print(r._tables.cache_info().currsize)")
+        self.assertEqual(run_probe(probe), "0")
 
 
 if __name__ == "__main__":

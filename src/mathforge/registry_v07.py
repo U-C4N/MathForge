@@ -217,7 +217,7 @@ V07_SPECS: tuple[OperationSpec, ...] = (
 # The pre-registry operations published by capabilities() (its order), plus parse_function.
 # Summaries of operations with a dedicated tool repeat that tool's description.
 LEGACY_CATALOG: tuple[CatalogEntry, ...] = (
-    CatalogEntry("expand", "expr", "", "Expand a rational-coefficient univariate polynomial into canonical form."),
+    CatalogEntry("expand", "algebra", "", "Expand a rational-coefficient univariate polynomial into canonical form."),
     CatalogEntry("expand_multivariate", "algebra", "mathforge.expand_multivariate",
                  "Expand an exact multivariate polynomial in an explicit variable order."),
     CatalogEntry("partial_diff", "analysis", "mathforge.partial_diff",
@@ -266,7 +266,7 @@ LEGACY_CATALOG: tuple[CatalogEntry, ...] = (
     CatalogEntry("substitute", "expr", "",
                  "Simultaneously replace symbols in an exact expression; unbound symbols may remain."),
     CatalogEntry("simplify", "expr", "", "Apply only the documented, domain-preserving local expression rules."),
-    CatalogEntry("verify", "equations", "mathforge.verify",
+    CatalogEntry("verify", "expr", "mathforge.verify",
                  "Recheck a canonical v1/v2/v3/v4/v5 Result without trusting stored verification labels."),
     CatalogEntry("factor", "algebra", "mathforge.factor",
                  "Factor a nonzero univariate rational polynomial completely over Q."),

@@ -26,9 +26,9 @@ def as_scalar(value):
 
 
 def _extended_value(value):
-    from .registry import all_record_types  # Imported on use: contracts loads very early (no import cycles).
-    if type(value) in all_record_types():
-        return True
+    from . import registry  # Imported on use: contracts loads very early (no import cycles).
+    if registry._record_module(type(value).__module__):  # Static: other values never build the registry.
+        return type(value) in registry.all_record_types()
     return any(_extension(value, module, name) for module, names in (
         ("polynomial", ("SquareFreeFactor", "SquareFreeDecomposition")),
         ("polynomial_exact", ("PolynomialFactor", "PolynomialFactorization")),

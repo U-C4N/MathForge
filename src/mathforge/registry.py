@@ -76,8 +76,21 @@ V5_FAMILIES = tuple("mathforge." + name for name in (
     "number_theory", "combinatorics", "complex_numbers", "probability", "statistics",
     "linear_extensions", "functions", "function_calculus", "rational_integration", "function_integration"))
 
+# Modules defining the v5 record classes: the families, plus function_limits, whose records
+# function_calculus.TYPES re-exports.
+V5_RECORD_MODULES = V5_FAMILIES + ("mathforge.function_limits",)
+
 # v6 family modules; each defines SPECS, TYPES, CHECKER (a module or its import path) and produce().
 V6_FAMILIES: tuple[str, ...] = ()
+
+
+def _record_module(module: str) -> bool:
+    """Whether a module may define registry records; a static answer that needs no build.
+
+    contracts relies on it so that v1-v4 values never build the registry; the build checks
+    that every record class lives in such a module.
+    """
+    return module in V5_RECORD_MODULES or module in V6_FAMILIES
 
 
 @dataclass(frozen=True)
@@ -101,16 +114,17 @@ _BUILT: list[_Tables] = []  # The one assembled table set, appended under _LOCK.
 def _tables() -> _Tables:
     # Imports run outside the lock: the import system locks each module itself,
     # and holding _LOCK across imports could deadlock against it.
-    from .registry_v07 import V07_SPECS
+    from .registry_v07 import LEGACY_CATALOG, V07_SPECS
     v5 = tuple(importlib.import_module(name) for name in V5_FAMILIES)
     v6 = tuple(importlib.import_module(name) for name in V6_FAMILIES)
     checkers = tuple(importlib.import_module(module.CHECKER) if isinstance(module.CHECKER, str)
                      else module.CHECKER for module in v6)
+    legacy = frozenset(entry.name for entry in LEGACY_CATALOG)
     with _LOCK:
         # functools.cache may run this body twice when threads race on the first
         # call; every caller still receives the tables assembled first.
         if not _BUILT:
-            _BUILT.append(_assemble(V07_SPECS, v5, v6, checkers))
+            _BUILT.append(_assemble(V07_SPECS, legacy, v5, v6, checkers))
         return _BUILT[0]
 
 
@@ -127,23 +141,31 @@ def _record_types(modules: tuple[ModuleType, ...], version: int) -> dict[str, ty
         for tag, cls in getattr(module, "TYPES", {}).items():
             if tag in merged:
                 raise RuntimeError(f"Duplicate v{version} type: {tag}")
+            if not _record_module(cls.__module__):
+                raise RuntimeError(f"Record type {tag} is defined outside the record modules: {cls.__module__}")
             merged[tag] = cls
     return merged
 
 
-def _assemble(v07_specs: tuple[OperationSpec, ...], v5: tuple[ModuleType, ...], v6: tuple[ModuleType, ...],
-              v6_checkers: tuple[ModuleType, ...]) -> _Tables:
+def _assemble(v07_specs: tuple[OperationSpec, ...], legacy: frozenset[str], v5: tuple[ModuleType, ...],
+              v6: tuple[ModuleType, ...], v6_checkers: tuple[ModuleType, ...]) -> _Tables:
     specs: dict[str, OperationSpec] = {}
+    public: set[str] = set()
     families: dict[str, ModuleType] = {}
     checkers: dict[str, ModuleType] = {}
 
     def add(spec: OperationSpec, version: int, family: ModuleType, checker: ModuleType) -> None:
         if spec.name in specs:
             raise RuntimeError("Duplicate operation: " + spec.name)
+        if spec.public_name in public:
+            raise RuntimeError("Duplicate public name: " + spec.public_name)
+        if spec.name in legacy:
+            raise RuntimeError("Operation name collides with a legacy catalogue entry: " + spec.name)
         if (spec.version != version or spec.area not in AREAS
                 or any(argument.kind not in KIND_NAMES for argument in spec.arguments)):
             raise RuntimeError("Malformed operation spec: " + spec.name)
         specs[spec.name], families[spec.name], checkers[spec.name] = spec, family, checker
+        public.add(spec.public_name)
 
     producers: dict[str, tuple[ModuleType, frozenset[str]]] = {}
     for module in v5:

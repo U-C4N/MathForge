@@ -38,22 +38,28 @@ def dispatch(*alternatives):
     """The v6 form of a choice among tagged object definitions: only the branch the type tag selects is validated.
 
     Each alternative is a definition name, reached through $ref, or an inline tagged schema. oneOf and anyOf
-    validate every failing branch in full; here, for an object with a type tag, a branch whose tag differs costs
-    one const comparison and never resolves its $ref.
+    validate every failing branch in full; here a branch whose tag differs costs one const comparison and never
+    resolves its $ref, and an object without a type tag takes no branch at all.
+    """
+    pairs = [(item, ref(item)) if type(item) is str else (item["properties"]["type"]["const"], item)
+             for item in alternatives]
+    return {"type": "object", "required": ["type"], "properties": {"type": {"enum": sorted(tag for tag, _ in pairs)}},
+            "allOf": switch("type", pairs)}
+
+
+def switch(key, pairs):
+    """One {"if": key const, "then": branch} entry per (value, branch) pair, in sorted order.
+
+    Each if also requires the key: without it, an if would hold for an object that lacks the key, so every branch
+    would run, recursively for nested objects. A repeated value would lose a branch, so it raises.
     """
     branches = {}
-    for item in alternatives:
-        tag = item if type(item) is str else item["properties"]["type"]["const"]
-        if tag in branches:
-            raise ValueError("Duplicate dispatch tag: " + tag)
-        branches[tag] = ref(item) if type(item) is str else item
-    return {"type": "object", "required": ["type"], "properties": {"type": {"enum": sorted(branches)}},
-            "allOf": switch("type", branches)}
-
-
-def switch(key, branches):
-    """One {"if": key const, "then": branch} entry per branch, in sorted order."""
-    return [{"if": {"properties": {key: {"const": value}}}, "then": branches[value]} for value in sorted(branches)]
+    for value, branch in pairs:
+        if value in branches:
+            raise ValueError(f"Duplicate {key} in a dispatch: {value}")
+        branches[value] = branch
+    return [{"if": {"properties": {key: {"const": value}}, "required": [key]}, "then": branches[value]}
+            for value in sorted(branches)]
 
 
 def fields(**properties):
@@ -230,38 +236,37 @@ def build_schema(version=2):
                              else [primitive, *map(ref, option_tags)]}
     node("operation_record", operation={"type": "string", "minLength": 1},
          inputs=array(fields(name=text, ref=ref("object_ref"))), options=ref("options"), result_ref=ref("object_ref"))
+    # From v5 on, per format: the deferral records a Result may carry, and the records its expression may be.
+    # A v6 family whose expression (or A) argument is a v6 record must add its tag here, because
+    # operations_v6.source_context copies that argument into the result.
+    deferral_tags = {5: ("v5_unevaluated_integral", "v5_unevaluated_limit"), 6: ("v6_unevaluated",)}
+    expression_tags = {5: ("v5_real_expr", "v5_real_function", "v5_rational_primitive"), 6: ()}
+    later = range(5, version + 1)  # The formats whose records and requests come from the registry.
+    deferrals = [tag for later_version in later for tag in deferral_tags[later_version]]
+    recorded = [tag for later_version in later for tag in expression_tags[later_version]]
+    alternatives = ["expression", "polynomial", "rational_function", "matrix"]
+    if version >= 6:
+        result_expression = optional(variant(*alternatives, *recorded))
+    else:  # v5 put its records in a choice of their own, beside null.
+        result_expression = optional(variant(*alternatives, keyword="anyOf"))
+        if recorded:
+            result_expression["anyOf"].append(variant(*recorded))
     node("result", execution_status=ref("execution_status_value"), outcome=ref("outcome_value"),
          value=optional(ref("node")), exactness=ref("exactness_value"), completeness=ref("completeness_value"),
          verification=array(ref("check")), method=text, domain=optional(ref("domain_value")),
          assumptions=array(ref("assumption")), steps=array(ref("step")),
-         problem=optional(variant("equation", "inequality", "linear_system")),
-         expression=optional(variant("expression", "polynomial", "rational_function", "matrix", keyword="anyOf")),
+         problem=optional(variant("equation", "inequality", "linear_system")), expression=result_expression,
          for_=optional(ref("symbol")), precision=optional(ref("positive_decimal")),
          tolerance=optional(ref("rational")), error_bound=optional(ref("rational")),
          error=optional(ref("error_info")), request=optional(ref("operation_request")))
+    if deferrals:
+        definitions["result"]["properties"]["deferred"] = variant(*deferrals)
     if version >= 5:
-        from mathforge.dispatch_v5 import record_types, operation_arguments
-        for tag, cls in record_types().items():
-            node("v5_" + tag, **{field.name: ref("node") for field in dataclass_fields(cls)})
-        if version == 5:  # v6 folds these alternatives into single dispatches below.
-            definitions["result"]["properties"]["deferred"] = choice("v5_unevaluated_integral", "v5_unevaluated_limit")
-            definitions["result"]["properties"]["expression"]["anyOf"].append(
-                choice("v5_real_expr", "v5_real_function", "v5_rational_primitive"))
-        new_parameters = operation_arguments()
-        legacy_request["properties"]["operation"]["not"]["enum"].extend(sorted(new_parameters))
-        definitions["operation_request"]["oneOf"].extend(
-            request(name, {key: ref("node") for key in sorted(keys)})
-            for name, keys in sorted(new_parameters.items()))
-    if version >= 6:
-        # The registry's v6 records and requests; dispatch_v5 serves v5-only views.
-        from mathforge import registry
-        for tag, cls in registry.record_types(6).items():
-            node("v6_" + tag, **{field.name: ref("node") for field in dataclass_fields(cls)})
-        result = definitions["result"]["properties"]
-        result["deferred"] = variant("v5_unevaluated_integral", "v5_unevaluated_limit", "v6_unevaluated")
-        result["expression"] = optional(variant("expression", "polynomial", "rational_function", "matrix",
-                                                "v5_real_expr", "v5_real_function", "v5_rational_primitive"))
-        new_parameters = registry.operation_arguments(6)
+        from mathforge import registry  # dispatch_v5's tables are registry.record_types(5) and operation_arguments(5).
+    for later_version in later:
+        for tag, cls in registry.record_types(later_version).items():
+            node(f"v{later_version}_{tag}", **{field.name: ref("node") for field in dataclass_fields(cls)})
+        new_parameters = registry.operation_arguments(later_version)
         legacy_request["properties"]["operation"]["not"]["enum"].extend(sorted(new_parameters))
         definitions["operation_request"]["oneOf"].extend(
             request(name, {key: ref("node") for key in sorted(keys)})
@@ -290,11 +295,12 @@ def build_schema(version=2):
     if version >= 6:
         # Requests dispatch on their operation: a registered name selects its exact shape; any other name,
         # such as an operation of a later build that the decoder still accepts, selects the generic shape.
-        branches = {entry["properties"]["operation"]["const"]: entry
-                    for entry in definitions["operation_request"]["oneOf"] if entry is not legacy_request}
+        pairs = [(entry["properties"]["operation"]["const"], entry)
+                 for entry in definitions["operation_request"]["oneOf"] if entry is not legacy_request]
         definitions["operation_request"] = {"type": "object", "required": ["operation"], "allOf": [
-            *switch("operation", branches),
-            {"if": {"properties": {"operation": {"not": {"enum": sorted(branches)}}}}, "then": legacy_request}]}
+            *switch("operation", pairs),
+            {"if": {"properties": {"operation": {"not": {"enum": sorted(name for name, _ in pairs)}}},
+                    "required": ["operation"]}, "then": legacy_request}]}
     # In v6 the kind condition below alone selects node or workspace; an anyOf would validate data twice.
     schema = fields(format={"const": "mathforge"}, version={"const": version},
                     kind={"enum": ["object", "workspace"]},

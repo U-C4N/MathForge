@@ -348,7 +348,10 @@
                   "type": {
                     "const": "rational"
                   }
-                }
+                },
+                "required": [
+                  "type"
+                ]
               },
               "then": {
                 "$ref": "#/$defs/rational"
@@ -360,7 +363,10 @@
                   "type": {
                     "const": "real_algebraic_root"
                   }
-                }
+                },
+                "required": [
+                  "type"
+                ]
               },
               "then": {
                 "$ref": "#/$defs/real_algebraic_root"
@@ -423,7 +429,10 @@
               "type": {
                 "const": "add"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/add"
@@ -435,7 +444,10 @@
               "type": {
                 "const": "mul"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/mul"
@@ -447,7 +459,10 @@
               "type": {
                 "const": "pow"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/pow"
@@ -459,7 +474,10 @@
               "type": {
                 "const": "rational"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/rational"
@@ -471,7 +489,10 @@
               "type": {
                 "const": "real_algebraic_root"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/real_algebraic_root"
@@ -483,7 +504,10 @@
               "type": {
                 "const": "sqrt"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/sqrt"
@@ -495,7 +519,10 @@
               "type": {
                 "const": "symbol"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/symbol"
@@ -537,7 +564,10 @@
                   "type": {
                     "const": "rational"
                   }
-                }
+                },
+                "required": [
+                  "type"
+                ]
               },
               "then": {
                 "$ref": "#/$defs/rational"
@@ -549,7 +579,10 @@
                   "type": {
                     "const": "real_algebraic_root"
                   }
-                }
+                },
+                "required": [
+                  "type"
+                ]
               },
               "then": {
                 "$ref": "#/$defs/real_algebraic_root"
@@ -580,7 +613,10 @@
                   "type": {
                     "const": "rational"
                   }
-                }
+                },
+                "required": [
+                  "type"
+                ]
               },
               "then": {
                 "$ref": "#/$defs/rational"
@@ -592,7 +628,10 @@
                   "type": {
                     "const": "real_algebraic_root"
                   }
-                }
+                },
+                "required": [
+                  "type"
+                ]
               },
               "then": {
                 "$ref": "#/$defs/real_algebraic_root"
@@ -769,7 +808,10 @@
                       "type": {
                         "const": "rational"
                       }
-                    }
+                    },
+                    "required": [
+                      "type"
+                    ]
                   },
                   "then": {
                     "$ref": "#/$defs/rational"
@@ -781,7 +823,10 @@
                       "type": {
                         "const": "real_algebraic_root"
                       }
-                    }
+                    },
+                    "required": [
+                      "type"
+                    ]
                   },
                   "then": {
                     "$ref": "#/$defs/real_algebraic_root"
@@ -822,7 +867,10 @@
                       "type": {
                         "const": "rational"
                       }
-                    }
+                    },
+                    "required": [
+                      "type"
+                    ]
                   },
                   "then": {
                     "$ref": "#/$defs/rational"
@@ -834,7 +882,10 @@
                       "type": {
                         "const": "real_algebraic_root"
                       }
-                    }
+                    },
+                    "required": [
+                      "type"
+                    ]
                   },
                   "then": {
                     "$ref": "#/$defs/real_algebraic_root"
@@ -913,7 +964,10 @@
                         "type": {
                           "const": "rational"
                         }
-                      }
+                      },
+                      "required": [
+                        "type"
+                      ]
                     },
                     "then": {
                       "$ref": "#/$defs/rational"
@@ -925,7 +979,10 @@
                         "type": {
                           "const": "real_algebraic_root"
                         }
-                      }
+                      },
+                      "required": [
+                        "type"
+                      ]
                     },
                     "then": {
                       "$ref": "#/$defs/real_algebraic_root"
@@ -974,7 +1031,10 @@
                       "type": {
                         "const": "rational"
                       }
-                    }
+                    },
+                    "required": [
+                      "type"
+                    ]
                   },
                   "then": {
                     "$ref": "#/$defs/rational"
@@ -986,7 +1046,10 @@
                       "type": {
                         "const": "real_algebraic_root"
                       }
-                    }
+                    },
+                    "required": [
+                      "type"
+                    ]
                   },
                   "then": {
                     "$ref": "#/$defs/real_algebraic_root"
@@ -1063,7 +1126,10 @@
                   "type": {
                     "const": "rational"
                   }
-                }
+                },
+                "required": [
+                  "type"
+                ]
               },
               "then": {
                 "$ref": "#/$defs/rational"
@@ -1075,7 +1141,10 @@
                   "type": {
                     "const": "real_algebraic_root"
                   }
-                }
+                },
+                "required": [
+                  "type"
+                ]
               },
               "then": {
                 "$ref": "#/$defs/real_algebraic_root"
@@ -1184,7 +1253,10 @@
               "type": {
                 "const": "add"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/add"
@@ -1196,7 +1268,10 @@
               "type": {
                 "const": "affine_solution_set"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/affine_solution_set"
@@ -1208,7 +1283,10 @@
               "type": {
                 "const": "assumption"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/assumption"
@@ -1220,7 +1298,10 @@
               "type": {
                 "const": "boolean"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/boolean"
@@ -1232,7 +1313,10 @@
               "type": {
                 "const": "check"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/check"
@@ -1244,7 +1328,10 @@
               "type": {
                 "const": "check_status"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/check_status"
@@ -1256,7 +1343,10 @@
               "type": {
                 "const": "completeness"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/completeness"
@@ -1268,7 +1358,10 @@
               "type": {
                 "const": "condition"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/condition"
@@ -1280,7 +1373,10 @@
               "type": {
                 "const": "domain"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/domain"
@@ -1292,7 +1388,10 @@
               "type": {
                 "const": "empty_set"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/empty_set"
@@ -1304,7 +1403,10 @@
               "type": {
                 "const": "equation"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/equation"
@@ -1316,7 +1418,10 @@
               "type": {
                 "const": "error_info"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/error_info"
@@ -1328,7 +1433,10 @@
               "type": {
                 "const": "exactness"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/exactness"
@@ -1340,7 +1448,10 @@
               "type": {
                 "const": "excluded_point"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/excluded_point"
@@ -1352,7 +1463,10 @@
               "type": {
                 "const": "execution_status"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/execution_status"
@@ -1364,7 +1478,10 @@
               "type": {
                 "const": "extremum_value"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/extremum_value"
@@ -1376,7 +1493,10 @@
               "type": {
                 "const": "finite_set"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/finite_set"
@@ -1388,7 +1508,10 @@
               "type": {
                 "const": "function_analysis"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/function_analysis"
@@ -1400,7 +1523,10 @@
               "type": {
                 "const": "inequality"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/inequality"
@@ -1412,7 +1538,10 @@
               "type": {
                 "const": "integer"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/integer"
@@ -1424,7 +1553,10 @@
               "type": {
                 "const": "interval"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/interval"
@@ -1436,7 +1568,10 @@
               "type": {
                 "const": "interval_set"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/interval_set"
@@ -1448,7 +1583,10 @@
               "type": {
                 "const": "limit_value"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/limit_value"
@@ -1460,7 +1598,10 @@
               "type": {
                 "const": "linear_system"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/linear_system"
@@ -1472,7 +1613,10 @@
               "type": {
                 "const": "local_extremum"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/local_extremum"
@@ -1484,7 +1628,10 @@
               "type": {
                 "const": "matrix"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/matrix"
@@ -1496,7 +1643,10 @@
               "type": {
                 "const": "monotonic_region"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/monotonic_region"
@@ -1508,7 +1658,10 @@
               "type": {
                 "const": "mul"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/mul"
@@ -1520,7 +1673,10 @@
               "type": {
                 "const": "none"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/none"
@@ -1532,7 +1688,10 @@
               "type": {
                 "const": "object_ref"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/object_ref"
@@ -1544,7 +1703,10 @@
               "type": {
                 "const": "operation_record"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/operation_record"
@@ -1556,7 +1718,10 @@
               "type": {
                 "const": "operation_request"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/operation_request"
@@ -1568,7 +1733,10 @@
               "type": {
                 "const": "outcome"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/outcome"
@@ -1580,7 +1748,10 @@
               "type": {
                 "const": "partial_fraction_decomposition"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/partial_fraction_decomposition"
@@ -1592,7 +1763,10 @@
               "type": {
                 "const": "partial_fraction_term"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/partial_fraction_term"
@@ -1604,7 +1778,10 @@
               "type": {
                 "const": "polynomial"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/polynomial"
@@ -1616,7 +1793,10 @@
               "type": {
                 "const": "polynomial_factor"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/polynomial_factor"
@@ -1628,7 +1808,10 @@
               "type": {
                 "const": "polynomial_factorization"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/polynomial_factorization"
@@ -1640,7 +1823,10 @@
               "type": {
                 "const": "pow"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/pow"
@@ -1652,7 +1838,10 @@
               "type": {
                 "const": "rational"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/rational"
@@ -1664,7 +1853,10 @@
               "type": {
                 "const": "rational_function"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/rational_function"
@@ -1676,7 +1868,10 @@
               "type": {
                 "const": "real_algebraic_root"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/real_algebraic_root"
@@ -1688,7 +1883,10 @@
               "type": {
                 "const": "result"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/result"
@@ -1700,7 +1898,10 @@
               "type": {
                 "const": "root_record"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/root_record"
@@ -1712,7 +1913,10 @@
               "type": {
                 "const": "rref_result"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/rref_result"
@@ -1724,7 +1928,10 @@
               "type": {
                 "const": "sqrt"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/sqrt"
@@ -1736,7 +1943,10 @@
               "type": {
                 "const": "square_free_decomposition"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/square_free_decomposition"
@@ -1748,7 +1958,10 @@
               "type": {
                 "const": "square_free_factor"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/square_free_factor"
@@ -1760,7 +1973,10 @@
               "type": {
                 "const": "step"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/step"
@@ -1772,7 +1988,10 @@
               "type": {
                 "const": "step_relation"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/step_relation"
@@ -1784,7 +2003,10 @@
               "type": {
                 "const": "symbol"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/symbol"
@@ -1796,7 +2018,10 @@
               "type": {
                 "const": "text"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/text"
@@ -1808,7 +2033,10 @@
               "type": {
                 "const": "truth"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/truth"
@@ -1820,7 +2048,10 @@
               "type": {
                 "const": "tuple"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/tuple"
@@ -1832,7 +2063,10 @@
               "type": {
                 "const": "universal_set"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/universal_set"
@@ -1844,7 +2078,10 @@
               "type": {
                 "const": "v5_FiniteDistribution"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/v5_FiniteDistribution"
@@ -1856,7 +2093,10 @@
               "type": {
                 "const": "v5_LUDecomposition"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/v5_LUDecomposition"
@@ -1868,7 +2108,10 @@
               "type": {
                 "const": "v5_LeastSquaresResult"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/v5_LeastSquaresResult"
@@ -1880,7 +2123,10 @@
               "type": {
                 "const": "v5_complex_algebraic"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/v5_complex_algebraic"
@@ -1892,7 +2138,10 @@
               "type": {
                 "const": "v5_complex_root"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/v5_complex_root"
@@ -1904,7 +2153,10 @@
               "type": {
                 "const": "v5_crt_result"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/v5_crt_result"
@@ -1916,7 +2168,10 @@
               "type": {
                 "const": "v5_domain_predicate"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/v5_domain_predicate"
@@ -1928,7 +2183,10 @@
               "type": {
                 "const": "v5_exponential_scale"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/v5_exponential_scale"
@@ -1940,7 +2198,10 @@
               "type": {
                 "const": "v5_function_derivative_trace"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/v5_function_derivative_trace"
@@ -1952,7 +2213,10 @@
               "type": {
                 "const": "v5_function_limit_certificate"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/v5_function_limit_certificate"
@@ -1964,7 +2228,10 @@
               "type": {
                 "const": "v5_function_limit_value"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/v5_function_limit_value"
@@ -1976,7 +2243,10 @@
               "type": {
                 "const": "v5_integer_factorization"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/v5_integer_factorization"
@@ -1988,7 +2258,10 @@
               "type": {
                 "const": "v5_leading_coefficient"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/v5_leading_coefficient"
@@ -2000,7 +2273,10 @@
               "type": {
                 "const": "v5_log_root_sum"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/v5_log_root_sum"
@@ -2012,7 +2288,10 @@
               "type": {
                 "const": "v5_rational_primitive"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/v5_rational_primitive"
@@ -2024,7 +2303,10 @@
               "type": {
                 "const": "v5_real_expr"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/v5_real_expr"
@@ -2036,7 +2318,10 @@
               "type": {
                 "const": "v5_real_function"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/v5_real_function"
@@ -2048,7 +2333,10 @@
               "type": {
                 "const": "v5_taylor_polynomial"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/v5_taylor_polynomial"
@@ -2060,7 +2348,10 @@
               "type": {
                 "const": "v5_unevaluated_integral"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/v5_unevaluated_integral"
@@ -2072,7 +2363,10 @@
               "type": {
                 "const": "v5_unevaluated_limit"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/v5_unevaluated_limit"
@@ -2084,7 +2378,10 @@
               "type": {
                 "const": "v6_continued_fraction"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/v6_continued_fraction"
@@ -2096,7 +2393,10 @@
               "type": {
                 "const": "v6_reason"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/v6_reason"
@@ -2108,7 +2408,10 @@
               "type": {
                 "const": "v6_unevaluated"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/v6_unevaluated"
@@ -2120,7 +2423,10 @@
               "type": {
                 "const": "verification_level"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/verification_level"
@@ -2132,7 +2438,10 @@
               "type": {
                 "const": "verification_report"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/verification_report"
@@ -2315,7 +2624,10 @@
               "operation": {
                 "const": "algebraic"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -2339,7 +2651,10 @@
                                 "type": {
                                   "const": "add"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/add"
@@ -2351,7 +2666,10 @@
                                 "type": {
                                   "const": "mul"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/mul"
@@ -2363,7 +2681,10 @@
                                 "type": {
                                   "const": "polynomial"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/polynomial"
@@ -2375,7 +2696,10 @@
                                 "type": {
                                   "const": "pow"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/pow"
@@ -2387,7 +2711,10 @@
                                 "type": {
                                   "const": "rational"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/rational"
@@ -2399,7 +2726,10 @@
                                 "type": {
                                   "const": "rational_function"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/rational_function"
@@ -2411,7 +2741,10 @@
                                 "type": {
                                   "const": "real_algebraic_root"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/real_algebraic_root"
@@ -2423,7 +2756,10 @@
                                 "type": {
                                   "const": "sqrt"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/sqrt"
@@ -2435,7 +2771,10 @@
                                 "type": {
                                   "const": "symbol"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/symbol"
@@ -2493,7 +2832,10 @@
               "operation": {
                 "const": "algebraic_div"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -2559,7 +2901,10 @@
               "operation": {
                 "const": "algebraic_pow"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -2625,7 +2970,10 @@
               "operation": {
                 "const": "analyze_function"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -2649,7 +2997,10 @@
                                 "type": {
                                   "const": "add"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/add"
@@ -2661,7 +3012,10 @@
                                 "type": {
                                   "const": "mul"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/mul"
@@ -2673,7 +3027,10 @@
                                 "type": {
                                   "const": "polynomial"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/polynomial"
@@ -2685,7 +3042,10 @@
                                 "type": {
                                   "const": "pow"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/pow"
@@ -2697,7 +3057,10 @@
                                 "type": {
                                   "const": "rational"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/rational"
@@ -2709,7 +3072,10 @@
                                 "type": {
                                   "const": "rational_function"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/rational_function"
@@ -2721,7 +3087,10 @@
                                 "type": {
                                   "const": "real_algebraic_root"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/real_algebraic_root"
@@ -2733,7 +3102,10 @@
                                 "type": {
                                   "const": "sqrt"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/sqrt"
@@ -2745,7 +3117,10 @@
                                 "type": {
                                   "const": "symbol"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/symbol"
@@ -2819,7 +3194,10 @@
               "operation": {
                 "const": "apart"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -2869,7 +3247,10 @@
               "operation": {
                 "const": "bernoulli"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -2919,7 +3300,10 @@
               "operation": {
                 "const": "binomial"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -2985,7 +3369,10 @@
               "operation": {
                 "const": "binomial_distribution"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -3051,7 +3438,10 @@
               "operation": {
                 "const": "catalan"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -3101,7 +3491,10 @@
               "operation": {
                 "const": "cdf"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -3167,7 +3560,10 @@
               "operation": {
                 "const": "charpoly"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -3233,7 +3629,10 @@
               "operation": {
                 "const": "columnspace"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -3283,7 +3682,10 @@
               "operation": {
                 "const": "complex_add"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -3349,7 +3751,10 @@
               "operation": {
                 "const": "complex_algebraic"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -3415,7 +3820,10 @@
               "operation": {
                 "const": "complex_conjugate"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -3465,7 +3873,10 @@
               "operation": {
                 "const": "complex_div"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -3531,7 +3942,10 @@
               "operation": {
                 "const": "complex_imag"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -3581,7 +3995,10 @@
               "operation": {
                 "const": "complex_mul"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -3647,7 +4064,10 @@
               "operation": {
                 "const": "complex_norm_squared"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -3697,7 +4117,10 @@
               "operation": {
                 "const": "complex_pow"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -3763,7 +4186,10 @@
               "operation": {
                 "const": "complex_real"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -3813,7 +4239,10 @@
               "operation": {
                 "const": "complex_sqrt"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -3863,7 +4292,10 @@
               "operation": {
                 "const": "complex_sub"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -3929,7 +4361,10 @@
               "operation": {
                 "const": "condition"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -3995,7 +4430,10 @@
               "operation": {
                 "const": "continued_fraction"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -4045,7 +4483,10 @@
               "operation": {
                 "const": "covariance"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -4127,7 +4568,10 @@
               "operation": {
                 "const": "crt"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -4177,7 +4621,10 @@
               "operation": {
                 "const": "discrete_uniform"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -4227,7 +4674,10 @@
               "operation": {
                 "const": "discriminant"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -4277,7 +4727,10 @@
               "operation": {
                 "const": "distribution_variance"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -4327,7 +4780,10 @@
               "operation": {
                 "const": "divisors"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -4377,7 +4833,10 @@
               "operation": {
                 "const": "evaluate_algebraic"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -4457,7 +4916,10 @@
                                 "type": {
                                   "const": "add"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/add"
@@ -4469,7 +4931,10 @@
                                 "type": {
                                   "const": "mul"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/mul"
@@ -4481,7 +4946,10 @@
                                 "type": {
                                   "const": "polynomial"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/polynomial"
@@ -4493,7 +4961,10 @@
                                 "type": {
                                   "const": "pow"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/pow"
@@ -4505,7 +4976,10 @@
                                 "type": {
                                   "const": "rational"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/rational"
@@ -4517,7 +4991,10 @@
                                 "type": {
                                   "const": "rational_function"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/rational_function"
@@ -4529,7 +5006,10 @@
                                 "type": {
                                   "const": "real_algebraic_root"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/real_algebraic_root"
@@ -4541,7 +5021,10 @@
                                 "type": {
                                   "const": "sqrt"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/sqrt"
@@ -4553,7 +5036,10 @@
                                 "type": {
                                   "const": "symbol"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/symbol"
@@ -4611,7 +5097,10 @@
               "operation": {
                 "const": "expectation"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -4661,7 +5150,10 @@
               "operation": {
                 "const": "extrema_values"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -4685,7 +5177,10 @@
                                 "type": {
                                   "const": "add"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/add"
@@ -4697,7 +5192,10 @@
                                 "type": {
                                   "const": "mul"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/mul"
@@ -4709,7 +5207,10 @@
                                 "type": {
                                   "const": "polynomial"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/polynomial"
@@ -4721,7 +5222,10 @@
                                 "type": {
                                   "const": "pow"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/pow"
@@ -4733,7 +5237,10 @@
                                 "type": {
                                   "const": "rational"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/rational"
@@ -4745,7 +5252,10 @@
                                 "type": {
                                   "const": "rational_function"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/rational_function"
@@ -4757,7 +5267,10 @@
                                 "type": {
                                   "const": "real_algebraic_root"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/real_algebraic_root"
@@ -4769,7 +5282,10 @@
                                 "type": {
                                   "const": "sqrt"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/sqrt"
@@ -4781,7 +5297,10 @@
                                 "type": {
                                   "const": "symbol"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/symbol"
@@ -4855,7 +5374,10 @@
               "operation": {
                 "const": "factor"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -4905,7 +5427,10 @@
               "operation": {
                 "const": "factor_integer"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -4955,7 +5480,10 @@
               "operation": {
                 "const": "factorial"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -5005,7 +5533,10 @@
               "operation": {
                 "const": "fibonacci"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -5055,7 +5586,10 @@
               "operation": {
                 "const": "function_antiderivative"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -5121,7 +5655,10 @@
               "operation": {
                 "const": "function_differentiate"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -5203,7 +5740,10 @@
               "operation": {
                 "const": "function_evaluate"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -5269,7 +5809,10 @@
               "operation": {
                 "const": "function_gradient"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -5335,7 +5878,10 @@
               "operation": {
                 "const": "function_hessian"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -5401,7 +5947,10 @@
               "operation": {
                 "const": "function_integrate"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -5499,7 +6048,10 @@
               "operation": {
                 "const": "function_jacobian"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -5565,7 +6117,10 @@
               "operation": {
                 "const": "function_limit"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -5663,7 +6218,10 @@
               "operation": {
                 "const": "function_partial_diff"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -5745,7 +6303,10 @@
               "operation": {
                 "const": "function_taylor"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -5843,7 +6404,10 @@
               "operation": {
                 "const": "hypergeometric"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -5925,7 +6489,10 @@
               "operation": {
                 "const": "integer_gcd"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -5991,7 +6558,10 @@
               "operation": {
                 "const": "integer_lcm"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -6057,7 +6627,10 @@
               "operation": {
                 "const": "integer_xgcd"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -6123,7 +6696,10 @@
               "operation": {
                 "const": "is_prime"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -6173,7 +6749,10 @@
               "operation": {
                 "const": "least_squares"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -6239,7 +6818,10 @@
               "operation": {
                 "const": "limit"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -6263,7 +6845,10 @@
                                 "type": {
                                   "const": "add"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/add"
@@ -6275,7 +6860,10 @@
                                 "type": {
                                   "const": "mul"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/mul"
@@ -6287,7 +6875,10 @@
                                 "type": {
                                   "const": "polynomial"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/polynomial"
@@ -6299,7 +6890,10 @@
                                 "type": {
                                   "const": "pow"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/pow"
@@ -6311,7 +6905,10 @@
                                 "type": {
                                   "const": "rational"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/rational"
@@ -6323,7 +6920,10 @@
                                 "type": {
                                   "const": "rational_function"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/rational_function"
@@ -6335,7 +6935,10 @@
                                 "type": {
                                   "const": "real_algebraic_root"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/real_algebraic_root"
@@ -6347,7 +6950,10 @@
                                 "type": {
                                   "const": "sqrt"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/sqrt"
@@ -6359,7 +6965,10 @@
                                 "type": {
                                   "const": "symbol"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/symbol"
@@ -6407,7 +7016,10 @@
                                 "type": {
                                   "const": "add"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/add"
@@ -6419,7 +7031,10 @@
                                 "type": {
                                   "const": "mul"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/mul"
@@ -6431,7 +7046,10 @@
                                 "type": {
                                   "const": "pow"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/pow"
@@ -6443,7 +7061,10 @@
                                 "type": {
                                   "const": "rational"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/rational"
@@ -6455,7 +7076,10 @@
                                 "type": {
                                   "const": "real_algebraic_root"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/real_algebraic_root"
@@ -6467,7 +7091,10 @@
                                 "type": {
                                   "const": "sqrt"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/sqrt"
@@ -6479,7 +7106,10 @@
                                 "type": {
                                   "const": "symbol"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/symbol"
@@ -6491,7 +7121,10 @@
                                 "type": {
                                   "const": "text"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "additionalProperties": false,
@@ -6613,7 +7246,10 @@
               "operation": {
                 "const": "lu"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -6663,7 +7299,10 @@
               "operation": {
                 "const": "mean"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -6713,7 +7352,10 @@
               "operation": {
                 "const": "median"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -6763,7 +7405,10 @@
               "operation": {
                 "const": "minimal_polynomial"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -6787,7 +7432,10 @@
                                 "type": {
                                   "const": "add"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/add"
@@ -6799,7 +7447,10 @@
                                 "type": {
                                   "const": "mul"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/mul"
@@ -6811,7 +7462,10 @@
                                 "type": {
                                   "const": "polynomial"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/polynomial"
@@ -6823,7 +7477,10 @@
                                 "type": {
                                   "const": "pow"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/pow"
@@ -6835,7 +7492,10 @@
                                 "type": {
                                   "const": "rational"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/rational"
@@ -6847,7 +7507,10 @@
                                 "type": {
                                   "const": "rational_function"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/rational_function"
@@ -6859,7 +7522,10 @@
                                 "type": {
                                   "const": "real_algebraic_root"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/real_algebraic_root"
@@ -6871,7 +7537,10 @@
                                 "type": {
                                   "const": "sqrt"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/sqrt"
@@ -6883,7 +7552,10 @@
                                 "type": {
                                   "const": "symbol"
                                 }
-                              }
+                              },
+                              "required": [
+                                "type"
+                              ]
                             },
                             "then": {
                               "$ref": "#/$defs/symbol"
@@ -6957,7 +7629,10 @@
               "operation": {
                 "const": "mod_inverse"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -7023,7 +7698,10 @@
               "operation": {
                 "const": "moment"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -7089,7 +7767,10 @@
               "operation": {
                 "const": "multinomial"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -7139,7 +7820,10 @@
               "operation": {
                 "const": "permutations_count"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -7205,7 +7889,10 @@
               "operation": {
                 "const": "probability"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -7271,7 +7958,10 @@
               "operation": {
                 "const": "quadratic_roots"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -7353,7 +8043,10 @@
               "operation": {
                 "const": "rational_antiderivative"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -7419,7 +8112,10 @@
               "operation": {
                 "const": "rational_integrate"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -7517,7 +8213,10 @@
               "operation": {
                 "const": "real_eigenvalues"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -7567,7 +8266,10 @@
               "operation": {
                 "const": "resultant"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -7633,7 +8335,10 @@
               "operation": {
                 "const": "rowspace"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -7683,7 +8388,10 @@
               "operation": {
                 "const": "stddev"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -7749,7 +8457,10 @@
               "operation": {
                 "const": "stirling"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -7815,7 +8526,10 @@
               "operation": {
                 "const": "totient"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -7865,7 +8579,10 @@
               "operation": {
                 "const": "trace"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -7915,7 +8632,10 @@
               "operation": {
                 "const": "variance"
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -8059,7 +8779,10 @@
                   ]
                 }
               }
-            }
+            },
+            "required": [
+              "operation"
+            ]
           },
           "then": {
             "additionalProperties": false,
@@ -8203,7 +8926,10 @@
                   "type": {
                     "const": "option_array"
                   }
-                }
+                },
+                "required": [
+                  "type"
+                ]
               },
               "then": {
                 "$ref": "#/$defs/option_array"
@@ -8215,7 +8941,10 @@
                   "type": {
                     "const": "option_integer"
                   }
-                }
+                },
+                "required": [
+                  "type"
+                ]
               },
               "then": {
                 "$ref": "#/$defs/option_integer"
@@ -8227,7 +8956,10 @@
                   "type": {
                     "const": "options"
                   }
-                }
+                },
+                "required": [
+                  "type"
+                ]
               },
               "then": {
                 "$ref": "#/$defs/options"
@@ -8580,7 +9312,10 @@
                   "type": {
                     "const": "v5_unevaluated_integral"
                   }
-                }
+                },
+                "required": [
+                  "type"
+                ]
               },
               "then": {
                 "$ref": "#/$defs/v5_unevaluated_integral"
@@ -8592,7 +9327,10 @@
                   "type": {
                     "const": "v5_unevaluated_limit"
                   }
-                }
+                },
+                "required": [
+                  "type"
+                ]
               },
               "then": {
                 "$ref": "#/$defs/v5_unevaluated_limit"
@@ -8604,7 +9342,10 @@
                   "type": {
                     "const": "v6_unevaluated"
                   }
-                }
+                },
+                "required": [
+                  "type"
+                ]
               },
               "then": {
                 "$ref": "#/$defs/v6_unevaluated"
@@ -8674,7 +9415,10 @@
                       "type": {
                         "const": "add"
                       }
-                    }
+                    },
+                    "required": [
+                      "type"
+                    ]
                   },
                   "then": {
                     "$ref": "#/$defs/add"
@@ -8686,7 +9430,10 @@
                       "type": {
                         "const": "matrix"
                       }
-                    }
+                    },
+                    "required": [
+                      "type"
+                    ]
                   },
                   "then": {
                     "$ref": "#/$defs/matrix"
@@ -8698,7 +9445,10 @@
                       "type": {
                         "const": "mul"
                       }
-                    }
+                    },
+                    "required": [
+                      "type"
+                    ]
                   },
                   "then": {
                     "$ref": "#/$defs/mul"
@@ -8710,7 +9460,10 @@
                       "type": {
                         "const": "polynomial"
                       }
-                    }
+                    },
+                    "required": [
+                      "type"
+                    ]
                   },
                   "then": {
                     "$ref": "#/$defs/polynomial"
@@ -8722,7 +9475,10 @@
                       "type": {
                         "const": "pow"
                       }
-                    }
+                    },
+                    "required": [
+                      "type"
+                    ]
                   },
                   "then": {
                     "$ref": "#/$defs/pow"
@@ -8734,7 +9490,10 @@
                       "type": {
                         "const": "rational"
                       }
-                    }
+                    },
+                    "required": [
+                      "type"
+                    ]
                   },
                   "then": {
                     "$ref": "#/$defs/rational"
@@ -8746,7 +9505,10 @@
                       "type": {
                         "const": "rational_function"
                       }
-                    }
+                    },
+                    "required": [
+                      "type"
+                    ]
                   },
                   "then": {
                     "$ref": "#/$defs/rational_function"
@@ -8758,7 +9520,10 @@
                       "type": {
                         "const": "real_algebraic_root"
                       }
-                    }
+                    },
+                    "required": [
+                      "type"
+                    ]
                   },
                   "then": {
                     "$ref": "#/$defs/real_algebraic_root"
@@ -8770,7 +9535,10 @@
                       "type": {
                         "const": "sqrt"
                       }
-                    }
+                    },
+                    "required": [
+                      "type"
+                    ]
                   },
                   "then": {
                     "$ref": "#/$defs/sqrt"
@@ -8782,7 +9550,10 @@
                       "type": {
                         "const": "symbol"
                       }
-                    }
+                    },
+                    "required": [
+                      "type"
+                    ]
                   },
                   "then": {
                     "$ref": "#/$defs/symbol"
@@ -8794,7 +9565,10 @@
                       "type": {
                         "const": "v5_rational_primitive"
                       }
-                    }
+                    },
+                    "required": [
+                      "type"
+                    ]
                   },
                   "then": {
                     "$ref": "#/$defs/v5_rational_primitive"
@@ -8806,7 +9580,10 @@
                       "type": {
                         "const": "v5_real_expr"
                       }
-                    }
+                    },
+                    "required": [
+                      "type"
+                    ]
                   },
                   "then": {
                     "$ref": "#/$defs/v5_real_expr"
@@ -8818,7 +9595,10 @@
                       "type": {
                         "const": "v5_real_function"
                       }
-                    }
+                    },
+                    "required": [
+                      "type"
+                    ]
                   },
                   "then": {
                     "$ref": "#/$defs/v5_real_function"
@@ -8890,7 +9670,10 @@
                       "type": {
                         "const": "equation"
                       }
-                    }
+                    },
+                    "required": [
+                      "type"
+                    ]
                   },
                   "then": {
                     "$ref": "#/$defs/equation"
@@ -8902,7 +9685,10 @@
                       "type": {
                         "const": "inequality"
                       }
-                    }
+                    },
+                    "required": [
+                      "type"
+                    ]
                   },
                   "then": {
                     "$ref": "#/$defs/inequality"
@@ -8914,7 +9700,10 @@
                       "type": {
                         "const": "linear_system"
                       }
-                    }
+                    },
+                    "required": [
+                      "type"
+                    ]
                   },
                   "then": {
                     "$ref": "#/$defs/linear_system"
@@ -9057,7 +9846,10 @@
               "type": {
                 "const": "add"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/add"
@@ -9069,7 +9861,10 @@
               "type": {
                 "const": "mul"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/mul"
@@ -9081,7 +9876,10 @@
               "type": {
                 "const": "pow"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/pow"
@@ -9093,7 +9891,10 @@
               "type": {
                 "const": "rational"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/rational"
@@ -9105,7 +9906,10 @@
               "type": {
                 "const": "rational_function"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/rational_function"
@@ -9117,7 +9921,10 @@
               "type": {
                 "const": "real_algebraic_root"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/real_algebraic_root"
@@ -9129,7 +9936,10 @@
               "type": {
                 "const": "sqrt"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/sqrt"
@@ -9141,7 +9951,10 @@
               "type": {
                 "const": "symbol"
               }
-            }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
             "$ref": "#/$defs/symbol"

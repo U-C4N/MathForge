@@ -6,12 +6,14 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+import time
 import unittest
 
 import mathforge as m
 from mathforge.deferred import Reason, Unevaluated
 
 SPEED_BOUND = 10.0  # Seconds. The same 60 documents take about 65 s against the v5 schema.
+REJECTION_BOUND = 1.0  # Seconds. The crafted document took 108 s while a dispatch if did not require its key.
 
 # Validation is timed in a fresh interpreter, as test_lazy_areas times imports: the operating system may slow
 # down a test process that has been busy for minutes, and the bound is about the schema, not the process.
@@ -88,6 +90,69 @@ class SchemaV6Tests(unittest.TestCase):
         self.assertEqual(m.from_data(later), request)  # The decoder accepts it, so the schema must too.
         self.validator.validate(later)
 
+    def test_v6_schema_rejects_untagged_nesting_quickly(self):
+        """An object without a type tag takes no dispatch branch, so crafted nesting cannot multiply the work."""
+        untagged = {}
+        for _ in range(5):  # About 80 bytes. "expression" is a node field of five v5 records.
+            untagged = {"expression": untagged}
+        document = self.canonical(self.pilot)
+        document["data"]["value"] = untagged
+        start = time.perf_counter()
+        valid = self.validator.is_valid(document)
+        elapsed = time.perf_counter() - start
+        self.assertFalse(valid)
+        self.assertLess(elapsed, REJECTION_BOUND)
+
+    def test_v6_schema_dispatches_every_choice(self):
+        """Ruling 1, structurally: no oneOf, one object alternative per anyOf at most, consistent dispatches."""
+        definitions = self.schema["$defs"]
+
+        def resolve(schema):
+            return definitions[schema["$ref"].removeprefix("#/$defs/")] if "$ref" in schema else schema
+
+        def pinned(schema, key):
+            """The values of key that a schema admits: its own const, or those of a nested dispatch's branches."""
+            schema = resolve(schema)
+            if "const" in schema.get("properties", {}).get(key, {}):
+                return {schema["properties"][key]["const"]}
+            return {value for entry in schema.get("allOf", ()) for value in pinned(entry.get("then", {}), key)}
+
+        def objects(alternatives):
+            """The alternatives that can match an object."""
+            kinds = [alternative.get("type", "object") for alternative in alternatives]
+            return [kind for kind in kinds if "object" in (kind if isinstance(kind, list) else [kind])]
+
+        def walk(node):
+            if isinstance(node, dict):
+                yield node
+                for child in node.values():
+                    yield from walk(child)
+            elif isinstance(node, list):
+                for child in node:
+                    yield from walk(child)
+
+        keys = set()
+        for schema in walk(self.schema):
+            self.assertNotIn("oneOf", schema)
+            self.assertLessEqual(len(objects(schema.get("anyOf", ()))), 1, schema)
+            entries = schema.get("allOf", ())
+            if not entries or any("then" not in entry or "else" in entry for entry in entries):
+                continue  # Not a dispatch: a field condition, like limit_value's kind or the document's kind.
+            (key,) = {name for entry in entries for name in entry["if"]["properties"]}
+            keys.add(key)
+            conditions = [entry["if"]["properties"][key] for entry in entries]
+            values = [condition["const"] for condition in conditions if "const" in condition]
+            self.assertEqual(len(set(values)), len(values))
+            for entry, condition in zip(entries, conditions):
+                self.assertEqual(entry["if"].get("required"), [key], entry["if"])
+                if "const" in condition:
+                    self.assertEqual(pinned(entry["then"], key), {condition["const"]})
+                else:  # The generic request shape takes every operation name that no exact shape claims.
+                    self.assertEqual(sorted(condition["not"]["enum"]), sorted(values))
+            if "enum" in schema.get("properties", {}).get(key, {}):  # A type dispatch lists exactly its tags.
+                self.assertEqual(schema["properties"][key]["enum"], values)
+        self.assertEqual(keys, {"type", "operation"})
+
     # No docstring: unittest would print it on its own line, between the test's name and the measurement.
     def test_v6_schema_is_fast(self):
         documents = []
@@ -97,7 +162,8 @@ class SchemaV6Tests(unittest.TestCase):
             documents.append(document)
         self.assertEqual(len(documents), 60)
         work = json.dumps({"schema": self.schema, "documents": documents})
-        output = subprocess.run([sys.executable, "-I", "-c", TIMING], input=work,
+        # -P, not -I: the child must find jsonschema as this process did, through PYTHONPATH or user site too.
+        output = subprocess.run([sys.executable, "-P", "-c", TIMING], input=work,
                                 capture_output=True, text=True, timeout=300)
         if output.returncode:  # An invalid document lands here too: validate() raised in the child.
             raise AssertionError(output.stderr)

@@ -7,21 +7,34 @@ frozen with the output SymPy recorded for it. This module finds and records them
   LookupError with the reason instead of guessing when a path is unqualified, missing, ambiguous or names a module;
 - ExampleRunner runs examples in a persistent worker process with a fixed PYTHONHASHSEED: a fresh namespace and a cleared
   SymPy cache per example, a timeout after which the worker is replaced, and a reason instead of a value for what cannot
-  serve as a reference;
+  serve as a reference; FreshRunner runs each example in a worker process started for it alone;
 - harvest collects a row's candidates from, in priority order, the docstrings of its APIs, the SymPy guide sources
   (doc/src, optional) and, only for a set that stays below ten, the equality asserts of SymPy's installed test modules;
-  it excludes the plan's exclusions with their reasons and drops the selected examples whose record changes with the
-  hash seed;
+  it excludes the plan's exclusions with their reasons and verifies every selected example;
 - select keeps one example per record and picks at most twenty in turn across the row's APIs; curate applies the
   curators' recorded replacements and numbers the result; load_examples and write_examples read and write the examples
   file (docs/v08/reference_examples.json, local and never committed).
 
+What a record is guaranteed to be: every selected example (and every curated addition) was run three times, at hash
+seed 0 in a long-lived worker and at hash seeds 1 and 2 in FreshRunner workers, processes that had run nothing before
+it, and the three runs gave the same (output, srepr). A record therefore depends on its setup and code (and the
+installed software) only: not on the examples that ran before it, since the fresh processes had none, nor on the hash
+seed, as far as three seeds can show (an order of two elements that depends on the hash seed agrees across three seeds
+a quarter of the time, across two half of it). The per-example resets of the long-lived worker (see _WORKER) do not
+carry that guarantee; they make the runs agree in the known cases, so that fewer examples are lost to the check.
+The guarantee is about each record, not about which examples are selected: which candidates are usable is decided by
+the run at hash seed 0, in the long-lived worker, so a leak its resets miss could change a selection (never a record).
+Nor does it cover a value that is itself a clock reading (a guide doctest that times a call): such a value is excluded
+only when the three runs happen to differ.
+
 SymPy is a development dependency only: this module imports it lazily, never at import time, and nothing under src/
-imports this module. What it records depends neither on the hash seed nor on timing nor on how many workers run.
+imports this module.
 """
 
 import ast
 import bisect
+import collections
+import concurrent.futures
 import contextlib
 import dataclasses
 import doctest
@@ -43,24 +56,26 @@ from pathlib import Path
 
 from .inventory import Row
 
-__all__ = ["EXCLUSION_REASONS", "DROP_REASONS", "SOURCE_PREFIXES", "KINDS", "LOW", "HIGH", "SYMPY_SERIES", "Example",
-           "Excluded", "Record", "CurationError", "require_sympy", "resolve_api", "unresolved_apis",
-           "resolvable_api_paths", "ExampleRunner", "harvest", "examine", "select", "curate", "number", "load_curation",
-           "load_examples", "write_examples"]
+__all__ = ["EXCLUSION_REASONS", "DROP_REASONS", "SOURCE_PREFIXES", "PROBE_PREFIX", "KINDS", "LOW", "HIGH",
+           "SYMPY_SERIES", "Example", "Excluded", "Record", "CurationError", "require_sympy", "resolve_api",
+           "unresolved_apis", "resolvable_api_paths", "ExampleRunner", "FreshRunner", "harvest", "examine", "select",
+           "curate", "number", "load_curation", "load_examples", "write_examples"]
 
 # Why a candidate cannot serve as a reference. The harvest report counts them in this order.
 EXCLUSION_REASONS = ("printing", "plotting", "random", "optional-dependency", "raises", "timeout", "unstable",
                      "duplicate")
 # The only reasons a curator may give for dropping a selected example. Difficulty is never one of them.
 DROP_REASONS = ("not-the-subject",) + EXCLUSION_REASONS
-SOURCE_PREFIXES = ("docstring:", "guide:", "tests:")  # In priority order.
+SOURCE_PREFIXES = ("docstring:", "guide:", "tests:")  # Where harvested examples come from, in priority order.
+PROBE_PREFIX = "probe:"  # probe:<row id>, a curated addition: the row's own sympy_probe, with an empty setup.
+_RECORD_PREFIXES = SOURCE_PREFIXES + (PROBE_PREFIX,)
 KINDS = ("exact", "numeric")
 LOW, HIGH = 10, 20  # A set below LOW is short; no set exceeds HIGH.
 SYMPY_SERIES = "1.14."  # The inventory and its records are SymPy 1.14's.
 GUIDE_SUFFIXES = (".rst", ".md", ".txt")
 
 _ROW_ID = re.compile(r"\d\d\.\d\d", re.ASCII)
-_RUN_REASONS = frozenset({"printing", "random", "optional-dependency", "raises", "timeout", "unstable"})
+_WORKER_REASONS = frozenset({"printing", "optional-dependency", "raises", "unstable"})  # What a worker may answer
 _STARTUP_TIMEOUT = 300.0  # Importing SymPy takes a second or two; a loaded machine gets much more.
 _SCRUBBED = ("PYTHON", "SYMPY", "MPMATH")  # Environment prefixes the worker never sees (PYTHONHASHSEED is set again).
 
@@ -71,6 +86,7 @@ class Example:
     id: str      # "<row>/<nn>", e.g. "27.14/03"; empty until number() gives the final position
     row: str
     source: str  # "docstring:<API path>:<line>" | "guide:<relative path>:<line>" | "tests:<module>::<function>:<line>"
+    #              | "probe:<row id>" (a curated addition of the row's sympy_probe)
     setup: str   # Statements run after `from sympy import *`
     code: str    # The single expression whose value is recorded
     output: str  # str(value) in SymPy 1.14
@@ -160,12 +176,10 @@ def _walk(value: object, names: Sequence[str], path: str, prefix: str) -> object
 
 
 def _resolve_in_package(sympy: types.ModuleType, path: str, parts: Sequence[str]) -> object:
-    try:
-        attribute, attribute_error = _walk(sympy, parts[1:], path, "sympy"), None
-    except LookupError as error:
-        attribute, attribute_error = None, error
+    # The import route goes first: importing the longest importable prefix (sympy.combinatorics, ...) also makes the
+    # attribute route below independent of what this process happened to import before.
     imported = _MISSING
-    for end in range(len(parts), 0, -1):  # The longest importable prefix, then attributes.
+    for end in range(len(parts), 0, -1):
         try:
             module = importlib.import_module(".".join(parts[:end]))
         except ImportError:
@@ -173,16 +187,32 @@ def _resolve_in_package(sympy: types.ModuleType, path: str, parts: Sequence[str]
         with contextlib.suppress(LookupError):
             imported = _walk(module, parts[end:], path, ".".join(parts[:end]))
         break
+    try:
+        attribute, attribute_error = _walk(sympy, parts[1:], path, "sympy"), None
+    except LookupError as error:
+        attribute, attribute_error = None, error
     if attribute_error is not None:
         if imported is _MISSING:
             raise attribute_error
         return imported
-    if imported is _MISSING or imported is attribute:
+    if imported is _MISSING or _same_object(imported, attribute):
         return attribute
     if isinstance(imported, types.ModuleType) and not isinstance(attribute, types.ModuleType):
         return attribute  # A public object re-exported over its own module's name.
     raise LookupError(f"{path}: ambiguous: as an attribute it is {_describe(attribute)}, but importing it gives "
                       f"{_describe(imported)}; name the object through the module that defines it")
+
+
+def _same_object(first: object, second: object) -> bool:
+    """Whether two lookups found the same thing: the same object, or two bound methods (every access to a classmethod
+    or a method of an instance builds a new one) of the same function on the same receiver."""
+    if first is second:
+        return True
+    if isinstance(first, types.MethodType) and isinstance(second, types.MethodType):
+        return first.__func__ is second.__func__ and first.__self__ is second.__self__
+    if isinstance(first, (types.BuiltinMethodType, types.MethodWrapperType)) and type(first) is type(second):
+        return first.__self__ is second.__self__ and first.__name__ == second.__name__
+    return False
 
 
 def _describe(value: object) -> str:
@@ -235,6 +265,7 @@ class _Api:
     path: str
     name: str     # The last component: what guide and test code must call or read as an attribute
     value: object
+    method: bool  # An attribute of a class or object (Matrix.exp, S.Half), not a module-level name
 
 
 def _resolved(row: Row) -> list[_Api]:
@@ -244,7 +275,7 @@ def _resolved(row: Row) -> list[_Api]:
             value = resolve_api(path)
         except LookupError:
             continue
-        apis.append(_Api(len(apis), path, _api_name(path), value))
+        apis.append(_Api(len(apis), path, _api_name(path), value, _is_method_path(path)))
     return apis
 
 
@@ -252,18 +283,41 @@ def _api_name(path: str) -> str:
     return path.rpartition(".")[2]
 
 
+@functools.lru_cache(maxsize=None)
+def _is_method_path(path: str) -> bool:
+    """Whether an API path names an attribute of a class or object (a method such as Matrix.exp or
+    sympy.Matrix.exp, a value such as S.Half) rather than a name in a module (sympy.exp,
+    sympy.solvers.ode.single.Separable). Code reaches the first kind only through an attribute (M.exp()); a bare call
+    exp(x) is the module-level function."""
+    parts = path.split(".")
+    if parts[0] != "sympy":
+        return True  # <Class>.<attribute>
+    if len(parts) == 2:
+        return False  # sympy.<name>
+    try:
+        importlib.import_module(".".join(parts[:-1]))
+    except ImportError:
+        return True  # The owner is not a module: a class or an object.
+    return False
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 # The sandboxed runner
 
 # The worker keeps the request and reply pipes on private descriptors and points descriptors 0 and 1 at the null device,
-# so an example that prints, reads stdin or writes to descriptor 1 cannot corrupt the protocol. What a record is
-# guaranteed to depend on, besides its setup and code: before each example the worker clears SymPy's cache and resets
-# the global state that examples are known to change (evaluation flags, printer settings, mpmath precision, the random
-# generators, recursion and digit limits, the working directory, stdin, warning filters); after it, the worker exits,
-# and is replaced, whenever the example changed the sympy namespace (other than by importing a submodule), builtins or
-# sympy.Q. A value that changes with the random generators' seed is reported as "random" unless the request allows
-# randomness. Other in-place changes, such as an example patching a method of a SymPy class, are not detected; the
-# re-run at the second hash seed, in a worker with another history, catches most of their effects.
+# so an example that prints, reads stdin or writes to descriptor 1 cannot corrupt the protocol. A request names the seed
+# of the random generators for its run; a reply says whether the run drew from them, so that ExampleRunner can run the
+# example again with another seed. Before each example the worker clears SymPy's cache and puts back the global state
+# that examples are known to change: evaluation flags, printer settings, mpmath precision, the random generators, the
+# Dummy counter (to its value after import, which the names of unnamed Dummies show; the index base moves on so that
+# indices never repeat), the global assumptions, CRootOf's cached isolating intervals, manualintegrate's in-progress
+# marks, the prime sieve, the recursion and digit limits, the working directory, stdin and the warning filters (each
+# module store only when its module is loaded). After an example that changed the sympy namespace (other than by
+# importing a submodule), builtins or sympy.Q, the worker exits and is replaced. These
+# measures make a long-lived worker record what a fresh process records in the known cases; they guarantee nothing for
+# state they do not cover (an example patching a method of a SymPy class, a registration in a dispatcher). That
+# guarantee comes from the verification of every selected example in a FreshRunner worker: whatever such state does to
+# a record, the record then differs from the fresh run's and the example is excluded as unstable.
 _WORKER = r'''
 import builtins
 import io
@@ -292,6 +346,8 @@ def main():
     try:
         import mpmath
         import sympy
+        from sympy import Dummy
+        from sympy.assumptions.assume import global_assumptions
         from sympy.core import random as sympy_random
         from sympy.core.cache import clear_cache
         from sympy.core.parameters import global_parameters
@@ -302,6 +358,13 @@ def main():
     home = os.getcwd()
     recursion = sys.getrecursionlimit()
     digits = sys.get_int_max_str_digits()
+    # Unnamed Dummies are named after Dummy._count, so each example starts from the count after import. The index of a
+    # Dummy is _base_dummy_index + count, and Dummies outlive examples (those created at import, those of lazily built
+    # tables such as hyperexpand's and meijerint's): the base moves past every index handed out so far, so that a new
+    # Dummy never equals an older one with the same name.
+    dummies = Dummy._count
+    issued = [Dummy._base_dummy_index + Dummy._count]
+    assumed = set(global_assumptions)
     address = re.compile(r" at 0x[0-9A-Fa-f]+")
     dummy = re.compile(r"dummy_index=(\d+)")
     optional = ("numpy", "scipy", "matplotlib")
@@ -330,6 +393,24 @@ def main():
             mpmath.mp.pretty = False
             random.seed(seed)
             sympy_random.seed(seed)
+            issued[0] = max(issued[0], Dummy._base_dummy_index + Dummy._count)
+            Dummy._base_dummy_index = issued[0] - dummies
+            Dummy._count = dummies
+            global_assumptions.clear()
+            global_assumptions.update(assumed)
+            # Module-level stores that clear_cache() leaves alone, reset when their module is loaded: the refined
+            # isolating intervals of CRootOf, manualintegrate's in-progress marks (an example that stopped inside an
+            # integration leaves them behind) and the prime sieve.
+            rootoftools = sys.modules.get("sympy.polys.rootoftools")
+            if rootoftools is not None:
+                rootoftools._reals_cache._dict.clear()
+                rootoftools._complexes_cache._dict.clear()
+            manual = sys.modules.get("sympy.integrals.manualintegrate")
+            if manual is not None:
+                manual._integral_cache.clear()
+            generate = sys.modules.get("sympy.ntheory.generate")
+            if generate is not None:
+                generate.sieve._reset()
             sys.setrecursionlimit(recursion)
             sys.set_int_max_str_digits(digits)
             os.chdir(home)
@@ -409,20 +490,20 @@ def main():
     for line in requests:
         try:
             request = json.loads(line)
-            setup, code, allowed = request["setup"], request["code"], request["random"] is True
+            setup, code, seed = request["setup"], request["code"], request["seed"]
+            if not isinstance(seed, int) or isinstance(seed, bool):
+                raise ValueError(seed)
         except Exception:
             send({"error": "raises"})
             continue
         before = snapshot()
         try:
-            reply, drew = evaluate(setup, code, 0)
-            if drew and not allowed and "error" not in reply:
-                again, _ = evaluate(setup, code, 1)
-                if again != reply:
-                    reply = {"error": "random"}
+            reply, drew = evaluate(setup, code, seed)
         except Broken:
             send({"error": "restart"})
             return
+        if "error" not in reply:
+            reply["drew"] = drew
         if changed(before):
             reply["restart"] = True
             send(reply)
@@ -445,14 +526,13 @@ class ExampleRunner:
     "random" (the value changes with the random generators' seed; only when random_allowed is false),
     "optional-dependency" (a module that is not installed, or numpy, scipy or matplotlib), "raises" (an exception, or
     a crash of the worker), "timeout" (no answer within timeout seconds) or "unstable" (the text holds a memory
-    address). After a crash, a timeout or an example that changed the sympy namespace, builtins or sympy.Q, the worker
-    is replaced before the next example. The worker must run SymPy 1.14. Use it as a context manager, or close()."""
+    address). An example that draws from the random generators runs a second time with them seeded 1 instead of 0,
+    as a request of its own with its own timeout. After a crash, a timeout or an example that changed the sympy
+    namespace, builtins or sympy.Q, the worker is replaced before the next example. The worker must run SymPy 1.14.
+    Use it as a context manager, or close()."""
 
     def __init__(self, *, hash_seed: int, timeout: float = 60.0) -> None:
-        if isinstance(hash_seed, bool) or not isinstance(hash_seed, int) or not 0 <= hash_seed <= 4294967295:
-            raise ValueError("hash_seed must be an integer from 0 to 4294967295")
-        if not timeout > 0:
-            raise ValueError("timeout must be a positive number of seconds")
+        _check_runner_arguments(hash_seed, timeout)
         self.hash_seed = hash_seed
         self.timeout = float(timeout)
         self.sympy_version: str | None = None  # As the worker reports it
@@ -474,11 +554,20 @@ class ExampleRunner:
             raise TypeError("setup and code must be strings")
         if self._closed:
             raise RuntimeError("the example runner is closed")
-        request = json.dumps({"setup": setup, "code": code, "random": bool(random_allowed)}).encode("ascii") + b"\n"
-        result = self._exchange(request)
+        result, drew = self._evaluate(setup, code, 0)
+        if drew and not random_allowed and isinstance(result, Record):
+            again, _ = self._evaluate(setup, code, 1)
+            if not (isinstance(again, Record) and tuple(again) == tuple(result)):
+                return "random"
+        return result
+
+    def _evaluate(self, setup: str, code: str, seed: int) -> tuple[Record | str, bool]:
+        """One run with the random generators seeded with seed: its result, and whether it drew from them."""
+        request = json.dumps({"setup": setup, "code": code, "seed": seed}).encode("ascii") + b"\n"
+        result, drew = self._exchange(request)
         if result == "restart":  # The worker was left broken by an earlier example: a fresh one runs this one.
-            result = self._exchange(request)
-        return "raises" if result == "restart" else result
+            result, drew = self._exchange(request)
+        return ("raises", False) if result == "restart" else (result, drew)
 
     def close(self) -> None:
         """Stop the worker; the runner cannot be used afterwards."""
@@ -493,7 +582,7 @@ class ExampleRunner:
                 process.wait(timeout=5)
         self._stop()
 
-    def _exchange(self, request: bytes) -> Record | str:
+    def _exchange(self, request: bytes) -> tuple[Record | str, bool]:
         try:
             self._send(request)
         except OSError:  # The worker died between examples, which is not this example's doing: start another one.
@@ -503,7 +592,7 @@ class ExampleRunner:
             line = self._replies.get(timeout=self.timeout)
         except queue.Empty:
             self._stop()
-            return "timeout"
+            return "timeout", False
         try:
             reply = json.loads(line) if line is not None else None
         except ValueError:
@@ -511,10 +600,11 @@ class ExampleRunner:
         if isinstance(reply, dict):
             if reply == {"error": "restart"}:
                 self._stop()
-                return "restart"
+                return "restart", False
             restart = reply.pop("restart", None) is True
+            drew = reply.pop("drew", None) is True
             result: Record | str | None = None
-            if set(reply) == {"error"} and reply["error"] in _RUN_REASONS:
+            if set(reply) == {"error"} and reply["error"] in _WORKER_REASONS:
                 result = reply["error"]
             elif (set(reply) == {"output", "srepr", "kind"} and all(isinstance(value, str) for value in reply.values())
                   and reply["kind"] in KINDS):
@@ -522,9 +612,9 @@ class ExampleRunner:
             if result is not None:
                 if restart:  # The example changed what the next one would see: it gets a fresh worker.
                     self._stop()
-                return result
+                return result, drew
         self._stop()  # The worker died with the example (None) or broke the protocol: never trust it again.
-        return "raises"
+        return "raises", False
 
     def _send(self, request: bytes) -> None:
         if self._process is None:
@@ -594,14 +684,83 @@ def _pump(stream, replies: queue.Queue) -> None:
         replies.put(None)
 
 
+def _check_runner_arguments(hash_seed: object, timeout: object) -> None:
+    if isinstance(hash_seed, bool) or not isinstance(hash_seed, int) or not 0 <= hash_seed <= 4294967295:
+        raise ValueError("hash_seed must be an integer from 0 to 4294967295")
+    if not timeout > 0:
+        raise ValueError("timeout must be a positive number of seconds")
+
+
+class FreshRunner:
+    """Runs each example in a worker process started for it alone, and stopped after it: the run that verifies a
+    record, since such a process has no history another example could have left. The worker is an ExampleRunner's
+    (same isolation, the example's own full timeout for each of its runs, the same random-generator check). A few
+    workers are started ahead in the background (spares), so that importing SymPy overlaps the examples; a spare has
+    run nothing until it is used. Not for use by several threads at once; use it as a context manager, or close()."""
+
+    def __init__(self, *, hash_seed: int, timeout: float = 60.0, spares: int = 2) -> None:
+        _check_runner_arguments(hash_seed, timeout)
+        if isinstance(spares, bool) or not isinstance(spares, int) or spares < 1:
+            raise ValueError("spares must be a positive integer")
+        self.hash_seed = hash_seed
+        self.timeout = float(timeout)
+        self._slots: collections.deque = collections.deque()  # One queue per starting worker, in start order
+        self._closed = False
+        for _ in range(spares):
+            self._prepare()
+
+    def __enter__(self) -> "FreshRunner":
+        return self
+
+    def __exit__(self, *exception: object) -> None:
+        self.close()
+
+    def run(self, setup: str, code: str, *, random_allowed: bool = False) -> Record | str:
+        """What ExampleRunner.run gives for the example in a worker that has run nothing else."""
+        if not isinstance(setup, str) or not isinstance(code, str):
+            raise TypeError("setup and code must be strings")
+        if self._closed:
+            raise RuntimeError("the fresh runner is closed")
+        slot = self._slots.popleft()
+        self._prepare()
+        runner = slot.get()
+        if isinstance(runner, BaseException):
+            raise RuntimeError("a fresh example worker did not start") from runner
+        with runner:
+            return runner.run(setup, code, random_allowed=random_allowed)
+
+    def close(self) -> None:
+        """Stop the spare workers (waiting for those still starting); the runner cannot be used afterwards."""
+        if self._closed:
+            return
+        self._closed = True
+        while self._slots:
+            runner = self._slots.popleft().get()
+            if isinstance(runner, ExampleRunner):
+                runner.close()
+
+    def _prepare(self) -> None:
+        slot: queue.Queue = queue.Queue(maxsize=1)
+
+        def start() -> None:
+            try:
+                slot.put(ExampleRunner(hash_seed=self.hash_seed, timeout=self.timeout))
+            except BaseException as error:
+                slot.put(error)
+
+        threading.Thread(target=start, daemon=True, name="fresh-example-worker").start()
+        self._slots.append(slot)
+
+
 # Results are memoized for the life of the process: rows that share an API share its candidates, and a record depends
-# on (hash seed, timeout, whether randomness is allowed, setup, code) alone. A candidate that timed out is not retried.
-_RESULTS: dict[tuple[int, float, bool, str, str], Record | str] = {}
+# on (fresh or long-lived worker, hash seed, timeout, whether randomness is allowed, setup, code) alone. A candidate
+# that timed out is not retried.
+_RESULTS: dict[tuple[bool, int, float, bool, str, str], Record | str] = {}
 _RESULTS_LOCK = threading.Lock()
 
 
-def _execute(runner: ExampleRunner, setup: str, code: str, random_allowed: bool) -> Record | str:
-    key = (runner.hash_seed, runner.timeout, random_allowed, setup, code)
+def _execute(runner: "ExampleRunner | FreshRunner", setup: str, code: str, random_allowed: bool) -> Record | str:
+    key = (isinstance(runner, FreshRunner), runner.hash_seed, runner.timeout, random_allowed, setup, code)
     with _RESULTS_LOCK:
         if key in _RESULTS:
             return _RESULTS[key]
@@ -633,12 +792,13 @@ class _Group:
     code: str                         # The expression, or for an excluded group the statement as written
     pool: tuple[_Statement, ...]
     reason: str | None                # "raises" or "printing" when the document itself rules the group out
-    names: frozenset[str]             # What the code calls or reads as an attribute, aliases resolved
+    uses: "_Uses"                     # How the code reaches names, aliases resolved
 
 
 class _Usage(ast.NodeVisitor):
     def __init__(self) -> None:
         self.calls: set[str] = set()
+        self.bare_calls: set[str] = set()  # f in f(...), not in x.f(...)
         self.attributes: set[str] = set()
         self.loads: set[str] = set()
         self.stores: set[str] = set()
@@ -649,6 +809,7 @@ class _Usage(ast.NodeVisitor):
     def visit_Call(self, node: ast.Call) -> None:
         if isinstance(node.func, ast.Name):
             self.calls.add(node.func.id)
+            self.bare_calls.add(node.func.id)
         elif isinstance(node.func, ast.Attribute):
             self.calls.add(node.func.attr)
         self.generic_visit(node)
@@ -889,19 +1050,35 @@ def _alias_map(statements: Iterable[_Statement]) -> dict[str, str]:
     return aliases
 
 
-def _called(node: ast.AST, aliases: Mapping[str, str]) -> frozenset[str]:
-    """The names that code calls or reads as an attribute, with an imported alias also standing for its original."""
+@dataclass(frozen=True)
+class _Uses:
+    """How code reaches names: bare calls f(...) (an imported alias also standing for its original) and attribute
+    accesses x.f, called or not."""
+    bare: frozenset[str] = frozenset()
+    attributes: frozenset[str] = frozenset()
+
+    @property
+    def names(self) -> frozenset[str]:
+        return self.bare | self.attributes
+
+    def reach(self, name: str, method: bool) -> bool:
+        """Whether the code uses the API: an attribute of a class or object only through an attribute access, a
+        module-level name also through a bare call."""
+        return name in self.attributes or (not method and name in self.bare)
+
+
+def _called(node: ast.AST, aliases: Mapping[str, str]) -> _Uses:
     usage = _usage(node)
-    used = usage.calls | usage.attributes
-    return frozenset(used | {aliases[name] for name in used if name in aliases})
+    bare = usage.bare_calls | {aliases[name] for name in usage.bare_calls if name in aliases}
+    return _Uses(frozenset(bare), frozenset(usage.attributes))
 
 
 @functools.lru_cache(maxsize=65536)
-def _attribution_names(code: str, setup: str) -> frozenset[str]:
+def _attribution_names(code: str, setup: str) -> _Uses:
     try:
         node = ast.parse(code, mode="eval")
     except SyntaxError:
-        return frozenset()
+        return _Uses()
     aliases: dict[str, str] = {}
     try:
         statements = ast.parse(setup).body
@@ -919,6 +1096,21 @@ def _attribution_names(code: str, setup: str) -> frozenset[str]:
 
 
 _FENCE = re.compile(r"[ \t]*(?:```|~~~)")
+_DISPLAY_CALLS = frozenset({"pprint", "pretty_print", "print"})
+
+
+def _shown(node: ast.expr) -> ast.expr:
+    """The expression that a display call shows: pprint(x), pretty_print(x) or print(x) with one positional argument
+    (keywords such as use_unicode= or end= only change the display) records the value of x, the way the doctest shows
+    it; any other expression is recorded itself. A printer that is the subject, such as latex(x) inside the call,
+    still meets the printing rule."""
+    if isinstance(node, ast.Call) and len(node.args) == 1 and not isinstance(node.args[0], ast.Starred) \
+            and all(keyword.arg is not None for keyword in node.keywords):
+        name = node.func.id if isinstance(node.func, ast.Name) else (
+            node.func.attr if isinstance(node.func, ast.Attribute) else None)
+        if name in _DISPLAY_CALLS:
+            return node.args[0]
+    return node
 
 
 def _doctests(text: str) -> Iterator[tuple[int, str, str, bool]]:
@@ -947,8 +1139,9 @@ def _doctests(text: str) -> Iterator[tuple[int, str, str, bool]]:
 
 def _groups(text: str) -> tuple[_Group, ...]:
     """Doctest grouping: the statements without output up to the next statement with output form one example. The
-    statement with output must be an expression: it becomes the code, and the statements before it in the document form
-    the pool from which its setup is sliced. That expression never joins a later pool: its output was shown, so the
+    statement with output must be an expression: it becomes the code (the shown argument of a display call such as
+    pprint(dsolve(...))), and the statements before it in the document form the pool from which its setup is sliced.
+    That expression never joins a later pool: its output was shown, so the
     document treats it as a result, not as preparation. A wanted traceback rules a group out as "raises"; output from
     a statement that is not an expression (a loop that prints) rules it out as "printing", but such a statement does
     join the pool, because it may bind names that later groups use."""
@@ -959,7 +1152,7 @@ def _groups(text: str) -> tuple[_Group, ...]:
             body = ast.parse(source).body
         except (SyntaxError, ValueError):
             if want:
-                groups.append(_Group(line + 1, source.strip(), tuple(pool), "raises", frozenset()))
+                groups.append(_Group(line + 1, source.strip(), tuple(pool), "raises", _Uses()))
             continue
         if not body:
             continue
@@ -978,7 +1171,7 @@ def _groups(text: str) -> tuple[_Group, ...]:
             pool.append(statements[-1])
         else:
             reason = None
-        node = last.value if expression else last
+        node = _shown(last.value) if expression else last
         code = (ast.get_source_segment(source, node) or ast.unparse(node)).strip()
         groups.append(_Group(line + last.lineno, code, snapshot, reason, _called(node, _alias_map(snapshot))))
     return tuple(groups)
@@ -1032,7 +1225,11 @@ class _Assert:
     line: int
     code: str
     right: str
-    names: frozenset[str]
+    uses: "_Uses"  # Of the left side
+
+    @property
+    def names(self) -> frozenset[str]:
+        return self.uses.names
 
 
 def _sympy_package_directory() -> Path:
@@ -1104,10 +1301,10 @@ def _module_asserts(path: Path, module: str) -> list[_Assert]:
             sides = _equality(node)
             if sides is None:
                 continue
-            names = _called(sides[0], local)
-            if names:
+            uses = _called(sides[0], local)
+            if uses.names:
                 found.append(_Assert(path, module, function.name, node.lineno, _expression_text(lines, sides[0]),
-                                     _expression_text(lines, sides[1]), names))
+                                     _expression_text(lines, sides[1]), uses))
     return found
 
 
@@ -1236,18 +1433,18 @@ class _Candidate:
 class _RowHarvest:
     """One row's candidates through the same sequence everywhere: the rules and the run at the first hash seed
     (first_run), one example per record (offer, with later duplicates waiting behind the example that holds their
-    record), and the re-run at the second hash seed (stable)."""
+    record), and the verification at the other hash seeds (stable)."""
 
-    def __init__(self, row: Row, runner: ExampleRunner, check_runner: ExampleRunner) -> None:
+    def __init__(self, row: Row, runner: ExampleRunner, check_runner: "Verifiers") -> None:
         self.row = row
         self.runner = runner
-        self.check_runner = check_runner
+        self.checkers = _verifiers(runner, check_runner)
         self.random_allowed = _random_subject(row)
         self.excluded: list[Excluded] = []
         self.usable: list[tuple[tuple, Example]] = []                # (order, example), kept in order
         self.holders: dict[tuple, Example] = {}                      # record key -> the usable example holding it
         self.waiting: dict[tuple, list[tuple[tuple, Example]]] = {}  # record key -> its duplicates, in order
-        self.checked: set[int] = set()                               # ids of examples confirmed at the second seed
+        self.checked: set[int] = set()                               # ids of examples the verifiers confirmed
 
     def first_run(self, candidate: _Candidate) -> Example | None:
         """The example of a candidate that passes the rules and runs at the first hash seed; otherwise None, with its
@@ -1266,9 +1463,16 @@ class _RowHarvest:
                        result.kind)
 
     def stable(self, example: Example) -> bool:
-        """Whether the second hash seed gives the example the same record."""
-        return _execute(self.check_runner, example.setup, example.code, self.random_allowed) == (example.output,
-                                                                                                  example.srepr)
+        """Whether every verifier (each at a hash seed of its own) gives the example the same record. The verifiers
+        run at the same time, each with its own timeout."""
+        if len(self.checkers) == 1:
+            results = [_execute(self.checkers[0], example.setup, example.code, self.random_allowed)]
+        else:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=len(self.checkers)) as pool:
+                futures = [pool.submit(_execute, checker, example.setup, example.code, self.random_allowed)
+                           for checker in self.checkers]
+                results = [future.result() for future in futures]  # A verifier's own failure propagates.
+        return all(result == (example.output, example.srepr) for result in results)
 
     def holds(self, example: Example) -> bool:
         return _record_key(example) in self.holders
@@ -1298,7 +1502,7 @@ class _RowHarvest:
         return [example for _, example in self.usable]
 
     def stabilize(self, apis: Sequence[str]) -> list[Example]:
-        """Re-run what select() picks at the second hash seed, excluding what changes, until the pick is stable."""
+        """Verify what select() picks at the other hash seeds, excluding what changes, until the pick is stable."""
         while True:
             chosen = select(self.examples(), apis=apis)
             pending = [example for example in chosen if id(example) not in self.checked]
@@ -1320,7 +1524,7 @@ class _RowHarvest:
             package, _, leaf = _home_module(api.value).rpartition(".")
             ordered = []
             for item in index.get(api.name, ()):
-                if _first_api(item.names, apis) == api.index:
+                if _first_api(item.uses, apis) == api.index:
                     rank = (0 if item.module == f"{package}.tests.test_{leaf}"
                             else 1 if item.module.startswith(f"{package}.tests.") else 2)
                     ordered.append(((2, api.index, rank, item.module, item.line), item))
@@ -1371,7 +1575,7 @@ class _RowHarvest:
 
 
 def harvest(row: Row, runner: ExampleRunner, *, doc_src: Path | None,
-            check_runner: ExampleRunner | None = None) -> tuple[list[Example], list[Excluded]]:
+            check_runner: "Verifiers | None" = None) -> tuple[list[Example], list[Excluded]]:
     """The row's candidates and its exclusions.
 
     Candidates come from the docstrings of the row's resolvable APIs (in row order), then from the guide pages under
@@ -1379,19 +1583,23 @@ def harvest(row: Row, runner: ExampleRunner, *, doc_src: Path | None,
     document order; a candidate's setup is sliced from the statements before it to those its code needs. Every
     candidate is ruled out by the document, by the static rules or by its run at runner's hash seed, or becomes usable;
     an example whose code and record repeat an earlier usable one is a duplicate. The examples that select() would
-    pick are then run again by check_runner (another hash seed; a temporary one with runner's seed + 1 when None) and
-    excluded as "unstable" when their record changes, until the selection is stable; a duplicate waiting behind an
+    pick are then verified by check_runner (a runner, or several, each at a hash seed of its own) and excluded as
+    "unstable" when any of them gives another record, until the selection is stable; a duplicate waiting behind an
     unstable example takes its place. A selection below LOW is topped up to LOW from the equality asserts of SymPy's
     installed test modules: the left side is the code, and an assert counts only when its right side's output is the
-    same, the asserts taken in turn across the APIs and only as far as needed.
+    same, the asserts taken in turn across the APIs and only as far as needed (each verified like the others).
+
+    check_runner is by default two FreshRunners, at runner's seed + 1 and + 2: every verification then runs in a worker
+    process of its own, which makes a record independent of the examples that ran before it, and three hash seeds must
+    agree (with two, an order of two elements that depends on the hash seed agrees half of the time). Long-lived
+    ExampleRunners can be passed instead where that guarantee is not the point (they share their own history).
 
     The returned candidates are in source order and carry no id yet; select(candidates,
-    apis=resolvable_api_paths(row)) picks exactly the stability-checked examples."""
+    apis=resolvable_api_paths(row)) picks exactly the verified examples."""
     if check_runner is None:
-        with ExampleRunner(hash_seed=(runner.hash_seed + 1) % 4294967296, timeout=runner.timeout) as check:
-            return harvest(row, runner, doc_src=doc_src, check_runner=check)
-    if check_runner.hash_seed == runner.hash_seed:
-        raise ValueError("the check runner must use another hash seed")
+        with FreshRunner(hash_seed=(runner.hash_seed + 1) % 4294967296, timeout=runner.timeout) as first, \
+                FreshRunner(hash_seed=(runner.hash_seed + 2) % 4294967296, timeout=runner.timeout) as second:
+            return harvest(row, runner, doc_src=doc_src, check_runner=(first, second))
     apis = _resolved(row)
     work = _RowHarvest(row, runner, check_runner)
     for candidate in sorted(_document_candidates(apis, doc_src), key=lambda candidate: candidate.order):
@@ -1418,10 +1626,10 @@ def _document_candidates(apis: Sequence[_Api], doc_src: Path | None) -> Iterator
     names = {api.name for api in apis}
     for relative, groups in _guide_documents(doc_src):
         for group in groups:
-            if not group.names & names:
+            if not group.uses.names & names:
                 continue
             candidate = _candidate(group, (), f"guide:{relative}:{group.line}")
-            index = (_first_api(group.names, apis) if candidate.reason is not None
+            index = (_first_api(group.uses, apis) if candidate.reason is not None
                      else _first_api(_attribution_names(candidate.code, candidate.setup), apis))
             if index is not None:
                 yield dataclasses.replace(candidate, order=(1, index, relative, group.line))
@@ -1432,14 +1640,29 @@ def _candidate(group: _Group, order: tuple, source: str) -> _Candidate:
     return _Candidate(order, source, setup, group.code, group.reason)
 
 
-def _first_api(names: frozenset[str], apis: Sequence[_Api]) -> int | None:
-    return next((api.index for api in apis if api.name in names), None)
+Verifiers = "FreshRunner | ExampleRunner | Sequence[FreshRunner | ExampleRunner]"
+
+
+def _verifiers(runner: ExampleRunner, check_runner: object) -> tuple:
+    """The verifying runners as a tuple: one runner or several, at hash seeds that differ from runner's and from
+    each other."""
+    checkers = tuple(check_runner) if isinstance(check_runner, (list, tuple)) else (check_runner,)
+    seeds = [checker.hash_seed for checker in checkers]
+    if not checkers or runner.hash_seed in seeds or len(set(seeds)) != len(seeds):
+        raise ValueError("the verifiers must use hash seeds of their own, other than the first run's")
+    return checkers
+
+
+def _first_api(uses: _Uses, apis: Sequence[_Api]) -> int | None:
+    return next((api.index for api in apis if uses.reach(api.name, api.method)), None)
 
 
 def examine(row: Row, source: str, setup: str, code: str, runner: ExampleRunner,
-            check_runner: ExampleRunner) -> Example | Excluded:
-    """One candidate through the same rules as a harvested one: the static rules, a run at runner's hash seed and a
-    second run at check_runner's, which must give the same record. The example has no id yet."""
+            check_runner: "Verifiers") -> Example | Excluded:
+    """One candidate through the same rules as a harvested one: the static rules, a run at runner's hash seed and the
+    verification by check_runner (a runner, or several, each at a hash seed of its own), which must give the same
+    record (pass FreshRunners for the guarantee that the record does not depend on run history). The example has no
+    id yet."""
     work = _RowHarvest(row, runner, check_runner)
     example = work.first_run(_Candidate((), source, setup, code))
     if example is None:
@@ -1498,9 +1721,9 @@ def _document(source: str) -> str:
 def _api_key(item: Example, apis: Sequence[str]) -> str:
     if item.source.startswith("docstring:"):
         return _document(item.source)[len("docstring:"):]
-    names = _attribution_names(item.code, item.setup)
+    uses = _attribution_names(item.code, item.setup)
     for path in apis:
-        if _api_name(path) in names:
+        if uses.reach(_api_name(path), _is_method_path(path)):
             return path
     return _document(item.source)
 
@@ -1521,8 +1744,8 @@ def _rotate(groups: Sequence[Sequence[Example]], limit: int) -> list[Example]:
 
 def load_curation(path: Path) -> dict[str, dict[str, list[dict[str, str]]]]:
     """Read a curation file: an object keyed by row id whose values hold "drop" ([{"source", "code", "reason"}], the
-    reason one of DROP_REASONS) and "add" ([{"source", "setup", "code"}]) lists. CurationError names the file and the
-    problem."""
+    reason one of DROP_REASONS) and "add" ([{"source", "setup", "code"}]) lists; an addition's source may also be
+    probe:<row id>, the row's own sympy_probe. CurationError names the file and the problem."""
     path = Path(path)
     try:
         document = json.loads(path.read_bytes().decode("utf-8-sig"))
@@ -1547,9 +1770,9 @@ def _checked_curation(document: object) -> dict[str, dict[str, list[dict[str, st
                 raise CurationError(f"{row_id}: drop reason {drop['reason']!r} is not allowed; the reasons are "
                                     f"{', '.join(DROP_REASONS)}")
         for item in drops + adds:
-            if not item["source"].startswith(SOURCE_PREFIXES):
+            if not item["source"].startswith(_RECORD_PREFIXES):
                 raise CurationError(f"{row_id}: source {item['source']!r} does not start with "
-                                    f"{', '.join(SOURCE_PREFIXES)}")
+                                    f"{', '.join(_RECORD_PREFIXES)}")
         for add in adds:
             try:
                 ast.parse(add["code"], mode="eval")
@@ -1574,7 +1797,7 @@ def _curation_items(row_id: str, name: str, items: object, fields: tuple[str, ..
 
 
 def curate(row: Row, selected: Sequence[Example], entry: Mapping[str, Sequence[Mapping[str, str]]] | None,
-           runner: ExampleRunner | None, check_runner: ExampleRunner | None, *,
+           runner: ExampleRunner | None, check_runner: "Verifiers | None", *,
            high: int = HIGH) -> tuple[list[Example], list[tuple[str, str, str, str]]]:
     """Apply a curation entry to the row's selection and number the result.
 
@@ -1597,6 +1820,11 @@ def curate(row: Row, selected: Sequence[Example], entry: Mapping[str, Sequence[M
     for add in entry.get("add", ()):
         if runner is None or check_runner is None:
             raise ValueError("curation additions need the runners")
+        if add["source"].startswith(PROBE_PREFIX) and not (
+                add["source"] == f"{PROBE_PREFIX}{row.id}" and add["setup"] == "" and row.sympy_probe
+                and add["code"] == row.sympy_probe):
+            raise CurationError(f"{row.id}: a {PROBE_PREFIX} addition is {PROBE_PREFIX}{row.id} with an empty setup "
+                                f"and the row's own sympy_probe {row.sympy_probe!r} as its code")
         result = examine(row, add["source"], add["setup"], add["code"], runner, check_runner)
         if isinstance(result, Excluded):
             raise CurationError(f"{row.id}: added example {add['source']} {add['code']!r} is excluded: "
@@ -1625,7 +1853,8 @@ _FIELDS = tuple(field.name for field in dataclasses.fields(Example))
 def load_examples(path: Path) -> dict[str, list[Example]]:
     """Read an examples file: {"rows": {row id: [example, ...]}}. Every example has exactly the Example fields, all
     strings; its row is the row it is listed under and its id is <row>/<nn>, unique in the file; its kind is exact or
-    numeric and its source starts with docstring:, guide: or tests:. ValueError names the file and the problem."""
+    numeric and its source starts with docstring:, guide:, tests: or probe:. ValueError names the file and the
+    problem."""
     path = Path(path)
     try:
         document = json.loads(path.read_bytes().decode("utf-8-sig"))
@@ -1668,7 +1897,7 @@ def _check_examples(row_id: object, examples: Sequence[Example], seen: set[str])
         seen.add(item.id)
         if item.kind not in KINDS:
             raise ValueError(f"row {row_id}: example {item.id} has kind {item.kind!r}, not exact or numeric")
-        if not item.source.startswith(SOURCE_PREFIXES):
+        if not item.source.startswith(_RECORD_PREFIXES):
             raise ValueError(f"row {row_id}: example {item.id} has source {item.source!r}")
 
 

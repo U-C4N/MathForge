@@ -6,18 +6,23 @@
 For each chosen row (default: every row) the harvest collects candidates from the docstrings of the row's APIs, then
 from the SymPy 1.14 guide sources under --doc-src (optional), then, only for a set that stays below ten, from the
 equality asserts of SymPy's installed test modules. Every candidate runs in a sandboxed worker at PYTHONHASHSEED=0 with
-a 60 s timeout; what cannot serve as a reference is excluded with its reason, the selection runs again at
-PYTHONHASHSEED=1 and what changes is excluded as unstable. At most twenty examples are picked, in turn across the row's
-APIs. The curation file (default docs/v08/harvest/curation.json; absent means none) then drops and adds examples per
-row; the final ids are <row>/01, <row>/02, ... in that order.
+a 60 s timeout, and what cannot serve as a reference is excluded with its reason. At most twenty examples are picked,
+in turn across the row's APIs, and each of them runs again at PYTHONHASHSEED=1 and at PYTHONHASHSEED=2, each time in a
+worker process started for it alone: an example whose record differs is excluded as unstable, so that no record
+depends on the hash seed or on the examples that ran before it. The curation file (default
+docs/v08/harvest/curation.json; absent means none) then drops and adds examples per row (an addition is verified the
+same way); the final ids are <row>/01, <row>/02, ... in that order.
 
 EXAMPLES keeps every row this run did not harvest and gets the harvested ones replaced. The report (default
 docs/v08/harvest/report.md) gives per row the candidate, selected and excluded counts, every selected and excluded
-example, the curation applied, the short rows (fewer than ten examples) and the API paths that do not resolve. Both
-files are deterministic: the same inputs give the same bytes whatever the number of workers.
+example, the curation applied, the short rows (fewer than ten examples) and the API paths that do not resolve. Neither
+file holds a time or a thread or process detail, and no record depends on the number of workers; which examples are
+selected is decided by the runs at PYTHONHASHSEED=0 in long-lived workers (coverage_gate.examples states what is and
+is not guaranteed).
 
 Exit status 0 when both files are written; 2 for a usage, input or curation error, or when the harvester's SymPy is not
-1.14, and then nothing is written. Run it with the interpreter that has SymPy 1.14 (.venv-mcp); the workers run without
+1.14; 1 when the harvest fails (a traceback and a message go to stderr); 130 when interrupted. Only status 0 means the
+files were written. Run it with the interpreter that has SymPy 1.14 (.venv-mcp); the workers run without
 any PYTHON*, SYMPY* or MPMATH* environment variable but PYTHONHASHSEED. This is internal tooling: mathforge never imports
 it.
 """
@@ -30,6 +35,7 @@ import queue
 import sys
 import threading
 import time
+import traceback
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -84,8 +90,32 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (ValueError, OSError, ImportError, RuntimeError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 2
+    try:
+        return _harvest_and_write(arguments, rows, curation, curation_label, existing, report_path, started)
+    except KeyboardInterrupt:
+        print("error: interrupted; the examples file and the report were not written", file=sys.stderr)
+        return 130
+    except Exception as error:  # Whatever fails, the run never ends silently, and never with status 0.
+        traceback.print_exception(error, file=sys.stderr)
+        print(f"error: the harvest failed ({type(error).__name__}: {error})", file=sys.stderr)
+        return 1
 
-    results, versions = _harvest(rows, doc_src=arguments.doc_src, curation=curation, workers=arguments.workers)
+
+def _harvest_and_write(arguments: argparse.Namespace, rows: Sequence[Row], curation: Mapping[str, Mapping],
+                       curation_label: str, existing: Mapping[str, Sequence[harvesting.Example]], report_path: Path,
+                       started: float) -> int:
+    results, versions, failures = _harvest(rows, doc_src=arguments.doc_src, curation=curation,
+                                           workers=arguments.workers)
+    if failures:
+        for failure in failures:
+            traceback.print_exception(failure, file=sys.stderr)
+        print(f"error: a harvest thread failed ({type(failures[0]).__name__}: {failures[0]}); nothing was written",
+              file=sys.stderr)
+        return 1
+    missing = [row.id for row in rows if row.id not in results]
+    if missing:
+        print(f"error: no result for rows {', '.join(missing)}; nothing was written", file=sys.stderr)
+        return 1
     errors = [results[row.id] for row in rows if isinstance(results[row.id], harvesting.CurationError)]
     if errors:
         for error in errors:
@@ -93,20 +123,31 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("error: curation could not be applied; nothing was written", file=sys.stderr)
         return 2
 
-    merged = {**existing, **{row.id: list(results[row.id].examples) for row in rows}}
-    arguments.out.parent.mkdir(parents=True, exist_ok=True)
-    harvesting.write_examples(arguments.out, merged)
-    text = render_report(inventory=arguments.inventory, out=arguments.out, doc_src=arguments.doc_src,
-                         curation=curation_label, sympy=", ".join(sorted(versions)) or "unknown",
-                         results=[results[row.id] for row in rows])
-    report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_bytes(text.encode("utf-8"))
     finished = [results[row.id] for row in rows]
+    merged = {**existing, **{row.id: list(result.examples) for row, result in zip(rows, finished)}}
+    text = render_report(inventory=arguments.inventory, out=arguments.out, doc_src=arguments.doc_src,
+                         curation=curation_label, sympy=", ".join(sorted(versions)) or "unknown", results=finished)
+    arguments.out.parent.mkdir(parents=True, exist_ok=True)
+    harvesting.write_examples(arguments.out, merged)  # Atomic: the old file stays until the new one is complete.
+    try:
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_bytes(text.encode("utf-8"))
+    except OSError as error:
+        print(f"error: wrote {arguments.out} but not the report: {error}", file=sys.stderr)
+        return 1
     selected = sum(len(result.examples) for result in finished)
     short = sum(len(result.examples) < harvesting.LOW for result in finished)
-    print(f"Harvested {len(rows)} rows in {time.monotonic() - started:.1f} s: {selected} examples, {short} short rows, "
-          f"{sum(len(result.excluded) for result in finished)} exclusions. Wrote {arguments.out} and {report_path}.")
+    _say(f"Harvested {len(rows)} rows in {time.monotonic() - started:.1f} s: {selected} examples, {short} short rows, "
+         f"{sum(len(result.excluded) for result in finished)} exclusions. Wrote {arguments.out} and {report_path}.")
     return 0
+
+
+def _say(text: str) -> None:
+    """Progress for the person at the console; a closed or broken stdout must not stop the harvest."""
+    try:
+        print(text, flush=True)
+    except (OSError, ValueError):
+        pass
 
 
 def _positive(text: str) -> int:
@@ -146,8 +187,11 @@ def _curation(path: Path | None, rows: Sequence[Row]) -> tuple[dict, str]:
 
 
 def _harvest(rows: Sequence[Row], *, doc_src: Path | None, curation: Mapping[str, Mapping],
-             workers: int) -> tuple[dict[str, "RowResult | harvesting.CurationError"], set[str]]:
-    """Harvest the rows on `workers` threads, each with its own pair of runners (hash seeds 0 and 1)."""
+             workers: int) -> tuple[dict[str, "RowResult | harvesting.CurationError"], set[str], list[BaseException]]:
+    """Harvest the rows on `workers` threads, each with a long-lived runner at hash seed 0 and FreshRunners at hash
+    seeds 1 and 2 that verify every selected example, each in a worker process of its own. Returns the results by row,
+    the SymPy versions the workers reported and the exceptions that stopped threads (then the other threads stop after
+    their current row, and some rows have no result)."""
     pending: queue.Queue = queue.Queue()
     for row in rows:
         pending.put(row)
@@ -159,7 +203,9 @@ def _harvest(rows: Sequence[Row], *, doc_src: Path | None, curation: Mapping[str
     def work() -> None:
         try:
             with harvesting.ExampleRunner(hash_seed=0, timeout=TIMEOUT) as first, \
-                    harvesting.ExampleRunner(hash_seed=1, timeout=TIMEOUT) as second:
+                    harvesting.FreshRunner(hash_seed=1, timeout=TIMEOUT) as second, \
+                    harvesting.FreshRunner(hash_seed=2, timeout=TIMEOUT) as third:
+                check = (second, third)
                 with lock:
                     versions.add(first.sympy_version or "unknown")
                 while not failures:
@@ -168,11 +214,12 @@ def _harvest(rows: Sequence[Row], *, doc_src: Path | None, curation: Mapping[str
                     except queue.Empty:
                         return
                     began = time.monotonic()
-                    result = _harvest_row(row, first, second, doc_src, curation.get(row.id))
+                    result = _harvest_row(row, first, check, doc_src, curation.get(row.id))
                     with lock:
                         results[row.id] = result
-                        print(_progress(len(results), len(rows), row, result, time.monotonic() - began), flush=True)
-        except BaseException as error:  # Re-raised in the main thread, with its traceback.
+                        progress = _progress(len(results), len(rows), row, result, time.monotonic() - began)
+                    _say(progress)
+        except BaseException as error:  # Reported by the main thread, with its traceback.
             with lock:
                 failures.append(error)
 
@@ -182,17 +229,15 @@ def _harvest(rows: Sequence[Row], *, doc_src: Path | None, curation: Mapping[str
         thread.start()
     for thread in threads:
         thread.join()
-    if failures:
-        raise failures[0]
-    return results, versions
+    return results, versions, failures
 
 
-def _harvest_row(row: Row, first: harvesting.ExampleRunner, second: harvesting.ExampleRunner,
+def _harvest_row(row: Row, first: harvesting.ExampleRunner, check: tuple[harvesting.FreshRunner, ...],
                  doc_src: Path | None, entry: Mapping | None) -> "RowResult | harvesting.CurationError":
-    candidates, excluded = harvesting.harvest(row, first, doc_src=doc_src, check_runner=second)
+    candidates, excluded = harvesting.harvest(row, first, doc_src=doc_src, check_runner=check)
     selected = harvesting.select(candidates, apis=harvesting.resolvable_api_paths(row))
     try:
-        examples, notes = harvesting.curate(row, selected, entry, first, second)
+        examples, notes = harvesting.curate(row, selected, entry, first, check)
     except harvesting.CurationError as error:
         return error
     return RowResult(row, tuple(harvesting.unresolved_apis(row)), len(candidates) + len(excluded), tuple(examples),
@@ -212,8 +257,9 @@ def _progress(done: int, total: int, row: Row, result: "RowResult | harvesting.C
 
 def render_report(*, inventory: Path, out: Path, doc_src: Path | None, curation: str, sympy: str,
                   results: Sequence[RowResult]) -> str:
-    """The harvest report as Markdown; it holds nothing that depends on timing, threads or the hash seed. Codes and
-    outputs appear as JSON strings, ready to be copied into a curation file."""
+    """The harvest report as Markdown. It prints no time and no thread or process detail, so runs that make the same
+    decisions give the same report. Codes and outputs appear as JSON strings, ready to be copied into a curation
+    file."""
     lines = ["# SymPy reference example harvest", "",
              f"- Inventory: `{inventory.as_posix()}`",
              f"- Examples file: `{out.as_posix()}` (the rows of this report were replaced; other rows were kept)",
@@ -222,8 +268,9 @@ def render_report(*, inventory: Path, out: Path, doc_src: Path | None, curation:
              else "- Guide sources: not used (--doc-src not given)",
              f"- Curation: {curation}",
              f"- Rows harvested: {len(results)}",
-             f"- Every candidate ran at PYTHONHASHSEED=0 with a {TIMEOUT:g} s timeout; the selected ones ran again at "
-             "PYTHONHASHSEED=1 and had to give the same record.",
+             f"- Every candidate ran at PYTHONHASHSEED=0 with a {TIMEOUT:g} s timeout; each selected one ran again at "
+             "PYTHONHASHSEED=1 and 2, each time in a worker process started for it alone, and had to give the same "
+             "record.",
              ""]
     reasons = Counter(item.reason for result in results for item in result.excluded)
     short = [result for result in results if len(result.examples) < harvesting.LOW]

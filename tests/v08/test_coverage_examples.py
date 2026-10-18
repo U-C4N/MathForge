@@ -4,6 +4,10 @@ SymPy 1.14 is a development dependency (installed in .venv-mcp together with its
 skips when it is absent, as in CI's core job, while the file, curation and runner-protocol tests, which need no SymPy,
 always run. The tests build synthetic rows, guide pages, test modules, inventories and example files in temporary
 directories; none reads the local docs/ inventory, the curation file or the downloaded SymPy guide sources.
+
+Harvests verify their selection with a long-lived seed-1 runner where the selection logic is under test (one worker
+for all, which is fast); the verification in a fresh worker per example, which the command line always uses, is tested
+on its own and through the command line.
 """
 
 import contextlib
@@ -140,6 +144,20 @@ class ResolutionTests(unittest.TestCase):
         self.assertTrue(unresolved[1][1].startswith("names the module"), unresolved[1][1])
         self.assertEqual(harvesting.unresolved_apis(make_row("27.25")), [("", "the row has no sympy_api_paths")])
 
+    def test_resolve_api_compares_bound_methods_by_function_and_receiver(self):
+        # A classmethod gives a new bound method on every access, so the two routes never find the identical object.
+        import sympy.combinatorics  # noqa: F401  The attribute route works only once the package is imported.
+        from sympy.combinatorics import Permutation
+        for name in ("unrank_lex", "unrank_trotterjohnson", "unrank_nonlex"):
+            for path in (f"sympy.combinatorics.Permutation.{name}",
+                         f"sympy.combinatorics.permutations.Permutation.{name}"):
+                with self.subTest(path):
+                    method = harvesting.resolve_api(path)
+                    self.assertIs(method.__func__, getattr(Permutation, name).__func__)
+                    self.assertIs(method.__self__, Permutation)
+        # Bound methods of an instance compare the same way: the object and the function, not the bound method.
+        self.assertEqual(harvesting.resolve_api("sympy.S.Half.as_numer_denom")(), (1, 2))
+
     def test_resolve_api_refuses_ambiguous_paths(self):
         import sympy
         # Two different objects behind one path: sympy._probe is an object with an attribute f, while the import
@@ -225,6 +243,62 @@ class RunnerTests(RunnerTestCase):
                 self.assertEqual(self.second.run(setup, code, random_allowed=True), drawn)
         # Drawing from a generator is fine when the value does not depend on it.
         self.assertEqual(self.first.run("import random", "(random.random(), 5)[1]"), ("5", "5"))
+        # The second run is a request of its own: two runs of 1.2 s fit a 2 s timeout each.
+        with harvesting.ExampleRunner(hash_seed=0, timeout=2) as runner:
+            self.assertEqual(runner.run("import random, time", "(time.sleep(1.2), random.random())[1]"), "random")
+
+    def test_dummy_numbering_does_not_depend_on_history(self):
+        # Unnamed Dummies carry the process-wide Dummy counter in their names; it is put back before each example.
+        examples = ("Dummy()", "Dummy() + Dummy('x')", "[Dummy() for _ in range(3)]")
+        with harvesting.ExampleRunner(hash_seed=0) as runner:
+            first = runner.run("", "Dummy()")  # The first example of a new worker.
+        with harvesting.FreshRunner(hash_seed=0) as fresh:
+            alone = [fresh.run("", code) for code in examples]  # Each in a worker of its own.
+        self.assertEqual(alone[0], first)
+        self.assertIn("_Dummy_", first[0])
+        for _ in range(2):  # Other examples that create Dummies ran in this worker before.
+            self.first.run("", "[Dummy() for _ in range(5)]")
+            self.assertEqual([self.first.run("", code) for code in examples], alone)
+        # The index base moves on, so a Dummy that outlived its example never equals a new one of the same name.
+        self.assertEqual(self.first.run("import sympy.abc", "setattr(sympy.abc, '_mathforge_kept', Dummy('z')) or 1"),
+                         ("1", "1"))
+        self.assertEqual(self.first.run("import sympy.abc", "Dummy('z') == sympy.abc._mathforge_kept"),
+                         ("False", "False"))
+
+    def test_module_stores_do_not_leak(self):
+        # Stores that clear_cache() leaves alone are put back before each example: CRootOf's refined isolating
+        # intervals and the prime sieve, compared with workers that have run nothing.
+        root = "from sympy import CRootOf\nfrom sympy.abc import x\nr = CRootOf(x**5 - x + 1, 0)"
+        probes = ((root, "r._get_interval()"), ("from sympy import sieve", "len(sieve._list)"))
+        with harvesting.FreshRunner(hash_seed=0) as fresh:
+            alone = [fresh.run(*probe) for probe in probes]
+        self.first.run(root, "r.eval_rational(n=2)")  # Refines the root's cached interval.
+        self.first.run("from sympy import sieve", "sieve.extend(1000) or 1")
+        self.assertEqual([self.first.run(*probe) for probe in probes], alone)
+
+    def test_global_assumptions_do_not_leak(self):
+        add = ("from sympy.assumptions.assume import global_assumptions\nx = Symbol('x')",
+               "global_assumptions.add(Q.real(x)) or 1")
+        ask = ("x = Symbol('x')", "ask(Q.real(x))")
+        scoped = ("x = Symbol('x')\nwith assuming(Q.real(x)):\n    inside = ask(Q.real(x))", "(inside, ask(Q.real(x)))")
+        before = [self.first.run(*ask), self.first.run(*scoped)]
+        self.assertEqual(before, [("None", "None"), ("(True, None)", "(True, None)")])
+        self.assertEqual(self.first.run(*add), ("1", "1"))
+        self.assertEqual([self.first.run(*ask), self.first.run(*scoped)], before)  # The order does not matter.
+
+    def test_fresh_runner_gives_each_example_a_worker_of_its_own(self):
+        with harvesting.FreshRunner(hash_seed=1, spares=1) as fresh:
+            pids = [fresh.run("import os", "os.getpid()")[0] for _ in range(3)]
+            self.assertEqual(len(set(pids)), 3)
+            self.assertNotIn(self.pid(self.second), pids)
+            self.assertEqual(fresh.run("x = symbols('x')", "factor(x**2 - 1)"),
+                             self.second.run("x = symbols('x')", "factor(x**2 - 1)"))
+            self.assertEqual(fresh.run("", "hash('mathforge')"), self.second.run("", "hash('mathforge')"))
+        with self.assertRaises(RuntimeError):
+            fresh.run("", "1")  # Closed.
+        for arguments in ({"hash_seed": 1, "spares": 0}, {"hash_seed": -1}, {"hash_seed": 1, "timeout": 0}):
+            with self.subTest(arguments), self.assertRaises(ValueError):
+                harvesting.FreshRunner(**arguments)
 
     def test_runner_replaces_a_worker_whose_namespace_an_example_changed(self):
         cases = (("import sympy", "setattr(sympy, 'factorint', lambda n: 'patched') or 1", "factorint(12)",
@@ -276,11 +350,19 @@ class ProtocolTests(unittest.TestCase):
     """The parent side of the runner protocol, against a fake worker that needs no SymPy."""
 
     FAKE_WORKER = textwrap.dedent("""\
-        import json, os, sys
+        import json, os, sys, time
         print(json.dumps({"ready": True, "sympy": "1.14.0"}), flush=True)
         for line in sys.stdin:
-            code = json.loads(line)["code"]
-            if code == "garbage":
+            request = json.loads(line)
+            code = request["code"]
+            if code in ("draw", "slowdraw"):  # Its value is the random generators' seed.
+                if code == "slowdraw":
+                    time.sleep(1.2)
+                print(json.dumps({"output": str(request["seed"]), "srepr": "0", "kind": "exact", "drew": True}),
+                      flush=True)
+            elif code == "steadydraw":  # Draws, but its value does not depend on the draw.
+                print(json.dumps({"output": "5", "srepr": "5", "kind": "exact", "drew": True}), flush=True)
+            elif code == "garbage":
                 print("not json", flush=True)
             elif code == "keys":
                 print(json.dumps({"output": "1", "srepr": "1"}), flush=True)
@@ -315,6 +397,17 @@ class ProtocolTests(unittest.TestCase):
             self.assertNotEqual(runner.run("", "pid"), before)
         with self.assertRaises(RuntimeError):
             runner.run("", "pid")  # Closed.
+
+    def test_runner_runs_a_drawing_example_again_as_a_request_of_its_own(self):
+        with mock.patch.object(harvesting, "_WORKER", self.FAKE_WORKER), \
+                harvesting.ExampleRunner(hash_seed=0, timeout=2) as runner:
+            self.assertEqual(runner.run("", "draw"), "random")
+            self.assertEqual(runner.run("", "draw", random_allowed=True), ("0", "0"))
+            self.assertEqual(runner.run("", "steadydraw"), ("5", "5"))
+            # Two runs of 1.2 s each: each request has its own 2 s timeout, so this is "random", not "timeout".
+            started = time.monotonic()
+            self.assertEqual(runner.run("", "slowdraw"), "random")
+            self.assertGreater(time.monotonic() - started, 2.0)
 
     def test_runner_reports_a_worker_that_does_not_start(self):
         for script, detail in (("import sys; sys.exit(1)", "did not start (no answer)"),
@@ -377,8 +470,8 @@ class HarvestTests(RunnerTestCase):
             >>> from sympy.abc import x
             >>> factorint(360)
             {2: 3, 3: 2, 5: 1}
-            >>> pprint(factorint(360))
-            {2: 3, 3: 2, 5: 1}
+            >>> print(latex(factorint(360)))
+            a LaTeX string
             >>> plot(x*factorint(360)[2], show=False)
             Plot object containing:
             >>> import numpy
@@ -403,7 +496,7 @@ class HarvestTests(RunnerTestCase):
             """)
         candidates, excluded = harvesting.harvest(row, self.first, doc_src=doc_src, check_runner=self.second)
         guide = {(item.code, item.reason) for item in self.guide_items(excluded)}
-        self.assertEqual(guide, {("pprint(factorint(360))", "printing"),
+        self.assertEqual(guide, {("latex(factorint(360))", "printing"),  # print() shows it; LaTeX is the subject.
                                  ("plot(x*factorint(360)[2], show=False)", "plotting"),
                                  ("numpy.array(sorted(factorint(360)))", "optional-dependency"),
                                  ("factorint(Symbol('y'))", "raises"),
@@ -492,6 +585,119 @@ class HarvestTests(RunnerTestCase):
         self.assertEqual(self.guide_items(excluded), [harvesting.Excluded("27.14", chance, "factorint(n)", "unstable")])
         self.assertIn(steady, [item.source for item in harvesting.select(candidates, apis=row.sympy_api_paths)])
 
+    def test_selected_examples_are_verified_in_fresh_workers(self):
+        # A class attribute set by one example leaks into later examples of the same worker: neither the resets nor
+        # the namespace check see it. Only a worker without that history can tell.
+        row = make_row("01.01", "sympy.Integer")
+        leak = ("from sympy import Integer", "setattr(Integer, '_mathforge_leak', 1) or 1")
+        probe = "hasattr(Integer(5), '_mathforge_leak')"
+        with harvesting.ExampleRunner(hash_seed=0) as polluted, harvesting.ExampleRunner(hash_seed=1) as shared, \
+                harvesting.FreshRunner(hash_seed=1) as fresh:
+            for runner in (polluted, shared):
+                self.assertEqual(runner.run(*leak), ("1", "1"))
+            # A verifier with the same kind of history agrees with the leaked record...
+            leaked = harvesting.examine(row, "guide:g.rst:1", "", probe, polluted, shared)
+            self.assertEqual((leaked.output, leaked.srepr), ("True", "True"))
+            # ...a worker of its own does not, so the record is excluded.
+            self.assertEqual(harvesting.examine(row, "guide:g.rst:2", "", f"{probe} ", polluted, fresh),
+                             harvesting.Excluded("01.01", "guide:g.rst:2", f"{probe} ", "unstable"))
+            # harvest verifies in fresh workers unless told otherwise.
+            doc_src, text = self.guide("leak.rst", f">>> {probe}\nTrue\n")
+            candidates, excluded = harvesting.harvest(row, polluted, doc_src=doc_src)
+        self.assertIn(harvesting.Excluded("01.01", f"guide:leak.rst:{line_of(text, probe)}", probe, "unstable"),
+                      excluded)
+        self.assertNotIn(probe, [item.code for item in candidates])
+        self.assertTrue(candidates)  # Integer's own docstring examples pass the same verification.
+
+    def test_three_hash_seeds_catch_orders_that_two_miss(self):
+        # The order of these models depends on the hash seed, yet seeds 0 and 1 happen to agree on it (seed 2 not).
+        row = make_row("04.07", "sympy.satisfiable")
+        setup, code = "from sympy.abc import a, b", "list(satisfiable(a | b, all_models=True))"
+        self.assertEqual(self.first.run(setup, code), self.second.run(setup, code))
+        self.assertIsInstance(harvesting.examine(row, "guide:g.rst:1", setup, code, self.first, self.second),
+                              harvesting.Example)  # What one verifying seed misses...
+        with harvesting.ExampleRunner(hash_seed=2) as third:
+            self.assertEqual(harvesting.examine(row, "guide:g.rst:1", setup, code, self.first, (self.second, third)),
+                             harvesting.Excluded("04.07", "guide:g.rst:1", code, "unstable"))  # ...two catch.
+            for verifiers in ((self.second, self.second), (self.first,), ()):  # Seeds of their own, not the first's.
+                with self.subTest(len(verifiers)), self.assertRaises(ValueError):
+                    harvesting.examine(row, "guide:g.rst:1", setup, code, self.first, verifiers)
+            examples, _ = harvesting.curate(row, [], {"add": [{"source": "guide:g.rst:2", "setup": setup,
+                                                               "code": code}]}, self.first, self.second)
+            self.assertEqual(len(examples), 1)
+            with self.assertRaises(harvesting.CurationError):  # Additions are verified the same way.
+                harvesting.curate(row, [], {"add": [{"source": "guide:g.rst:2", "setup": setup, "code": code}]},
+                                  self.first, (self.second, third))
+
+    def test_display_calls_record_the_value_they_show(self):
+        # SymPy's ODE hint docstrings show their results through pprint(): the shown expression is the example.
+        path = "sympy.solvers.ode.single.Separable"
+        candidates, excluded = harvesting.harvest(make_row("13.01", path), self.first, doc_src=None,
+                                                  check_runner=self.second)
+        code = "dsolve(genform, f(x), hint='separable_Integral')"
+        line = line_containing(inspect.getdoc(harvesting.resolve_api(path)), f">>> pprint({code})")
+        self.assertEqual([(item.source, item.output) for item in candidates if item.code == code],
+                         [(f"docstring:{path}:{line}",
+                           "Eq(Integral(b(_y)/d(_y), (_y, f(x))), C1 + Integral(c(x)/a(x), x))")])
+        self.assertEqual(len(candidates), 3)  # Every pprint() example of the docstring; none was kept before.
+        self.assertEqual([item for item in excluded if item.reason == "printing"], [])
+        # Keywords that only change the display are unwrapped too; a call that shows two values, or a printer that is
+        # the subject (latex() inside print()), stays printing.
+        doc_src, text = self.guide("guides/display.rst", """\
+            >>> from sympy import factorint, pprint
+            >>> pprint(factorint(12), use_unicode=False)
+            {2: 2, 3: 1}
+            >>> print(factorint(18), factorint(20))
+            {2: 1, 3: 2} {2: 2, 5: 1}
+            >>> print(latex(factorint(28)))
+            a LaTeX string
+            """)
+        candidates, excluded = harvesting.harvest(make_row("27.14", "sympy.factorint"), self.first, doc_src=doc_src,
+                                                  check_runner=self.second)
+        self.assertEqual([(item.code, item.setup, item.output) for item in self.guide_items(candidates)],
+                         [("factorint(12)", "from sympy import factorint, pprint", "{2: 2, 3: 1}")])
+        self.assertEqual({(item.code, item.reason) for item in self.guide_items(excluded)},
+                         {("print(factorint(18), factorint(20))", "printing"), ("latex(factorint(28))", "printing")})
+
+    def test_methods_are_attributed_only_through_attributes(self):
+        doc_src, _ = self.guide("guides/exponentials.rst", """\
+            >>> from sympy import Matrix, exp
+            >>> from sympy.abc import x
+            >>> exp(2*x).diff(x)
+            2*exp(2*x)
+            >>> M = Matrix([[0, 1], [0, 0]])
+            >>> M.exp()
+            Matrix([
+            [1, 1],
+            [0, 1]])
+            """)
+        # Matrix.exp is reached only as an attribute: the bare call exp(x) is the scalar function.
+        method, _ = harvesting.harvest(make_row("24.26", "Matrix.exp"), self.first, doc_src=doc_src,
+                                       check_runner=self.second)
+        self.assertEqual([item.code for item in self.guide_items(method)], ["M.exp()"])
+        # sympy.exp, a module-level function, is reached by the bare call (and, as before, by the attribute).
+        function, _ = harvesting.harvest(make_row("20.01", "sympy.exp"), self.first, doc_src=doc_src,
+                                         check_runner=self.second)
+        self.assertEqual([item.code for item in self.guide_items(function)], ["exp(2*x).diff(x)", "M.exp()"])
+
+    def test_curation_can_add_the_rows_probe(self):
+        # A row without harvested examples gets its own sympy_probe, verified like any addition.
+        row = dataclasses.replace(make_row("27.25", "sympy.continued_fraction"),
+                                  sympy_probe="continued_fraction(Rational(415, 93))")
+        add = {"source": "probe:27.25", "setup": "", "code": row.sympy_probe}
+        with harvesting.ExampleRunner(hash_seed=2) as third:
+            examples, notes = harvesting.curate(row, [], {"add": [add]}, self.first, (self.second, third))
+            self.assertEqual([(item.id, item.source, item.setup, item.code, item.output) for item in examples],
+                             [("27.25/01", "probe:27.25", "", row.sympy_probe, "[4, 2, 6, 7]")])
+            self.assertEqual(notes, [("add", "probe:27.25", row.sympy_probe, "[4, 2, 6, 7]")])
+            for wrong in ({**add, "source": "probe:27.24"}, {**add, "setup": "x = 1"},
+                          {**add, "code": "continued_fraction(2)"}):
+                with self.subTest(wrong), self.assertRaises(harvesting.CurationError):
+                    harvesting.curate(row, [], {"add": [wrong]}, self.first, (self.second, third))
+        path = self.directory / "examples.json"
+        harvesting.write_examples(path, {"27.25": examples})
+        self.assertEqual(harvesting.load_examples(path), {"27.25": examples})
+
     def test_static_rules_name_only_plotting_and_catch_random_generators(self):
         row = make_row("31.08", "sympy.Segment")
         kept = (("from sympy import Point, Segment", "Segment(Point(0, 0), Point(1, 1)).plot_interval()", "[t, 0, 1]"),
@@ -555,6 +761,11 @@ class HarvestTests(RunnerTestCase):
 
             >>> factorint(6)
             {2: 1, 3: 1}
+
+            A statement that does not parse (old Python 2 code) cannot be run; it names no API either:
+
+            >>> print factorint(10)
+            {2: 1, 5: 1}
             """)
         self.guide("modules/ignored.py", ">>> factorint(10)\n{2: 1, 5: 1}\n")  # Not a guide page.
         candidates, excluded = harvesting.harvest(row, self.first, doc_src=doc_src, check_runner=self.second)
@@ -751,6 +962,34 @@ class CommandLineTests(RunnerTestCase):
         self.assertEqual(out.read_bytes(), written)
 
 
+    def test_cli_never_fails_silently(self):
+        import harvest_examples
+        rows = (make_row("27.14", *PERFECT_NUMBERS), make_row("27.25", *CONTINUED_FRACTIONS))
+        inventory = self.directory / "inventory.json"
+        model.write_inventory(inventory, model.Inventory({"inventory": "synthetic"}, rows))
+        curation = self.directory / "curation.json"
+        curation.write_text("{}", encoding="utf-8")
+        out, report = self.directory / "examples.json", self.directory / "report.md"
+        arguments = [str(inventory), "--out", str(out), "--report", str(report), "--curation", str(curation),
+                     "--workers", "2"]
+        # A worker thread that fails: status 1, its traceback and a message on stderr, and no file written.
+        with mock.patch.object(harvest_examples, "_harvest_row", side_effect=RuntimeError("injected worker failure")):
+            status, errors = self.harvest(arguments)
+        self.assertEqual(status, 1)
+        for expected in ("Traceback", "RuntimeError: injected worker failure", "a harvest thread failed",
+                         "nothing was written"):
+            self.assertIn(expected, errors)
+        self.assertFalse(out.exists() or report.exists())
+        # A failure in the main thread after the harvest: the same, and still nothing is written.
+        with mock.patch.object(harvest_examples, "_harvest_row",
+                               side_effect=lambda row, *rest: harvest_examples.RowResult(row, (), 0, (), (), ())), \
+                mock.patch.object(harvest_examples, "render_report", side_effect=ValueError("injected report failure")):
+            status, errors = self.harvest(arguments)
+        self.assertEqual(status, 1)
+        self.assertIn("ValueError: injected report failure", errors)
+        self.assertFalse(out.exists() or report.exists())
+
+
 class FileTests(TemporaryDirectoryTestCase):
     def test_examples_round_trip(self):
         examples = {
@@ -827,6 +1066,9 @@ class FileTests(TemporaryDirectoryTestCase):
                 self.assertIn(str(path), str(raised.exception))
         path.write_text(json.dumps({"27.14": {"drop": [drop], "add": [add]}}), encoding="utf-8")
         self.assertEqual(harvesting.load_curation(path), {"27.14": {"drop": [drop], "add": [add]}})
+        probe = {"source": "probe:27.14", "setup": "", "code": "is_perfect(28)"}  # The row's own sympy_probe
+        path.write_text(json.dumps({"27.14": {"add": [probe]}}), encoding="utf-8")
+        self.assertEqual(harvesting.load_curation(path), {"27.14": {"drop": [], "add": [probe]}})
         self.assertEqual(set(harvesting.DROP_REASONS),
                          {"not-the-subject", "duplicate"} | set(harvesting.EXCLUSION_REASONS))
 

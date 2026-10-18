@@ -16,8 +16,10 @@ docs/v08/harvest/report.md) gives per row the candidate, selected and excluded c
 example, the curation applied, the short rows (fewer than ten examples) and the API paths that do not resolve. Both
 files are deterministic: the same inputs give the same bytes whatever the number of workers.
 
-Exit status 0 when both files are written; 2 for a usage, input or curation error, and then nothing is written. Run it
-with the interpreter that has SymPy 1.14 (.venv-mcp). This is internal tooling: mathforge never imports it.
+Exit status 0 when both files are written; 2 for a usage, input or curation error, or when the harvester's SymPy is not
+1.14, and then nothing is written. Run it with the interpreter that has SymPy 1.14 (.venv-mcp); the workers run without
+any PYTHON*, SYMPY* or MPMATH* environment variable but PYTHONHASHSEED. This is internal tooling: mathforge never imports
+it.
 """
 
 import argparse
@@ -72,13 +74,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     report_path = arguments.report if arguments.report is not None else REPOSITORY / DEFAULT_REPORT
     started = time.monotonic()
     try:
+        harvesting.require_sympy()  # The workers check their own SymPy as they start.
         inventory = load_inventory(arguments.inventory)
         rows = _chosen_rows(inventory.rows, arguments.rows)
         curation, curation_label = _curation(arguments.curation, inventory.rows)
         existing = harvesting.load_examples(arguments.out) if arguments.out.exists() else {}
         if arguments.doc_src is not None and not arguments.doc_src.is_dir():
             raise ValueError(f"{arguments.doc_src}: --doc-src is not a directory")
-    except (ValueError, OSError) as error:
+    except (ValueError, OSError, ImportError, RuntimeError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 2
 

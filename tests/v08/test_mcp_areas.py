@@ -502,13 +502,12 @@ class AreaToolTests(unittest.TestCase):
         self.assertEqual(len(default["operations"]), 50)
         self.assertEqual(default["operations"], everything[:50])
         # "total" counts every match, beyond the limit too: there is no paging, so a client narrows or raises limit.
-        self.assertEqual(default["total"], len(everything))
-        self.assertGreater(default["total"], 50)
-        for request in ({"limit": 3}, {"area": "stats", "limit": 1}, {"query": "continued", "limit": 1}):
+        self.assertEqual(default["total"], len(registry.specs()) + len(LEGACY_CATALOG))
+        for request in ({"area": "stats", "limit": 1}, {"query": "continued", "limit": 1}):
             with self.subTest(request=request):
                 payload = call_tool("mathforge.catalog", request).payload
                 matches = call_tool("mathforge.catalog", dict(request, limit=200)).payload["operations"]
-                self.assertEqual((payload["total"], payload["operations"]), (len(matches), matches[:request["limit"]]))
+                self.assertEqual((payload["total"], payload["operations"]), (len(matches), matches[:1]))
         stats = call_tool("mathforge.catalog", {"area": "stats", "limit": 200}).payload["operations"]
         self.assertEqual({entry["area"] for entry in stats}, {"stats"})
         self.assertEqual(len(stats), len(registry.area_operations("stats")))

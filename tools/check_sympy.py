@@ -8,6 +8,26 @@ from random import Random
 
 import mathforge as mf
 
+# The operations (registry or legacy catalogue names) whose answers the seeded groups below compare with SymPy: the
+# v0.8 coverage gate's differential criterion reads this set. Calls that only build inputs (Symbol, Rational,
+# Polynomial, Matrix, sqrt, rational_function) compare nothing; mf.diff is the differentiate operation.
+COVERED_OPERATIONS = frozenset({
+    # main: matrices
+    "rank", "det", "rref", "charpoly",
+    # check_polynomials
+    "poly_divmod", "poly_gcd", "factor", "resultant", "discriminant", "differentiate", "real_roots", "limit",
+    # check_new_algebra
+    "algebraic", "algebraic_div", "algebraic_pow", "evaluate_algebraic", "integrate", "apart", "minimal_polynomial",
+    "real_eigenvalues",
+    # check_v07
+    "integer_gcd", "integer_lcm", "integer_xgcd", "factor_integer", "is_prime", "divisors", "totient", "crt",
+    "factorial", "binomial", "stirling", "fibonacci", "catalan", "permutations_count", "multinomial",
+    "binomial_distribution", "expectation", "distribution_variance", "mean", "median", "variance", "covariance",
+    "rowspace", "columnspace", "least_squares", "lu", "rational_antiderivative", "quadratic_roots",
+    # check_v08
+    "continued_fraction",
+})
+
 
 def _rational(sp, value):
     return sp.Rational(value.numerator, value.denominator)

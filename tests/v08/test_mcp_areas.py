@@ -481,8 +481,11 @@ class AreaToolTests(unittest.TestCase):
         catalog.validate(call_tool("mathforge.catalog", {"limit": 0}).payload)
 
     def test_catalog_filters_sorts_and_limits(self):
-        everything = call_tool("mathforge.catalog", {"limit": 200}).payload["operations"]
-        self.assertEqual(len(everything), len(registry.specs()) + len(LEGACY_CATALOG))
+        listing = call_tool("mathforge.catalog", {"limit": 200}).payload
+        everything = listing["operations"]
+        # "total" counts the whole catalog beyond the limit, so it stays right when the catalog outgrows the listing.
+        self.assertEqual(listing["total"], len(registry.specs()) + len(LEGACY_CATALOG))
+        self.assertEqual(len(everything), min(listing["total"], 200))
         self.assertEqual(everything, sorted(everything, key=lambda entry: (entry["area"], entry["name"])))
         entries = {entry["name"]: entry for entry in everything}
         self.assertEqual(entries["solve"], {"name": "solve", "area": "equations", "tool": "mathforge.solve",

@@ -92,9 +92,9 @@ V5_FAMILIES = tuple("mathforge." + name for name in (
 # function_calculus.TYPES re-exports.
 V5_RECORD_MODULES = V5_FAMILIES + ("mathforge.function_limits",)
 
-# v6 family modules; each defines SPECS, TYPES, CHECKER (the import path of its checker below CHECKER_PACKAGE)
-# and produce(), and optionally RENDER: {record class of its TYPES: render(value, renderer, child) -> str}. The
-# build checks all of them.
+# v6 family modules; each defines SPECS, TYPES (record classes that the module itself defines), CHECKER (the
+# import path of its checker below CHECKER_PACKAGE) and produce(), and optionally RENDER: {record class of its
+# TYPES: render(value, renderer, child) -> str}. The build checks all of them.
 V6_FAMILIES: tuple[str, ...] = ("mathforge.areas.ntheory.continued_fraction",)
 V6_CONTRACT = ("SPECS", "TYPES", "CHECKER", "produce")
 # tools/check_layering.py keeps every module of this package away from producer code.
@@ -110,7 +110,7 @@ def record_module(module: str) -> bool:
     """Whether a module may define registry records; a static answer that needs no build.
 
     contracts relies on it so that v1-v4 values never build the registry; the build checks
-    that every record class lives in such a module.
+    that every record class lives in such a module, and that a v6 family defines its own.
     """
     return module in V5_RECORD_MODULES or module == DEFERRED_MODULE or module in V6_FAMILIES
 
@@ -207,6 +207,11 @@ def _record_types(modules: tuple[ModuleType, ...], version: int) -> dict[str, ty
                 raise RuntimeError(f"Duplicate v{version} type: {tag}")
             if not record_module(cls.__module__):
                 raise RuntimeError(f"Record type {tag} is defined outside the record modules: {cls.__module__}")
+            # A v6 module registers only the classes it defines, so a checker can name a record class by its module
+            # and name. The frozen v0.7 families differ: function_calculus.TYPES re-exports function_limits records.
+            if version == 6 and cls.__module__ != module.__name__:
+                raise RuntimeError(f"v6 record class {cls.__name__} of type {tag} must be defined in its family "
+                                   f"module {module.__name__}, not in {cls.__module__}")
             merged[tag] = cls
     return merged
 

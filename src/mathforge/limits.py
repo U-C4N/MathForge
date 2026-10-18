@@ -92,7 +92,11 @@ class Budget:
             raise ResourceLimitError("Computation limit exceeded: matrix entries")
 
     def inspect(self, value, *, evidence=False):
-        """Bound traversal without recursion; inspect only known data containers."""
+        """Bound traversal without recursion; inspect only known data containers.
+
+        A dataclass field marked ``metadata={"budget": "skip"}`` is left out. Any other field is walked, whether or
+        not it takes part in comparison.
+        """
         from dataclasses import is_dataclass
         from enum import Enum
         stack = [(value, 0)]
@@ -110,8 +114,9 @@ class Budget:
             elif type(node) is dict:
                 stack.extend((item, depth + 1) for pair in node.items() for item in pair)
             elif is_dataclass(node) and not isinstance(node, type):
-                # A field outside comparison, such as OperationRequest.version, marks a format, not content.
-                stack.extend((getattr(node, f.name), depth + 1) for f in fields(node) if f.compare)
+                # A marked field, such as OperationRequest.version, names a format, not content.
+                stack.extend((getattr(node, f.name), depth + 1) for f in fields(node)
+                             if f.metadata.get("budget") != "skip")
 
 
 _ACTIVE: ContextVar[Budget | None] = ContextVar("mathforge_budget", default=None)

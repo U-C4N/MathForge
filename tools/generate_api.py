@@ -40,7 +40,7 @@ sys.path.insert(0, str(SRC))
 RECOVERY = """Importing mathforge, which tools/generate_api.py needs to read the registry, failed:
   {error}
 A broken or conflicted generated file stops that import. Restore the generated files, then regenerate:
-  git checkout -- src/mathforge/_generated src/mathforge/<area>.py
+  git checkout HEAD -- src/mathforge/_generated src/mathforge/<area>.py
   python tools/generate_api.py
 Name each area module (<area>.py) that is broken or conflicted."""
 

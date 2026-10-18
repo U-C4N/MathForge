@@ -1,7 +1,9 @@
 """JSON v6 core: the generic Unevaluated record and the v6 run/verify path, driven by a demo family."""
 
 from copy import deepcopy
-from dataclasses import replace
+from dataclasses import dataclass, field, fields, is_dataclass, replace
+import importlib
+import pkgutil
 import types
 import unittest
 from unittest.mock import patch
@@ -24,6 +26,19 @@ UNKNOWN_OPERATION = Check("result.operation", CheckStatus.UNKNOWN, VerificationL
 def statuses(report):
     """Check status by claim."""
     return {check.claim: check.status for check in report.checks}
+
+
+def package_dataclasses():
+    """Every dataclass that a module of the mathforge package defines; the server's __main__ module is left out,
+    because importing it runs the server."""
+    found = []
+    for info in pkgutil.walk_packages(m.__path__, "mathforge."):
+        if info.name.endswith(".__main__"):
+            continue
+        module = importlib.import_module(info.name)
+        found.extend(cls for cls in vars(module).values()
+                     if isinstance(cls, type) and is_dataclass(cls) and cls.__module__ == module.__name__)
+    return found
 
 
 class V6CoreTests(unittest.TestCase):
@@ -177,6 +192,28 @@ class V6CoreTests(unittest.TestCase):
             with self.subTest(version=version), self.assertRaises(error):
                 m.OperationRequest("operation_of_a_later_build", (), version=version)
 
+    def test_request_version_is_limited_to_supported_formats(self):
+        """A request names format 6, the one request format this build writes, or none. No route reaches to_data
+        with a version 7: no request can carry it, and no document that names it loads."""
+        for version in (7, 8, 10**6, 2**64):
+            message = rf"^Unsupported operation request format version {version}: "
+            with self.subTest(version=version):
+                with self.assertRaisesRegex(ValueError, message):
+                    m.OperationRequest("x", (), version=version)
+                with self.assertRaisesRegex(ValueError, message):  # Nor can a request be moved on to it.
+                    replace(m.OperationRequest("x", (), version=6), version=version)
+        for request, written in ((m.OperationRequest("x", ()), None), (m.OperationRequest("x", (), version=6), 6)):
+            with self.subTest(written=written):
+                document = m.to_data(request)
+                self.assertEqual(document["data"].get("version"), written)
+                self.assertEqual(document["version"], 2 if written is None else 6)
+        document = m.to_data(m.OperationRequest("x", (), version=6))
+        for header in (6, 7):  # A hand-written 7 does not load in a document of format 6, and there is no format 7.
+            tampered = deepcopy(document)
+            tampered["version"], tampered["data"]["version"] = header, 7
+            with self.subTest(header=header), self.assertRaises(SerializationError):
+                m.from_data(tampered)
+
     def test_the_version_marker_leaves_equality_hash_repr_and_budgets_alone(self):
         plain = m.OperationRequest("demo_double", (("n", 1),))
         marked = m.OperationRequest("demo_double", (("n", 1),), version=6)
@@ -192,6 +229,27 @@ class V6CoreTests(unittest.TestCase):
         self.assertEqual(restored, r)
         self.assertEqual(restored.deferred.request, restored.request)
         self.assertEqual(restored.deferred.request, r.request)
+
+    def test_budget_skips_only_marked_fields(self):
+        """A field outside comparison is still content, and still bounded, unless it is marked
+        metadata={"budget": "skip"}; in the whole package that is the request's version and nothing else."""
+        marked = {(cls.__qualname__, f.name) for cls in package_dataclasses() for f in fields(cls)
+                  if f.metadata.get("budget") == "skip"}
+        self.assertEqual(marked, {("OperationRequest", "version")})
+
+        @dataclass(frozen=True)
+        class Probe:
+            compared: int
+            unmarked: int = field(default=0, compare=False)
+            marked: int = field(default=0, compare=False, metadata={"budget": "skip"})
+
+        budget = Budget()
+        budget.inspect(Probe(1, 2, 3))
+        self.assertEqual(budget.node_count, 3)  # The probe, compared and unmarked; the marked field is not walked.
+        small = m.ComputationLimits(max_integer_bits=64)
+        with self.assertRaises(m.ResourceLimitError):  # An unmarked field outside comparison is bounded...
+            Budget(small).inspect(Probe(1, 2**100))
+        Budget(small).inspect(Probe(1, 0, 2**100))  # ...a marked one is not.
 
     def test_deferral_is_no_conclusion(self):
         with registry._testing_families(demo_family):

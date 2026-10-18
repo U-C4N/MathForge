@@ -291,8 +291,9 @@ class GeneratedApiTests(unittest.TestCase):
         self.assertIn("DemoBox", runtime)  # Area modules load lazily and import their record classes at runtime.
         self.assertEqual(checking, set())
 
-    def test_a_broken_generated_file_prints_how_to_recover(self):
-        """The generator imports mathforge, which a conflicted generated file breaks; it says how to recover."""
+    def run_on_a_conflicted_copy(self):
+        """Run a copy of tools/generate_api.py --check on a copy of the package whose _generated/values.py opens with
+        a merge conflict marker; the copied tool finds only that copy of the package."""
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             shutil.copytree(SRC / "mathforge", root / "src" / "mathforge", ignore=shutil.ignore_patterns("__pycache__"))
@@ -301,12 +302,60 @@ class GeneratedApiTests(unittest.TestCase):
             values = root / "src" / "mathforge" / "_generated" / "values.py"
             values.write_text("<<<<<<< HEAD\n" + values.read_text(encoding="utf-8"), encoding="utf-8")
             # -I: the tool's own copy of src/ comes first on sys.path, before any installed mathforge.
-            output = subprocess.run([sys.executable, "-I", str(root / "tools" / "generate_api.py"), "--check"],
-                                    capture_output=True, text=True)
+            return subprocess.run([sys.executable, "-I", str(root / "tools" / "generate_api.py"), "--check"],
+                                  capture_output=True, text=True)
+
+    def test_a_broken_generated_file_prints_how_to_recover(self):
+        """The generator imports mathforge, which a conflicted generated file breaks; it says how to recover."""
+        output = self.run_on_a_conflicted_copy()
         self.assertEqual(output.returncode, 1, output.stderr)
         self.assertIn("\n  SyntaxError: ", output.stderr)
-        self.assertIn("\n  git checkout -- src/mathforge/_generated src/mathforge/<area>.py\n"
+        self.assertIn("\n  git checkout HEAD -- src/mathforge/_generated src/mathforge/<area>.py\n"
                       "  python tools/generate_api.py\n", output.stderr)
+
+    @unittest.skipUnless(shutil.which("git"), "git is needed to leave a path unmerged")
+    def test_generator_prints_head_checkout_hint(self):
+        """A merge leaves the conflicted generated file unmerged, and git refuses `git checkout -- <path>` for an
+        unmerged path. The command printed for a conflicted copy names HEAD, and it restores such a path."""
+        output = self.run_on_a_conflicted_copy()
+        self.assertEqual(output.returncode, 1, output.stderr)
+        hints = [line.strip() for line in output.stderr.splitlines() if line.strip().startswith("git ")]
+        self.assertEqual(hints, ["git checkout HEAD -- src/mathforge/_generated src/mathforge/<area>.py"])
+        with tempfile.TemporaryDirectory() as directory:
+            home, repository = Path(directory, "home"), Path(directory, "repository")
+            home.mkdir()
+            repository.mkdir()
+            environment = {name: value for name, value in os.environ.items() if not name.startswith("GIT_")}
+            environment.update(HOME=str(home), USERPROFILE=str(home), XDG_CONFIG_HOME=str(home),
+                               GIT_CONFIG_NOSYSTEM="1", GIT_AUTHOR_NAME="test", GIT_AUTHOR_EMAIL="test@example.com",
+                               GIT_COMMITTER_NAME="test", GIT_COMMITTER_EMAIL="test@example.com")
+
+            def git(*arguments, status=0):
+                done = subprocess.run(["git", *arguments], cwd=repository, env=environment,
+                                      capture_output=True, text=True)
+                self.assertEqual(done.returncode, status, done.stderr)
+                return done
+
+            values = repository / "src" / "mathforge" / "_generated" / "values.py"
+            values.parent.mkdir(parents=True)
+            values.write_bytes(b"base\n")
+            (repository / "src" / "mathforge" / "ntheory.py").write_bytes(b"area\n")
+            git("init", "-q")
+            git("add", ".")
+            git("commit", "-q", "-m", "base")
+            git("checkout", "-q", "-b", "other")
+            values.write_bytes(b"theirs\n")
+            git("commit", "-q", "-am", "theirs")
+            git("checkout", "-q", "-")
+            values.write_bytes(b"ours\n")
+            git("commit", "-q", "-am", "ours")
+            git("merge", "other", status=1)  # Both sides changed values.py.
+            self.assertTrue(git("ls-files", "--unmerged").stdout)
+            paths = ["src/mathforge/_generated", "src/mathforge/ntheory.py"]
+            self.assertIn("unmerged", git("checkout", "--", *paths, status=1).stderr)
+            git(*hints[0].replace("<area>", "ntheory").split()[1:])
+            self.assertEqual(git("ls-files", "--unmerged").stdout, "")
+            self.assertEqual(values.read_bytes(), b"ours\n")
 
     def test_check_mode(self):
         with tempfile.TemporaryDirectory() as directory:

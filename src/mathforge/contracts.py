@@ -154,16 +154,19 @@ class Inequality:
 class OperationRequest:
     operation: str
     arguments: tuple[tuple[str, Any], ...]
-    # The format version of a request of format 6 or later, as a document carried it; None otherwise. It names
-    # no mathematics, so equality, hashing and repr ignore it; serialization checks it against the operation.
-    version: int | None = field(default=None, compare=False, repr=False)
+    # The format version of a request of format 6, as a document carried it; None otherwise. Format 6 is the only
+    # request format this build writes, so no other version can be named, and to_data never writes one that this
+    # build cannot read back. It names no mathematics: equality, hashing and repr ignore it, and the metadata keeps
+    # Budget.inspect from counting it. Serialization checks it against the operation.
+    version: int | None = field(default=None, compare=False, repr=False, metadata={"budget": "skip"})
 
     def __post_init__(self):
         if self.version is not None:
             if type(self.version) is not int:
                 raise TypeError("An operation request version must be an integer.")
-            if self.version < 6:
-                raise ValueError("An operation request version, when present, is at least 6.")
+            if self.version != 6:
+                raise ValueError(f"Unsupported operation request format version {self.version}: "
+                                 "a request names format 6, the only one this build writes.")
         _text(self.operation, "operation", empty=False)
         pairs = tuple(self.arguments)
         if any(type(p) not in (tuple, list) or len(p) != 2 for p in pairs):

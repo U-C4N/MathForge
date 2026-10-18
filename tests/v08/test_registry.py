@@ -17,6 +17,7 @@ from unittest.mock import patch
 import mathforge as m
 from mathforge import contracts, deferred, dispatch_v5, registry, registry_v07
 from mathforge.errors import UnsupportedOperation
+from mathforge.number_theory import IntegerFactorization
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "v8"
 FAMILY = "mathforge._registry_test_family"
@@ -323,6 +324,21 @@ class RegistryTests(unittest.TestCase):
         self.install_family(demo_spec(), records={"stray": _Stray})
         with self.assertRaisesRegex(RuntimeError, "^Record type stray is defined outside the record modules: "):
             registry.specs()
+
+    def test_v6_types_live_in_their_family_module(self):
+        """A v6 family registers only the record classes that it defines: a checker names a record class by its
+        module and name, so a class from another record module could not be told from the family's own."""
+        pilot = importlib.import_module("mathforge.areas.ntheory.continued_fraction")
+        # A v5 record, a deferral record and the record of another v6 family: each lives in a record module.
+        for cls in (IntegerFactorization, deferred.Reason, pilot.ContinuedFraction):
+            with self.subTest(record=f"{cls.__module__}.{cls.__name__}"):
+                family, checker = self.modules(FAMILY, CHECKER)
+                family.SPECS, family.TYPES, family.CHECKER = (demo_spec(),), {"probe_box": cls}, checker
+                family.produce = lambda operation, args: (3 * args["n"], ())
+                message = (f"^v6 record class {cls.__name__} of type probe_box must be defined in its family module "
+                           f"{FAMILY}, not in {re.escape(cls.__module__)}$")
+                with registry._testing_families(family), self.assertRaisesRegex(RuntimeError, message):
+                    registry.specs()
 
     def test_render_functions_receive_the_shared_renderer(self):
         """RENDER maps a record class to render(value, renderer, child); child keeps aliases and LaTeX fractions."""

@@ -14,6 +14,7 @@ import mathforge
 
 REPOSITORY = Path(__file__).resolve().parents[2]
 LAYER_PACKAGES = ("trusted", "kernels", "certify", "areas")
+RESTRICTED_MODULES = ("sys", "builtins", "importlib")  # Each reaches modules that the static import walk cannot see.
 
 
 def dynamic_imports(source):
@@ -31,6 +32,25 @@ def dynamic_imports(source):
             statement = []
         elif token.type in (tokenize.NAME, tokenize.OP):
             statement.append(token.string)
+    return found
+
+
+def restricted_imports(source):
+    """The modules among RESTRICTED_MODULES that the source imports in any form: ``import sys as s``,
+    ``from sys import *``, ``import importlib.util``, ``from importlib import util``, in a function or a try block.
+
+    The syntax tree is read, so an alias or a star import cannot hide the name that dynamic_imports looks for, and
+    comments and strings do not count. A relative import names a module of this package, never one of these.
+    """
+    found = set()
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Import):
+            names = [alias.name for alias in node.names]
+        elif isinstance(node, ast.ImportFrom) and not node.level:
+            names = [node.module]
+        else:
+            continue
+        found.update(name.partition(".")[0] for name in names if name.partition(".")[0] in RESTRICTED_MODULES)
     return found
 
 
@@ -88,6 +108,42 @@ class LayeringTests(unittest.TestCase):
         for source, expected in sources.items():
             with self.subTest(source=source):
                 self.assertEqual(dynamic_imports(source), expected)
+
+    def test_checkers_do_not_import_sys_builtins_importlib(self):
+        """The token scan misses an alias (import sys as s; s.modules), a star import and getattr(builtins, ...), so
+        no checker imports sys, builtins or importlib at all, whatever the form."""
+        paths = sorted((repository_package() / "certify").rglob("*.py"))
+        self.assertTrue(paths)
+        for path in paths:
+            with self.subTest(path=path.relative_to(repository_package()).as_posix()):
+                self.assertEqual(restricted_imports(path.read_text(encoding="utf-8")), set())
+
+    def test_restricted_imports_are_found_in_every_import_form(self):
+        sources = {
+            "import sys\n": {"sys"},
+            "import sys as s\nproducer = s.modules['mathforge.kernels']\n": {"sys"},
+            "from sys import *\n": {"sys"},
+            "from sys import modules as loaded\n": {"sys"},
+            "import builtins\n": {"builtins"},
+            "import builtins as b\nimporter = getattr(b, '__imp' + 'ort__')\n": {"builtins"},
+            "from builtins import __import__\n": {"builtins"},
+            "import importlib.util\n": {"importlib"},
+            "import importlib.util as u\n": {"importlib"},
+            "from importlib import util\n": {"importlib"},
+            "from importlib.util import find_spec\n": {"importlib"},
+            "import math, sys\n": {"sys"},
+            "def late():\n    import sys\n": {"sys"},
+            "try:\n    import builtins\nexcept ImportError:\n    builtins = None\n": {"builtins"},
+            "import sys, builtins, importlib\n": {"sys", "builtins", "importlib"},
+            "import math\nfrom mathforge.model import Rational\nfrom . import sibling\nfrom .sys import path\n"
+            "from .. import builtins\n": set(),  # Relative imports name modules of this package.
+            "import sysconfig\nimport importlib_metadata\nfrom builtins_extra import value\n"
+            "import systems.sys\n": set(),  # The whole first component must be one of the three.
+            "# import sys\n'''import builtins'''\nname = 'importlib'\n": set(),
+        }
+        for source, expected in sources.items():
+            with self.subTest(source=source):
+                self.assertEqual(restricted_imports(source), expected)
 
     def test_layer_packages_exist_and_are_documented(self):
         # A renamed or deleted layer package would make the check above pass vacuously.

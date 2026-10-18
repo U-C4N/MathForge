@@ -64,9 +64,10 @@ one. A checker that raises gives an `UNKNOWN` check, not a verified one.
 
 A checker imports only `mathforge.certify`, `mathforge.trusted`, `mathforge.errors`, `mathforge.limits` and
 `mathforge.model`, and never the producer, not even to name a record class: it compares the module and name of
-the value's class instead. It never uses `importlib`, `__import__` or `sys.modules`.
-`python tools/check_layering.py` follows every chain of imports from `mathforge.certify`, and a test rejects the
-dynamic forms.
+the value's class instead. `python tools/check_layering.py` follows every chain of imports from
+`mathforge.certify` but cannot follow an import made at run time, so tests reject the ways around it: a checker
+never names `importlib`, `__import__` or `sys.modules`, and never imports `sys`, `builtins` or `importlib` in any
+form (`import sys as s`, `from sys import *`, `import importlib.util`).
 
 ## Never change a released argument set
 
@@ -85,7 +86,9 @@ The registry raises `RuntimeError` when it builds its tables, at the first looku
 - an argument or public name that the generated functions use: `limits`, `dict`, `run`, `run_v6` and
   `structured` (`registry.WRAPPER_NAMES`);
 - a name that is not a Python identifier, and a default whose text is not a Python literal;
-- two record classes with the same name, and a record class defined outside its family module.
+- two record classes with the same name, and a class in `TYPES` that the family module does not define itself,
+  even when another record module defines it: every `TYPES` class must have the family's own module name as its
+  `__module__`.
 
 ## Regenerate and check
 
@@ -103,9 +106,9 @@ changes too.
 
 `tools/generate_api.py` imports `mathforge` to read the registry, so a broken or conflicted generated file, as
 two families merged in parallel can leave behind, stops it; it then prints how to recover. Restore the
-generated files and regenerate:
+generated files from `HEAD`, which also works for a path that the merge left unmerged, and regenerate:
 
 ```sh
-git checkout -- src/mathforge/_generated src/mathforge/<area>.py
+git checkout HEAD -- src/mathforge/_generated src/mathforge/<area>.py
 python tools/generate_api.py
 ```

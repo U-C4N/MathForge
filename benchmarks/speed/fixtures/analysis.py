@@ -506,8 +506,11 @@ def _fraction_mathforge(numerator, denominator):
 
 
 def _fraction_sympy(numerator, denominator):
-    import sympy as sp
-    return lambda i: sp.Rational(numerator, denominator)
+    def build(i):  # SymPy is imported when the reference is built, never when the fixture list is defined.
+        import sympy as sp
+        return sp.Rational(numerator, denominator)
+
+    return build
 
 
 def _twenty_terms(i):

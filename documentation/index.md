@@ -23,6 +23,8 @@ release: verification is algorithmic checking, not formal proof.
 Operations belong to mathematical areas. Each area is a module that loads on first use, such as `mf.ntheory`
 or `mf.discrete`, and the MCP adapter serves the operations of an area through one tool per group of areas, next
 to a catalog that finds them. Results of operations added in v0.8 use mathematical JSON v6.
+Version 0.8 also lowers the fixed cost of exact computation without changing values,
+errors or v1–v5 documents; see [measured performance](performance.md).
 
 The library separates **representing**, **solving**, and **verifying** an object.
 A representable expression is not a promise that every operation supports it.

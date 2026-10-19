@@ -1,5 +1,43 @@
 # Measure exact computation costs
 
+## v0.8 cheaper exact computation
+
+v0.8 lowers the fixed cost of an exact operation without changing its values,
+errors, records or document bytes. Four changes carry it. None adds an
+approximation, and none skips an independent check.
+
+- **Rational fast paths.** `Rational` arithmetic and ordering against another
+  exact `Rational` or an `int` work on the integers directly, reducing by greatest
+  common divisors and taking shortcuts for integer denominators. Each result
+  charges the active computation budget one work unit and keeps its integers
+  within `max_integer_bits`. Any other operand takes the generic expression path
+  as before.
+- **An inline budget.** The computation budget charges in place instead of through
+  helper calls, and `computation()` keeps its call forms, including its use as a
+  decorator. Limits keep their meaning and error messages.
+- **The lean value path.** A value function such as `mf.integer_gcd`,
+  `mf.ntheory.continued_fraction` or `mf.det`, called without `limits`, first runs
+  its lean function. It calls the producer and the independent checker directly,
+  builds no request, step or result record, and returns a value only after the
+  checker has accepted it. A call that the lean function does not handle takes the
+  structured path of `mathforge.operations`, and the value function returns the
+  value or raises the error of that path. Calls fall back for an unusual argument
+  type or size, a request that is deferred or declined, a check that fails or runs
+  out of budget, a call made while a computation budget is active, and any call
+  with explicit `limits`. The lean path charges each budget at least what the
+  structured path charges, so near a limit it falls back sooner, never later.
+- **A cheaper structured pipeline.** `mathforge.operations` inspects the arguments,
+  the value and the evidence once, and builds the request, the step and the result
+  without repeating those checks; the public record constructors keep all of their
+  validation. The verifier validates once and builds its checks and report
+  directly, and the JSON encoder finds the handler of each record class in a table
+  built once. Results serialize to the same bytes as before.
+
+Because exact arithmetic charges less work, a computation limit is a ceiling, not
+a cost promise: an input just past a limit in v0.7 may now succeed. The
+deterministic gates below still check work, nodes, evidence and bytes. Wall-clock
+timings depend on the machine and the input and are not guarantees.
+
 ## v0.7 resource gates
 
 Ten new deterministic cases cover integer certificates, combinatorics, complex

@@ -439,5 +439,262 @@ class GaussianPathTest(unittest.TestCase):
             self.assertIs(lean.functions.quadratic_roots(1, 2, 5), lean.FALLBACK)
 
 
+SURD_RADICANDS = (2, 3, 5, 6, 7, 8, 10, 12, 15, 18, 20, 21, 30, 45, 50)
+
+
+def _surd_part(tag, i, k):
+    """A rational, or a + c sqrt(m) with a, c small rationals and m from SURD_RADICANDS."""
+    if _draw(0, 3, tag, i, k, 9) == 0:
+        return mf.Rational(_draw(-5, 5, tag, i, k, 7), _draw(1, 3, tag, i, k, 6))
+    m = SURD_RADICANDS[_draw(0, len(SURD_RADICANDS) - 1, tag, i, k, 5)]
+    return (mf.Rational(_draw(-6, 6, tag, i, k, 0), _draw(1, 4, tag, i, k, 1))
+            + mf.Rational(_draw(-5, 5, tag, i, k, 2), _draw(1, 3, tag, i, k, 3)) * mf.sqrt(m))
+
+
+def _surd_operand(tag, i, k):
+    kind = _draw(0, 5, tag, i, k, 8)
+    if kind == 0:
+        return _draw(-5, 5, tag, i, k, 4)
+    if kind == 1:
+        return mf.Rational(_draw(-9, 9, tag, i, k, 3), _draw(1, 5, tag, i, k, 2))
+    return mf.ComplexAlgebraic(_surd_part(tag, i, 2 * k), _surd_part(tag, i, 2 * k + 1))
+
+
+def surd_arguments(operation, i):
+    if operation in ("complex_mul", "complex_div"):
+        return _surd_operand(1, i, 0), _surd_operand(1, i, 1)
+    if operation == "complex_pow":
+        return _surd_operand(2, i, 0), _draw(-5, 9, 2, i, 5)
+    return tuple(mf.Rational(_draw(-9, 9, 3, i, k), _draw(1, 4, 3, i, k + 10)) for k in range(3))
+
+
+def surd(*terms):
+    """A real algebraic expression: terms (p, q, m) stand for p/q sqrt(m)."""
+    value = mf.Rational(0)
+    for p, q, m in terms:
+        value = value + mf.Rational(p, q) * mf.sqrt(m)
+    return value
+
+
+def number(real, imag):
+    return mf.ComplexAlgebraic(surd(*real), surd(*imag))
+
+
+class SurdPathTest(unittest.TestCase):
+    """Operands whose irrational parts are quadratic: the elements of Q(sqrt b_1, ..., sqrt b_t) of the lean path."""
+
+    maxDiff = None
+
+    def assertSameValue(self, got, want, context=None):
+        self.assertIs(type(got), type(want), context)
+        self.assertEqual(got, want, context)
+        self.assertEqual(_data(got), _data(want), context)
+
+    def test_values_equal_structured(self):
+        """Seeded surd operands: the lean answer is the structured one. Where the structured path stops at a resource
+        limit, which its certificates reach for the heavier products, the lean path may still answer."""
+        from mathforge import lean, operations
+        answered = 0
+        for operation in ("complex_mul", "complex_div", "complex_pow", "quadratic_roots"):
+            with self.subTest(operation=operation):
+                for i in range(40):
+                    args = surd_arguments(operation, i)
+                    want = outcome(lambda: getattr(operations, operation)(*args))
+                    got = getattr(lean.functions, operation)(*args)
+                    if want[0] == "value":
+                        self.assertIsNot(got, lean.FALLBACK, (operation, i, args))
+                        self.assertSameValue(got, want[1], (operation, i, args))
+                        answered += 1
+                    elif want[2] != "resource_limit_exceeded":  # A zero leading coefficient, say: the same error.
+                        self.assertIs(got, lean.FALLBACK, (operation, i, args, want))
+        self.assertGreater(answered, 100)
+
+    def test_the_speed_fixtures(self):
+        from mathforge import lean, operations
+        cases = []
+        for p, q in ((2, 3), (5, 7), (3, 11)):
+            left, right = number(((1, 1, p),), ((1, 1, 1),)), number(((1, 1, 1),), ((1, 1, q),))
+            cases += [("complex_mul", (left, right)), ("complex_div", (left, right))]
+        for base, n in ((number(((1, 2, 1),), ((1, 2, 3),)), 7), (number(((1, 2, 2),), ((1, 2, 2),)), 9),
+                        (number(((1, 2, 3),), ((1, 2, 1),)), 5)):
+            cases.append(("complex_pow", (base, n)))
+        cases += [("quadratic_roots", triple) for triple in ((1, 1, 1), (2, 3, 7), (1, -4, 1), (1, 0, -2), (1, 0, 2))]
+        for operation, args in cases:
+            with self.subTest(operation=operation, args=args):
+                want = getattr(operations, operation)(*args).unwrap()
+                got = getattr(lean.functions, operation)(*args)
+                self.assertIsNot(got, lean.FALLBACK)
+                self.assertSameValue(got, want)
+
+    def test_answers_that_the_structured_path_refuses_agree_with_it_under_higher_limits(self):
+        """Two powers that the default limits stop (the certificates grow past max_work at the third or fourth
+        squaring), against the structured path given room."""
+        from mathforge import lean, operations
+        from mathforge.limits import ComputationLimits
+        room = ComputationLimits(max_work=10 ** 9, max_evidence_items=10 ** 8, max_nodes=10 ** 8,
+                                 max_refinements=10 ** 7, max_integer_bits=10 ** 6)
+        for i in (4, 26):
+            args = surd_arguments("complex_pow", i)
+            with self.subTest(args=args):
+                got = lean.functions.complex_pow(*args)
+                self.assertIsNot(got, lean.FALLBACK)
+                self.assertSameValue(got, operations.complex_pow(*args, limits=room).unwrap())
+
+    def test_exact_results_from_irrational_operands(self):
+        z = number(((1, 1, 2),), ((1, 1, 1),))
+        self.assertEqual(mf.complex_mul(number(((1, 1, 2),), ()), number(((1, 1, 2),), ())), mf.ComplexAlgebraic(2, 0))
+        self.assertEqual(mf.complex_div(z, z), mf.ComplexAlgebraic(1, 0))
+        # (sqrt 3 + i)/2 is a twelfth root of unity.
+        self.assertEqual(mf.complex_pow(number(((1, 2, 3),), ((1, 2, 1),)), 12), mf.ComplexAlgebraic(1, 0))
+        self.assertEqual(mf.complex_pow(number(((1, 1, 1),), ((1, 1, 3),)), -3),
+                         mf.ComplexAlgebraic(mf.Rational(-1, 8), 0))
+        self.assertEqual(mf.complex_pow(z, 0), mf.ComplexAlgebraic(1, 0))
+        self.assertEqual(mf.complex_pow(z, 1), z)
+        # 2 sqrt(2), sqrt(6), sqrt(3) and sqrt(2) share the field Q(sqrt 2, sqrt 3); with sqrt(5) there are three
+        # square roots.
+        first, second = number(((1, 1, 8),), ((1, 1, 6),)), number(((1, 1, 3),), ((1, 1, 2),))
+        third = number(((1, 1, 5),), ((1, 1, 1),))
+        for operation, args in (("complex_mul", (first, second)), ("complex_div", (first, second)),
+                                ("complex_mul", (mf.Rational(1, 2), first)), ("complex_pow", (first, 3)),
+                                ("complex_mul", (number(((1, 1, 2),), ((1, 1, 3),)), third)),
+                                ("complex_div", (third, number(((1, 1, 2),), ((1, 1, 3),))))):
+            with self.subTest(operation=operation):
+                self.assertEqual(getattr(mf, operation)(*args), getattr(mf.operations, operation)(*args).unwrap())
+
+    def test_operands_beyond_quadratic_surds_take_the_generic_runner(self):
+        from mathforge import lean, operations
+        cube = mf.RealAlgebraicRoot((-2, 0, 0, 1), 0)
+        reducible = object.__new__(mf.ComplexAlgebraic)  # A part that is not in normal form: the root 1 of x**2 - 1.
+        object.__setattr__(reducible, "real", mf.RealAlgebraicRoot((-1, 0, 1), 1))
+        object.__setattr__(reducible, "imag", mf.Rational(1))
+        quartic = number(((1, 1, 2), (1, 1, 3)), ((1, 1, 1),))  # The real part sqrt(2) + sqrt(3) is of degree four.
+        for operation, args in (("complex_mul", (mf.ComplexAlgebraic(cube, 1), mf.ComplexAlgebraic(1, 2))),
+                                ("complex_pow", (mf.ComplexAlgebraic(cube, 1), 2)),
+                                ("complex_mul", (reducible, mf.ComplexAlgebraic(1, 2))),
+                                ("complex_div", (number(((1, 1, 2),), ()), quartic)),
+                                ("complex_mul", (quartic, mf.ComplexAlgebraic(1, 2)))):
+            with self.subTest(operation=operation):
+                want = outcome(lambda: getattr(operations, operation)(*args))
+                got = getattr(lean.functions, operation)(*args)
+                if want[0] == "value":
+                    self.assertIsNot(got, lean.FALLBACK)
+                    self.assertSameValue(got, want[1])
+                else:
+                    self.assertIs(got, lean.FALLBACK)
+
+    def test_zero_divisors_and_bases(self):
+        from mathforge import lean
+        z = number(((1, 1, 2),), ((1, 1, 1),))
+        zero = mf.ComplexAlgebraic(0, 0)
+        for operation, args in (("complex_div", (z, zero)), ("complex_div", (z, 0)), ("complex_pow", (zero, -2))):
+            with self.subTest(operation=operation):
+                self.assertIs(getattr(lean.functions, operation)(*args), lean.FALLBACK)
+                with self.assertRaises(OperationError):
+                    getattr(mf, operation)(*args)
+
+    def test_squarefree_parts(self):
+        from mathforge.lean import algebra_complex as module
+        for value, want in ((2, (1, 2)), (12, (2, 3)), (72, (6, 2)), (45, (3, 5)), (50, (5, 2)), (30, (1, 30)),
+                            (2 * 10007 ** 2, (10007, 2)), (2 * 10007 * 10009, (1, 2 * 10007 * 10009)),
+                            (3 * 2 ** 40, (2 ** 20, 3))):
+            self.assertEqual(module._squarefree(value), want, value)
+        for value in (4, 9, 16, 144, 10007 ** 2):
+            self.assertIsNone(module._squarefree(value), value)
+        self.assertIsNone(module._squarefree(10007 * 10009 * 10037))  # Past what trial division can show.
+
+    def test_coprime_bases(self):
+        from mathforge.lean import algebra_complex as module
+        for numbers, want in (([2], [2]), ([2, 2, 3], [2, 3]), ([6, 10, 15], [2, 3, 5]), ([6, 3], [2, 3]),
+                              ([30, 6, 10], [2, 3, 5]), ([2, 3, 6], [2, 3]), ([14, 35], [2, 5, 7])):
+            self.assertEqual(module._coprime_base(numbers), want, numbers)
+
+    def test_names_of_numbers_in_a_field(self):
+        """Minimal polynomials and indices of elements of Q(sqrt 2, sqrt 3), as the structured path names them."""
+        from mathforge.lean import algebra_complex as module
+        field = module._Field([2, 3])
+        zero = field.zero
+
+        def element(**coefficients):  # one, r2, r3, r6
+            index = {"one": 0, "r2": 1, "r3": 2, "r6": 3}
+            values = [zero[0]] * 4
+            for name, value in coefficients.items():
+                values[index[name]] = mf.Rational(*value)
+            return tuple(values)
+
+        difference = element(r2=(1, 1), r3=(-1, 1))
+        part = module._encode(field, difference)
+        self.assertEqual((part.integer_coefficients, part.real_index), ((1, 0, -10, 0, 1), 1))
+        part = module._encode(field, element(one=(1, 1), r6=(1, 1)))
+        self.assertEqual((part.integer_coefficients, part.real_index), ((-5, -2, 1), 1))
+        part = module._encode(field, element(r2=(1, 2), r3=(1, 2), r6=(1, 2)))
+        self.assertEqual(part, getattr(mf.operations.complex_algebraic(
+            surd((1, 2, 2), (1, 2, 3), (1, 2, 6)), 0).unwrap(), "real"))
+        self.assertEqual(module._encode(field, element(one=(3, 4))), mf.Rational(3, 4))
+        # The inverse: (sqrt 2 + sqrt 3) (sqrt 3 - sqrt 2) = 1.
+        total = element(r2=(1, 1), r3=(1, 1))
+        self.assertEqual(field.mul(total, field.inverse(total)), field.one)
+        self.assertEqual(field.inverse(total), element(r2=(-1, 1), r3=(1, 1)))
+        for x, sign in ((difference, -1), (total, 1), (element(one=(1, 1), r2=(-3, 2)), -1), (zero, 0)):
+            self.assertEqual(field.sign(x), sign)
+            low, high = field.enclosure(x, 64)
+            self.assertTrue(low <= high and (sign == 0 or (low.numerator > 0) == (sign > 0)))
+
+    def test_wrong_answers_are_refused(self):
+        """The surd attempts raise rather than return what their checks do not accept."""
+        from mathforge.lean import algebra_complex as module
+        left, right = number(((1, 1, 2),), ((1, 1, 1),)), number(((1, 1, 1),), ((1, 1, 3),))
+        z = number(((1, 2, 1),), ((1, 2, 3),))
+        attempts = {"mul": lambda: module._surd_mul(left, right), "div": lambda: module._surd_div(left, right),
+                    "pow": lambda: module._surd_pow(z, 7), "negative power": lambda: module._surd_pow(z, -5),
+                    "quadratic": lambda: module._surd_quadratic(1, 1, -3, 1, 1, 1, 1, 1, 1)}
+        for label, attempt in attempts.items():
+            self.assertIsNotNone(attempt(), label)
+
+        def refused(label, patched):
+            with self.subTest(label), patched:
+                with self.assertRaises(Exception):
+                    attempts[label.split(":")[0]]()
+
+        product = module._complex_product
+        refused("mul: a product with a sign wrong", patch.object(
+            module, "_complex_product", lambda field, z, w: (lambda r: (r[0], field.neg(r[1])))(product(field, z, w))))
+        refused("pow: a product with a sign wrong", patch.object(
+            module, "_complex_product", lambda field, z, w: (lambda r: (field.neg(r[0]), r[1]))(product(field, z, w))))
+        inverse = module._Field.inverse
+        refused("div: an inverse that is not one", patch.object(
+            module._Field, "inverse", lambda self, x: self.scale(inverse(self, x), 2)))
+        refused("negative power: an inverse that is not one", patch.object(
+            module._Field, "inverse", lambda self, x: self.scale(inverse(self, x), 2)))
+        # Wrong names: an index that is off, a conjugate left out, a root of the polynomial that is not a root of the
+        # number.
+        sign = module._Field.sign
+        refused("mul: a sign that is wrong", patch.object(module._Field, "sign", lambda self, x: -sign(self, x)))
+        orbit = module._Field.orbit
+        refused("mul: an orbit without its last image", patch.object(
+            module._Field, "orbit", lambda self, x: orbit(self, x)[:-1] if len(orbit(self, x)) > 1 else orbit(self, x)))
+        split = module._squarefree
+        refused("pow: a squarefree part that is wrong", patch.object(
+            module, "_squarefree", lambda value: (lambda r: r and (r[0] + 1, r[1]))(split(value))))
+        refused("quadratic: a squarefree part that is wrong", patch.object(
+            module, "_squarefree", lambda value: (lambda r: r and (r[0] + 1, r[1]))(split(value))))
+        compare = module._Field.compare
+        refused("quadratic: roots in the wrong order", patch.object(
+            module._Field, "compare", lambda self, x, y: compare(self, y, x)))
+
+    def test_surd_fallbacks_stay_the_generic_runners(self):
+        """When an attempt declines, the generic runner answers as before: here with every attempt broken."""
+        from mathforge import lean, operations
+        from mathforge.lean import algebra_complex as module
+        left, right = number(((1, 1, 2),), ((1, 1, 1),)), number(((1, 1, 1),), ((1, 1, 3),))
+        cases = [("complex_mul", (left, right)), ("complex_div", (left, right)),
+                 ("complex_pow", (number(((1, 2, 1),), ((1, 2, 3),)), 7)), ("quadratic_roots", (1, 1, 1))]
+        with patch.object(module, "_Field", side_effect=ArithmeticError):
+            for operation, args in cases:
+                with self.subTest(operation=operation):
+                    got = getattr(lean.functions, operation)(*args)
+                    self.assertIsNot(got, lean.FALLBACK)
+                    self.assertSameValue(got, getattr(operations, operation)(*args).unwrap())
+
+
 if __name__ == "__main__":
     unittest.main()

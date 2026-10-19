@@ -77,6 +77,7 @@ from ..functions import RealExpr, RealFunction
 from ..algebraic import RealAlgebraicRoot
 from ..function_calculus import TaylorPolynomial, FunctionLimitValue
 from ..rational_integration import RationalPrimitive
+from ..lean import FALLBACK, functions as _LEAN
 from . import structured
 
 if TYPE_CHECKING:
@@ -84,244 +85,488 @@ if TYPE_CHECKING:
 
 
 def integer_gcd(a: int, b: int, *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.integer_gcd(a, b)
+        if _value is not FALLBACK:
+            return _value
     return structured.integer_gcd(a, b, limits=limits).unwrap()
 
 
 def integer_lcm(a: int, b: int, *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.integer_lcm(a, b)
+        if _value is not FALLBACK:
+            return _value
     return structured.integer_lcm(a, b, limits=limits).unwrap()
 
 
 def integer_xgcd(a: int, b: int, *, limits: ComputationLimits | None = None) -> tuple[int, int, int]:
+    if limits is None:
+        _value = _LEAN.integer_xgcd(a, b)
+        if _value is not FALLBACK:
+            return _value
     return structured.integer_xgcd(a, b, limits=limits).unwrap()
 
 
 def mod_inverse(a: int, modulus: int, *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.mod_inverse(a, modulus)
+        if _value is not FALLBACK:
+            return _value
     return structured.mod_inverse(a, modulus, limits=limits).unwrap()
 
 
 def crt(congruences, *, limits: ComputationLimits | None = None) -> CRTResult:
+    if limits is None:
+        _value = _LEAN.crt(congruences)
+        if _value is not FALLBACK:
+            return _value
     return structured.crt(congruences, limits=limits).unwrap()
 
 
 def is_prime(n: int, *, limits: ComputationLimits | None = None) -> bool:
+    if limits is None:
+        _value = _LEAN.is_prime(n)
+        if _value is not FALLBACK:
+            return _value
     return structured.is_prime(n, limits=limits).unwrap()
 
 
 def factor_integer(n: int, *, limits: ComputationLimits | None = None) -> IntegerFactorization:
+    if limits is None:
+        _value = _LEAN.factor_integer(n)
+        if _value is not FALLBACK:
+            return _value
     return structured.factor_integer(n, limits=limits).unwrap()
 
 
 def divisors(n: int, *, limits: ComputationLimits | None = None) -> tuple[int, ...]:
+    if limits is None:
+        _value = _LEAN.divisors(n)
+        if _value is not FALLBACK:
+            return _value
     return structured.divisors(n, limits=limits).unwrap()
 
 
 def totient(n: int, *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.totient(n)
+        if _value is not FALLBACK:
+            return _value
     return structured.totient(n, limits=limits).unwrap()
 
 
 def factorial(n: int, *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.factorial(n)
+        if _value is not FALLBACK:
+            return _value
     return structured.factorial(n, limits=limits).unwrap()
 
 
 def binomial(n: int, k: int, *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.binomial(n, k)
+        if _value is not FALLBACK:
+            return _value
     return structured.binomial(n, k, limits=limits).unwrap()
 
 
 def multinomial(counts, *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.multinomial(counts)
+        if _value is not FALLBACK:
+            return _value
     return structured.multinomial(counts, limits=limits).unwrap()
 
 
 def permutations_count(n: int, k: int, *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.permutations_count(n, k)
+        if _value is not FALLBACK:
+            return _value
     return structured.permutations_count(n, k, limits=limits).unwrap()
 
 
 def fibonacci(n: int, *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.fibonacci(n)
+        if _value is not FALLBACK:
+            return _value
     return structured.fibonacci(n, limits=limits).unwrap()
 
 
 def catalan(n: int, *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.catalan(n)
+        if _value is not FALLBACK:
+            return _value
     return structured.catalan(n, limits=limits).unwrap()
 
 
 def stirling(n: int, k: int, *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.stirling(n, k)
+        if _value is not FALLBACK:
+            return _value
     return structured.stirling(n, k, limits=limits).unwrap()
 
 
 def complex_algebraic(real, imag=0, *, limits: ComputationLimits | None = None) -> ComplexAlgebraic:
+    if limits is None:
+        _value = _LEAN.complex_algebraic(real, imag)
+        if _value is not FALLBACK:
+            return _value
     return structured.complex_algebraic(real, imag, limits=limits).unwrap()
 
 
 def complex_add(left, right, *, limits: ComputationLimits | None = None) -> ComplexAlgebraic:
+    if limits is None:
+        _value = _LEAN.complex_add(left, right)
+        if _value is not FALLBACK:
+            return _value
     return structured.complex_add(left, right, limits=limits).unwrap()
 
 
 def complex_sub(left, right, *, limits: ComputationLimits | None = None) -> ComplexAlgebraic:
+    if limits is None:
+        _value = _LEAN.complex_sub(left, right)
+        if _value is not FALLBACK:
+            return _value
     return structured.complex_sub(left, right, limits=limits).unwrap()
 
 
 def complex_mul(left, right, *, limits: ComputationLimits | None = None) -> ComplexAlgebraic:
+    if limits is None:
+        _value = _LEAN.complex_mul(left, right)
+        if _value is not FALLBACK:
+            return _value
     return structured.complex_mul(left, right, limits=limits).unwrap()
 
 
 def complex_div(left, right, *, limits: ComputationLimits | None = None) -> ComplexAlgebraic:
+    if limits is None:
+        _value = _LEAN.complex_div(left, right)
+        if _value is not FALLBACK:
+            return _value
     return structured.complex_div(left, right, limits=limits).unwrap()
 
 
 def complex_conjugate(value, *, limits: ComputationLimits | None = None) -> ComplexAlgebraic:
+    if limits is None:
+        _value = _LEAN.complex_conjugate(value)
+        if _value is not FALLBACK:
+            return _value
     return structured.complex_conjugate(value, limits=limits).unwrap()
 
 
 def complex_real(value, *, limits: ComputationLimits | None = None) -> Rational | RealAlgebraicRoot:
+    if limits is None:
+        _value = _LEAN.complex_real(value)
+        if _value is not FALLBACK:
+            return _value
     return structured.complex_real(value, limits=limits).unwrap()
 
 
 def complex_imag(value, *, limits: ComputationLimits | None = None) -> Rational | RealAlgebraicRoot:
+    if limits is None:
+        _value = _LEAN.complex_imag(value)
+        if _value is not FALLBACK:
+            return _value
     return structured.complex_imag(value, limits=limits).unwrap()
 
 
 def complex_norm_squared(value, *, limits: ComputationLimits | None = None) -> Rational | RealAlgebraicRoot:
+    if limits is None:
+        _value = _LEAN.complex_norm_squared(value)
+        if _value is not FALLBACK:
+            return _value
     return structured.complex_norm_squared(value, limits=limits).unwrap()
 
 
 def complex_sqrt(value, *, limits: ComputationLimits | None = None) -> ComplexAlgebraic:
+    if limits is None:
+        _value = _LEAN.complex_sqrt(value)
+        if _value is not FALLBACK:
+            return _value
     return structured.complex_sqrt(value, limits=limits).unwrap()
 
 
 def complex_pow(base, n: int, *, limits: ComputationLimits | None = None) -> ComplexAlgebraic:
+    if limits is None:
+        _value = _LEAN.complex_pow(base, n)
+        if _value is not FALLBACK:
+            return _value
     return structured.complex_pow(base, n, limits=limits).unwrap()
 
 
 def quadratic_roots(a, b, c, *, limits: ComputationLimits | None = None) -> tuple[ComplexRoot, ...]:
+    if limits is None:
+        _value = _LEAN.quadratic_roots(a, b, c)
+        if _value is not FALLBACK:
+            return _value
     return structured.quadratic_roots(a, b, c, limits=limits).unwrap()
 
 
 def bernoulli(p, *, limits: ComputationLimits | None = None) -> FiniteDistribution:
+    if limits is None:
+        _value = _LEAN.bernoulli(p)
+        if _value is not FALLBACK:
+            return _value
     return structured.bernoulli(p, limits=limits).unwrap()
 
 
 def binomial_distribution(n: int, p, *, limits: ComputationLimits | None = None) -> FiniteDistribution:
+    if limits is None:
+        _value = _LEAN.binomial_distribution(n, p)
+        if _value is not FALLBACK:
+            return _value
     return structured.binomial_distribution(n, p, limits=limits).unwrap()
 
 
 def discrete_uniform(outcomes, *, limits: ComputationLimits | None = None) -> FiniteDistribution:
+    if limits is None:
+        _value = _LEAN.discrete_uniform(outcomes)
+        if _value is not FALLBACK:
+            return _value
     return structured.discrete_uniform(outcomes, limits=limits).unwrap()
 
 
 def hypergeometric(population: int, successes: int, draws: int, *, limits: ComputationLimits | None = None) -> FiniteDistribution:
+    if limits is None:
+        _value = _LEAN.hypergeometric(population, successes, draws)
+        if _value is not FALLBACK:
+            return _value
     return structured.hypergeometric(population, successes, draws, limits=limits).unwrap()
 
 
 def probability(distribution: FiniteDistribution, event, *, limits: ComputationLimits | None = None) -> Rational:
+    if limits is None:
+        _value = _LEAN.probability(distribution, event)
+        if _value is not FALLBACK:
+            return _value
     return structured.probability(distribution, event, limits=limits).unwrap()
 
 
 def condition(distribution: FiniteDistribution, event, *, limits: ComputationLimits | None = None) -> FiniteDistribution:
+    if limits is None:
+        _value = _LEAN.condition(distribution, event)
+        if _value is not FALLBACK:
+            return _value
     return structured.condition(distribution, event, limits=limits).unwrap()
 
 
 def cdf(distribution: FiniteDistribution, x, *, limits: ComputationLimits | None = None) -> Rational:
+    if limits is None:
+        _value = _LEAN.cdf(distribution, x)
+        if _value is not FALLBACK:
+            return _value
     return structured.cdf(distribution, x, limits=limits).unwrap()
 
 
 def moment(distribution: FiniteDistribution, order: int, *, limits: ComputationLimits | None = None) -> Rational:
+    if limits is None:
+        _value = _LEAN.moment(distribution, order)
+        if _value is not FALLBACK:
+            return _value
     return structured.moment(distribution, order, limits=limits).unwrap()
 
 
 def expectation(distribution: FiniteDistribution, *, limits: ComputationLimits | None = None) -> Rational:
+    if limits is None:
+        _value = _LEAN.expectation(distribution)
+        if _value is not FALLBACK:
+            return _value
     return structured.expectation(distribution, limits=limits).unwrap()
 
 
 def distribution_variance(distribution: FiniteDistribution, *, limits: ComputationLimits | None = None) -> Rational:
+    if limits is None:
+        _value = _LEAN.distribution_variance(distribution)
+        if _value is not FALLBACK:
+            return _value
     return structured.distribution_variance(distribution, limits=limits).unwrap()
 
 
 def mean(data, *, limits: ComputationLimits | None = None) -> Rational:
+    if limits is None:
+        _value = _LEAN.mean(data)
+        if _value is not FALLBACK:
+            return _value
     return structured.mean(data, limits=limits).unwrap()
 
 
 def median(data, *, limits: ComputationLimits | None = None) -> Rational:
+    if limits is None:
+        _value = _LEAN.median(data)
+        if _value is not FALLBACK:
+            return _value
     return structured.median(data, limits=limits).unwrap()
 
 
 def variance(data, ddof: int = 0, *, limits: ComputationLimits | None = None) -> Rational:
+    if limits is None:
+        _value = _LEAN.variance(data, ddof)
+        if _value is not FALLBACK:
+            return _value
     return structured.variance(data, ddof, limits=limits).unwrap()
 
 
 def stddev(data, ddof: int = 0, *, limits: ComputationLimits | None = None) -> Expression:
+    if limits is None:
+        _value = _LEAN.stddev(data, ddof)
+        if _value is not FALLBACK:
+            return _value
     return structured.stddev(data, ddof, limits=limits).unwrap()
 
 
 def covariance(x, y, ddof: int = 0, *, limits: ComputationLimits | None = None) -> Rational:
+    if limits is None:
+        _value = _LEAN.covariance(x, y, ddof)
+        if _value is not FALLBACK:
+            return _value
     return structured.covariance(x, y, ddof, limits=limits).unwrap()
 
 
 def trace(A: Matrix, *, limits: ComputationLimits | None = None) -> Rational:
+    if limits is None:
+        _value = _LEAN.trace(A)
+        if _value is not FALLBACK:
+            return _value
     return structured.trace(A, limits=limits).unwrap()
 
 
 def rowspace(A: Matrix, *, limits: ComputationLimits | None = None) -> tuple[tuple[Rational, ...], ...]:
+    if limits is None:
+        _value = _LEAN.rowspace(A)
+        if _value is not FALLBACK:
+            return _value
     return structured.rowspace(A, limits=limits).unwrap()
 
 
 def columnspace(A: Matrix, *, limits: ComputationLimits | None = None) -> tuple[tuple[Rational, ...], ...]:
+    if limits is None:
+        _value = _LEAN.columnspace(A)
+        if _value is not FALLBACK:
+            return _value
     return structured.columnspace(A, limits=limits).unwrap()
 
 
 def lu(A: Matrix, *, limits: ComputationLimits | None = None) -> LUDecomposition:
+    if limits is None:
+        _value = _LEAN.lu(A)
+        if _value is not FALLBACK:
+            return _value
     return structured.lu(A, limits=limits).unwrap()
 
 
 def least_squares(A: Matrix, b, *, limits: ComputationLimits | None = None) -> LeastSquaresResult:
+    if limits is None:
+        _value = _LEAN.least_squares(A, b)
+        if _value is not FALLBACK:
+            return _value
     return structured.least_squares(A, b, limits=limits).unwrap()
 
 
 def function_differentiate(expression, variable: Symbol, n: int = 1, *, limits: ComputationLimits | None = None) -> RealFunction:
+    if limits is None:
+        _value = _LEAN.function_differentiate(expression, variable, n)
+        if _value is not FALLBACK:
+            return _value
     return structured.function_differentiate(expression, variable, n, limits=limits).unwrap()
 
 
 def function_partial_diff(expression, variable: Symbol, n: int = 1, *, limits: ComputationLimits | None = None) -> RealFunction:
+    if limits is None:
+        _value = _LEAN.function_partial_diff(expression, variable, n)
+        if _value is not FALLBACK:
+            return _value
     return structured.function_partial_diff(expression, variable, n, limits=limits).unwrap()
 
 
 def function_gradient(expression, variables, *, limits: ComputationLimits | None = None) -> tuple[RealFunction, ...]:
+    if limits is None:
+        _value = _LEAN.function_gradient(expression, variables)
+        if _value is not FALLBACK:
+            return _value
     return structured.function_gradient(expression, variables, limits=limits).unwrap()
 
 
 def function_jacobian(expressions, variables, *, limits: ComputationLimits | None = None) -> tuple[tuple[RealFunction, ...], ...]:
+    if limits is None:
+        _value = _LEAN.function_jacobian(expressions, variables)
+        if _value is not FALLBACK:
+            return _value
     return structured.function_jacobian(expressions, variables, limits=limits).unwrap()
 
 
 def function_hessian(expression, variables, *, limits: ComputationLimits | None = None) -> tuple[tuple[RealFunction, ...], ...]:
+    if limits is None:
+        _value = _LEAN.function_hessian(expression, variables)
+        if _value is not FALLBACK:
+            return _value
     return structured.function_hessian(expression, variables, limits=limits).unwrap()
 
 
 def taylor(expression, variable: Symbol, point=0, order: int = 5, *, limits: ComputationLimits | None = None) -> TaylorPolynomial:
+    if limits is None:
+        _value = _LEAN.function_taylor(expression, variable, point, order)
+        if _value is not FALLBACK:
+            return _value
     return structured.taylor(expression, variable, point, order, limits=limits).unwrap()
 
 
 def function_evaluate(expression, bindings, *, limits: ComputationLimits | None = None) -> RealExpr:
+    if limits is None:
+        _value = _LEAN.function_evaluate(expression, bindings)
+        if _value is not FALLBACK:
+            return _value
     return structured.function_evaluate(expression, bindings, limits=limits).unwrap()
 
 
 def function_antiderivative(expression, variable: Symbol, *, limits: ComputationLimits | None = None) -> RealFunction | RationalPrimitive:
+    if limits is None:
+        _value = _LEAN.function_antiderivative(expression, variable)
+        if _value is not FALLBACK:
+            return _value
     return structured.function_antiderivative(expression, variable, limits=limits).unwrap()
 
 
 def function_limit(expression, variable: Symbol, point, side: str = 'both', *, limits: ComputationLimits | None = None) -> FunctionLimitValue:
+    if limits is None:
+        _value = _LEAN.function_limit(expression, variable, point, side)
+        if _value is not FALLBACK:
+            return _value
     return structured.function_limit(expression, variable, point, side, limits=limits).unwrap()
 
 
 def rational_antiderivative(expression, variable: Symbol, *, limits: ComputationLimits | None = None) -> RationalPrimitive:
+    if limits is None:
+        _value = _LEAN.rational_antiderivative(expression, variable)
+        if _value is not FALLBACK:
+            return _value
     return structured.rational_antiderivative(expression, variable, limits=limits).unwrap()
 
 
 def rational_integrate(expression, variable: Symbol, lower, upper, *, limits: ComputationLimits | None = None) -> RealExpr:
+    if limits is None:
+        _value = _LEAN.rational_integrate(expression, variable, lower, upper)
+        if _value is not FALLBACK:
+            return _value
     return structured.rational_integrate(expression, variable, lower, upper, limits=limits).unwrap()
 
 
 def function_integrate(expression, variable: Symbol, lower, upper, *, limits: ComputationLimits | None = None) -> RealExpr:
+    if limits is None:
+        _value = _LEAN.function_integrate(expression, variable, lower, upper)
+        if _value is not FALLBACK:
+            return _value
     return structured.function_integrate(expression, variable, lower, upper, limits=limits).unwrap()
 
 
 def continued_fraction(value: Rational | int, *, limits: ComputationLimits | None = None) -> ContinuedFraction:
+    if limits is None:
+        _value = _LEAN.continued_fraction(value)
+        if _value is not FALLBACK:
+            return _value
     return structured.continued_fraction(value, limits=limits).unwrap()

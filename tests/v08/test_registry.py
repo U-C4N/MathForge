@@ -430,7 +430,8 @@ class RegistryTests(unittest.TestCase):
                     registry.specs()
 
     def test_build_rejects_names_the_generated_wrappers_use(self):
-        self.assertEqual(registry.WRAPPER_NAMES, ("limits", "dict", "run", "run_v6", "structured"))
+        self.assertEqual(registry.WRAPPER_NAMES,
+                         ("limits", "dict", "run", "run_v6", "structured", "_LEAN", "FALLBACK", "_value"))
         for name in registry.WRAPPER_NAMES:
             with self.subTest(argument=name):
                 self.install_family(demo_spec(arguments=(registry.Argument(name, "int", None, "int"),)))

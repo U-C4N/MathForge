@@ -321,9 +321,14 @@ def _check_operation(operation, args, value, evidence):
         from .root_certificates import check_root_certificate
         return check_root_certificate(_polynomial(args["expression"], args["variable"]), value, evidence)
     if operation == "compare_real":
-        from .algebraic import compare_real
-        return (evidence == () and type(value) is int and value in (-1, 0, 1)
-                and value == compare_real(args["left"], args["right"]))
+        # The checker's own exact comparison (mathforge.certify.upoly), not the producer's compare_real.
+        from .certify.upoly import compare, endpoint_of
+        if evidence != () or type(value) is not int or value not in (-1, 0, 1):
+            return False
+        left, right = endpoint_of(args["left"]), endpoint_of(args["right"])
+        if left is None or right is None:
+            raise UnsupportedOperation("Expected a rational, root descriptor or one quadratic-field constant")
+        return value == compare(left, right)
     if operation == "rational_function":
         if evidence != ():
             return False

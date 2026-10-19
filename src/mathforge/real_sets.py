@@ -7,14 +7,26 @@ from .contracts import Eq, Inequality, EmptySet, FiniteSet
 from .intervals import Interval, IntervalSet, equal_interval_sets
 from .limits import computation
 from .model import Rational, Reals
-from .rational_function import as_rational_function, validate_variable
+from .rational_function import RationalFunction, as_polynomial, as_rational_function, validate_variable
 from .root_isolation import real_roots, verify_root_records
 from .root_certificates import root_certificate, check_root_certificate
 
 
 def source_function(problem, variable):
     validate_variable(variable)
-    return as_rational_function(problem.lhs, variable) - as_rational_function(problem.rhs, variable)
+    lhs, rhs = problem.lhs, problem.rhs
+    if type(lhs) is not RationalFunction and type(rhs) is not RationalFunction:
+        # Two polynomial sides: lhs - rhs over the denominator 1 with no exclusions, which is what the
+        # RationalFunction arithmetic below normalizes them to; the conversions raise as there.
+        from .polynomial import trusted_polynomial
+        difference = as_polynomial(lhs, variable) - as_polynomial(rhs, variable)
+        value = object.__new__(RationalFunction)
+        fields = value.__dict__
+        fields["numerator"] = difference
+        fields["denominator"] = trusted_polynomial((Rational(1),), variable)
+        fields["excluded"] = ()
+        return value
+    return as_rational_function(lhs, variable) - as_rational_function(rhs, variable)
 
 
 def _sources(function):

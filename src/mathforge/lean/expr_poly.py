@@ -20,7 +20,7 @@ from ..kernels import substitution as kernels
 from ..limits import ComputationLimits, computation, current_budget
 from ..model import Add, Mul, Pow, Rational, Sqrt, Symbol
 from . import FALLBACK, run_legacy
-from ._poly import real_variable, small_int
+from ._poly import MAX_BITS, real_variable, small_int
 
 _EXPRESSIONS = frozenset({Rational, Symbol, Add, Mul, Pow, Sqrt})
 _DEPTH = ComputationLimits().max_depth - 10  # the Result nests a binding's value 8 levels down, with a margin
@@ -53,8 +53,9 @@ class _Walk:
         kind = type(node)
         if kind is Rational:
             numerator, denominator = node.numerator, node.denominator
-            if type(numerator) is not int or type(denominator) is not int:
-                raise _TooLarge("not a canonical Rational")
+            if (type(numerator) is not int or type(denominator) is not int or numerator.bit_length() > MAX_BITS
+                    or denominator.bit_length() > MAX_BITS):
+                raise _TooLarge("not a canonical Rational within the integer limit")
             return 3, 1
         if kind is Symbol:
             return self.symbol(node), 2 if not node.assumptions else 3

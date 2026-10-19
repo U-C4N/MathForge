@@ -8,6 +8,7 @@ mathforge.certify before returning it. Work is charged to the active budget in b
 
 from __future__ import annotations
 
+from fractions import Fraction
 from math import gcd, isqrt
 
 from ..limits import ResourceLimitError, current_budget
@@ -350,6 +351,251 @@ def resultant_scale(f, g, integer_f, integer_g) -> tuple[int, int]:
             raise _too_long()
     return (lead_f.numerator ** degree_g * lead_g.numerator ** degree_f,
             (lead_f.denominator * integer_f[-1]) ** degree_g * (lead_g.denominator * integer_g[-1]) ** degree_f)
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Sturm chains and real root isolation, with v0.7's normalization and bisection (root_isolation.py)
+
+_STURM = caches.BoundedCache("kernels.sturm", 512)
+
+
+def squarefree_part(p: tuple[int, ...]) -> tuple[int, ...]:
+    """The primitive square-free part (positive leading coefficient) of a nonzero integer polynomial; (1,) for a
+    constant."""
+    if len(p) <= 1:
+        return (1,)
+    f = tp.primitive(p)
+    common, part, _ = gcd_cofactors(f, tp.primitive(tp.derivative(f)))
+    return part
+
+
+def sturm_chain(p: tuple[int, ...]) -> tuple[tuple[int, ...], ...]:
+    """v0.7's signed Sturm chain of a primitive square-free integer polynomial with positive leading coefficient:
+    p, p', then each next member the primitive part, sign kept, of minus the remainder of the two before it
+    (pseudo-remainders, with the sign of lc**k undone), until a remainder vanishes."""
+    return _STURM.get(p, lambda: _sturm_chain(p))
+
+
+def _sturm_chain(p):
+    if len(p) <= 1:
+        return (p,)
+    chain = [p, tp.derivative(p)]
+    limit = _max_bits()
+    while True:
+        a, b = chain[-2], chain[-1]
+        remainder = tp.pseudo_remainder(a, b)
+        if not remainder:
+            break
+        if b[-1] > 0 or (len(a) - len(b) + 1) % 2 == 0:
+            remainder = tp.neg(remainder)  # -rem up to the positive factor lc(b)**k
+        divisor = gcd(*remainder)
+        if divisor != 1:
+            remainder = tuple([value // divisor for value in remainder])
+        if max(remainder[-1].bit_length(), remainder[0].bit_length()) > limit:
+            raise _too_long()
+        chain.append(remainder)
+        if len(remainder) == 1:
+            break
+    return tuple(chain)
+
+
+def _sign(value: int) -> int:
+    return (value > 0) - (value < 0)
+
+
+def _value(p: tuple[int, ...], numerator: int, denominator: int) -> int:
+    """p(numerator / denominator) * denominator**deg p, an integer with the sign of p at the point."""
+    if denominator == 1:
+        value = 0
+        for coefficient in reversed(p):
+            value = value * numerator + coefficient
+        return value
+    value, power = 0, 1
+    for coefficient in reversed(p):
+        value = value * numerator + coefficient * power
+        power *= denominator
+    return value
+
+
+def endpoint(chain, numerator: int, denominator: int) -> tuple[int, bool]:
+    """(sign variations of the chain at the point, whether the point is a root of chain[0]), zeros skipped and the
+    first member's zero not counted, as root_isolation's endpoint and _variations count them."""
+    tp.charge(sum(len(member) for member in chain))
+    first = _sign(_value(chain[0], numerator, denominator))
+    previous, variations = first, 0
+    for member in chain[1:]:
+        sign = _sign(_value(member, numerator, denominator))
+        if sign:
+            if previous and previous != sign:
+                variations += 1
+            previous = sign
+    return variations, first == 0
+
+
+def variations_at_infinity(chain, positive: bool) -> int:
+    signs = []
+    for member in chain:
+        sign = 1 if member[-1] > 0 else -1
+        if not positive and (len(member) - 1) % 2:
+            sign = -sign
+        signs.append(sign)
+    return sum(a != b for a, b in zip(signs, signs[1:]))
+
+
+def count_open(chain, lower, upper) -> int:
+    """The number of distinct roots of chain[0] in the open interval (lower, upper); a bound is (numerator,
+    denominator) or None for an infinite end."""
+    low = variations_at_infinity(chain, False) if lower is None else endpoint(chain, *lower)[0]
+    if upper is None:
+        return low - variations_at_infinity(chain, True)
+    high, zero = endpoint(chain, *upper)
+    return low - high - zero
+
+
+def root_bound(p: tuple[int, ...]) -> int:
+    """root_isolation._root_bound: 2 + max ceil(|c_i / lc|) over the lower coefficients."""
+    lead = abs(p[-1])
+    largest = 0
+    for value in p[:-1]:
+        ceiling = -(-abs(value) // lead)
+        if ceiling > largest:
+            largest = ceiling
+    return largest + 2
+
+
+def isolate(p: tuple[int, ...]) -> tuple[tuple[tuple[int, int], tuple[int, int]], ...]:
+    """root_isolation.isolate_real_roots of the polynomial whose square-free primitive part is p (positive leading
+    coefficient): the same bisection from (-bound, bound), so the same intervals, as ((num, den), (num, den)) pairs
+    in lowest terms, sorted; a point interval for a root met at a midpoint."""
+    if len(p) <= 1:
+        return ()
+    chain = sturm_chain(p)
+    budget = current_budget()
+    bound = root_bound(p)
+    lower_state = ((-bound, 1),) + endpoint(chain, -bound, 1)
+    upper_state = ((bound, 1),) + endpoint(chain, bound, 1)
+    pending = [(lower_state, upper_state)]
+    intervals = []
+    while pending:
+        if budget is not None:
+            budget.refine()
+        lower_state, upper_state = pending.pop()
+        lower, lower_variations, lower_zero = lower_state
+        upper, upper_variations, upper_zero = upper_state
+        count = lower_variations - upper_variations - upper_zero
+        if not count:
+            continue
+        if count == 1 and not lower_zero and not upper_zero:
+            intervals.append((lower, upper))
+            continue
+        numerator = lower[0] * upper[1] + upper[0] * lower[1]
+        denominator = 2 * lower[1] * upper[1]
+        divisor = gcd(numerator, denominator)
+        middle = (numerator // divisor, denominator // divisor)
+        middle_variations, middle_zero = endpoint(chain, *middle)
+        middle_state = (middle, middle_variations, middle_zero)
+        if middle_zero:
+            intervals.append((middle, middle))
+        left_count = lower_variations - middle_variations - middle_zero
+        right_count = middle_variations - upper_variations - upper_zero
+        if left_count + right_count + middle_zero != count:
+            raise ArithmeticError("Sturm subdivision did not preserve the root count")
+        if right_count:
+            pending.append((middle_state, upper_state))
+        if left_count:
+            pending.append((lower_state, middle_state))
+    intervals.sort(key=_rational_key)
+    return tuple(intervals)
+
+
+def _rational_key(interval):
+    """Sort key of an interval by its lower end (numerator, denominator > 0), ordered as the rational."""
+    return Fraction(*interval[0])
+
+
+def midpoint(lower, upper):
+    numerator = lower[0] * upper[1] + upper[0] * lower[1]
+    denominator = 2 * lower[1] * upper[1]
+    divisor = gcd(numerator, denominator)
+    return numerator // divisor, denominator // divisor
+
+
+def refine(chain, lower, upper):
+    """root_isolation.refine_interval: one bisection of an isolating interval of chain[0]'s root."""
+    budget = current_budget()
+    if budget is not None:
+        budget.refine()
+    if lower == upper:
+        return lower, upper
+    middle = midpoint(lower, upper)
+    if not _value(chain[0], *middle):
+        return middle, middle
+    return (lower, middle) if count_open(chain, lower, middle) else (middle, upper)
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Signs of closed real algebraic expressions by fixed-point interval arithmetic
+
+class OutOfScope(Exception):
+    """An expression node the interval evaluator does not handle."""
+
+
+def _enclosure(expression, bits: int):
+    """Integers (lo, hi) with lo <= expression * 2**bits <= hi, for a tree of Rational, Sqrt, Add, Mul and Pow
+    nodes (outward rounding at every step)."""
+    from ..model import Add, Mul, Pow, Sqrt
+    kind = type(expression)
+    if kind is Rational:
+        scaled = expression.numerator << bits
+        low = scaled // expression.denominator
+        return low, low + (1 if scaled % expression.denominator else 0)
+    if kind is Sqrt:
+        radicand = expression.radicand
+        if type(radicand) is not Rational or radicand.numerator < 0:
+            raise OutOfScope("radicand")
+        low = isqrt((radicand.numerator << (2 * bits)) // radicand.denominator)
+        return low, low + 1
+    if kind is Add:
+        low = high = 0
+        for term in expression.terms:
+            a, b = _enclosure(term, bits)
+            low += a
+            high += b
+        return low, high
+    if kind is Mul:
+        low = high = 1 << bits
+        for factor in expression.factors:
+            a, b = _enclosure(factor, bits)
+            products = (low * a, low * b, high * a, high * b)
+            low, high = min(products) >> bits, -((-max(products)) >> bits)
+        return low, high
+    if kind is Pow:
+        exponent = expression.exponent
+        if type(exponent) is not int or exponent < 0 or exponent > 4096:
+            raise OutOfScope("exponent")
+        a, b = _enclosure(expression.base, bits)
+        low = high = 1 << bits
+        for _ in range(exponent):
+            products = (low * a, low * b, high * a, high * b)
+            low, high = min(products) >> bits, -((-max(products)) >> bits)
+        return low, high
+    raise OutOfScope(kind.__name__)
+
+
+def separate(left, right, *, start: int = 64, limit: int = 4096):
+    """(sign of left - right, the precision in bits that separates their enclosures), doubling the precision from
+    start; None when the enclosures still overlap at the limit (the numbers may be equal)."""
+    bits = start
+    while bits <= limit:
+        tp.charge(bits)
+        a, b = _enclosure(left, bits)
+        c, d = _enclosure(right, bits)
+        if b < c:
+            return -1, bits
+        if d < a:
+            return 1, bits
+        bits *= 2
+    return None
 
 
 # ---------------------------------------------------------------------------------------------------------------

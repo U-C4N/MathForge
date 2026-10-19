@@ -17,6 +17,7 @@ from math import gcd, perm
 
 from ..model import Rational
 from ..trusted import upoly as tp
+from ..trusted.caches import BoundedCache
 
 
 def canonical(value) -> bool:
@@ -400,6 +401,425 @@ def check_resultant(f: tuple[int, ...], g: tuple[int, ...], value: int) -> bool:
         return _resultant_mod(f, g, modulus) == value % modulus
     except ValueError:
         return False
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Sturm chains of the checker: subresultant remainders, signed as a Sturm sequence
+
+_STURM = BoundedCache("certify.sturm", 512)
+
+
+def euclid_gcd(f: tuple[int, ...], g: tuple[int, ...]) -> tuple[int, ...]:
+    """The primitive gcd (positive leading coefficient) of nonzero integer polynomials, by the primitive
+    pseudo-remainder sequence (the checker's own; the producer uses a heuristic gcd)."""
+    a, b = tp.primitive(f), tp.primitive(g)
+    if len(a) < len(b):
+        a, b = b, a
+    while b:
+        a, b = b, tp.primitive(tp.pseudo_remainder(a, b))
+    return tp.primitive(a)
+
+
+def squarefree_part(p: tuple[int, ...]) -> tuple[int, ...]:
+    """The primitive square-free part (positive leading coefficient) of a nonzero integer polynomial: p / gcd(p, p')
+    by Euclid; (1,) for a constant."""
+    if len(p) <= 1:
+        return (1,)
+    f = tp.primitive(p)
+    return tp.primitive(tp.exact_quotient(f, euclid_gcd(f, tp.derivative(f))))
+
+
+def sturm_chain(p: tuple[int, ...]) -> tuple[tuple[int, ...], ...]:
+    """A Sturm sequence of the square-free integer polynomial p (degree >= 1): the subresultant PRS of p and p'
+    (Brown and Collins' scalars, as SymPy's dup_inner_subresultants computes them), each member multiplied by the
+    sign that makes it a positive multiple of minus the remainder of the two before it. With R_(i+1) =
+    s_i lc(R_i)**k_i rem(R_(i-1), R_i), the sign is sigma_(i+1) = -sigma_(i-1) sign(s_i) sign(lc R_i)**k_i."""
+    return _STURM.get(p, lambda: _sturm_chain(p))
+
+
+def _sturm_chain(p):
+    if len(p) <= 1:
+        return (p,)
+    f, g = p, tp.derivative(p)
+    members = [f, g]
+    signs = [1, 1]
+    degree_f, degree_g = len(f) - 1, len(g) - 1
+    drop = degree_f - degree_g
+    scale = -1 if (drop + 1) % 2 else 1  # s_1 = (-1)**(d+1)
+    h = tp.pseudo_remainder(f, g)
+    if scale < 0:
+        h = tp.neg(h)
+    lead = g[-1]
+    c = lead ** drop
+    c = -c
+    scale_sign = scale
+    exponent = drop + 1
+    while h:
+        sign_lead = 1 if lead > 0 else -1
+        signs.append(-signs[-2] * scale_sign * (sign_lead if exponent % 2 else 1))
+        members.append(h)
+        k = len(h) - 1
+        f, g, drop = g, h, len(g) - 1 - k
+        b = -lead * c ** drop
+        remainder = tp.pseudo_remainder(f, g)
+        exponent = len(f) - len(g) + 1
+        quotient = tuple([value // b for value in remainder])
+        if any(value % b for value in remainder):
+            raise ArithmeticError("Nonexact subresultant division")
+        h = quotient
+        scale_sign = 1 if b > 0 else -1  # s_i = 1 / b
+        lead = g[-1]
+        if drop > 1:
+            q = c ** (drop - 1)
+            c, rest = divmod((-lead) ** drop, q)
+            if rest:
+                raise ArithmeticError("Nonexact subresultant scalar")
+        else:
+            c = -lead
+    return tuple(member if sign > 0 else tp.neg(member) for member, sign in zip(members, signs))
+
+
+def _sign_at(p: tuple[int, ...], numerator: int, denominator: int) -> int:
+    return tp.sign_at(p, numerator, denominator)
+
+
+def _variations(chain, point) -> int:
+    """Sign variations of the chain at a rational point (num, den), or at -infinity (None, False) and +infinity
+    (None, True); zeros are skipped."""
+    signs = []
+    if point[0] is None:
+        positive = point[1]
+        for member in chain:
+            sign = 1 if member[-1] > 0 else -1
+            if not positive and (len(member) - 1) % 2:
+                sign = -sign
+            signs.append(sign)
+    else:
+        numerator, denominator = point
+        for member in chain:
+            sign = _sign_at(member, numerator, denominator)
+            if sign:
+                signs.append(sign)
+    return sum(a != b for a, b in zip(signs, signs[1:]))
+
+
+def count_roots(p: tuple[int, ...], lo, hi) -> int:
+    """The distinct real roots of the square-free integer polynomial p in (lo, hi], lo and hi Rationals or None for
+    an infinite end (Sturm's theorem on the checker's chain)."""
+    if len(p) <= 1:
+        return 0
+    chain = sturm_chain(p)
+    low = (None, False) if lo is None else (lo.numerator, lo.denominator)
+    high = (None, True) if hi is None else (hi.numerator, hi.denominator)
+    tp.charge(sum(len(member) for member in chain))
+    return _variations(chain, low) - _variations(chain, high)
+
+
+def isolate(p: tuple[int, ...]):
+    """Disjoint intervals (lo, hi], increasing, each holding exactly one real root of the square-free integer
+    polynomial p, by plain bisection from the Cauchy bound; (r, r) for a root met exactly."""
+    if len(p) <= 1:
+        return ()
+    lead = abs(p[-1])
+    bound = Rational(1 + max(abs(value) for value in p[:-1]) // lead + 1)
+    pending = [(-bound, bound)]
+    result = []
+    while pending:
+        lo, hi = pending.pop()
+        count = count_roots(p, lo, hi)
+        if count == 0:
+            continue
+        if count == 1:
+            result.append((lo, hi))
+            continue
+        middle = (lo + hi) / 2
+        pending.append((middle, hi))
+        pending.append((lo, middle))
+    result.sort(key=lambda interval: interval[0])
+    return tuple(result)
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Exact real scalars: the checker's reading of what algebraic.as_endpoint accepts, and an exact comparison
+
+def _square_root(value):
+    """The rational square root of a nonnegative Rational, or None."""
+    from math import isqrt
+    if value.numerator < 0:
+        return None
+    numerator, denominator = isqrt(value.numerator), isqrt(value.denominator)
+    if numerator * numerator == value.numerator and denominator * denominator == value.denominator:
+        return Rational(numerator, denominator)
+    return None
+
+
+def field_coordinates(expression):
+    """(u, v, d) with expression = u + v sqrt(d), for a tree of Rational, Sqrt, Add, Mul and Pow nodes that lies in
+    one quadratic field (d the first non-square radicand met, None when there is none); None otherwise. This is the
+    scope of algebraic._quadratic_coordinates, computed here on its own."""
+    from ..model import Add, Mul, Pow, Sqrt
+    radicand = None
+    pending = [expression]
+    while pending:
+        node = pending.pop()
+        kind = type(node)
+        if kind is Rational:
+            continue
+        if kind is Sqrt:
+            if type(node.radicand) is not Rational:
+                return None
+            if radicand is None and _square_root(node.radicand) is None:
+                radicand = node.radicand
+            continue
+        if kind is Add:
+            pending.extend(node.terms)
+        elif kind is Mul:
+            pending.extend(node.factors)
+        elif kind is Pow:
+            if type(node.exponent) is not int or node.exponent < 0:
+                return None
+            pending.append(node.base)
+        else:
+            return None
+    zero = Rational(0)
+    d = radicand if radicand is not None else zero
+
+    def product(a, b):
+        return a[0] * b[0] + a[1] * b[1] * d, a[0] * b[1] + a[1] * b[0]
+
+    def visit(node):
+        kind = type(node)
+        if kind is Rational:
+            return node, zero
+        if kind is Sqrt:
+            root = _square_root(node.radicand)
+            if root is not None:
+                return root, zero
+            ratio = _square_root(node.radicand / d) if d.numerator else None
+            if ratio is None:
+                raise ValueError("two quadratic fields")
+            return zero, ratio
+        if kind is Add:
+            total = (zero, zero)
+            for child in node.terms:
+                pair = visit(child)
+                total = total[0] + pair[0], total[1] + pair[1]
+            return total
+        if kind is Mul:
+            total = (Rational(1), zero)
+            for child in node.factors:
+                total = product(total, visit(child))
+            return total
+        base, exponent, result = visit(node.base), node.exponent, (Rational(1), zero)
+        while exponent:
+            if exponent & 1:
+                result = product(result, base)
+            exponent >>= 1
+            if exponent:
+                base = product(base, base)
+        return result
+
+    try:
+        u, v = visit(expression)
+    except (ValueError, RecursionError):
+        return None
+    return u, v, (radicand if v.numerator else None)
+
+
+def endpoint_of(value):
+    """("rational", Rational) or ("algebraic", (primitive square-free integer polynomial, real index)) for what
+    algebraic.as_endpoint accepts (an int, a Rational, a RealAlgebraicRoot, a closed quadratic-field expression);
+    None otherwise."""
+    if type(value) is int:
+        return "rational", Rational(value)
+    if type(value) is Rational:
+        return "rational", value
+    kind = type(value)
+    if kind.__name__ == "RealAlgebraicRoot" and kind.__module__ == "mathforge.algebraic":
+        coefficients, index = value.integer_coefficients, value.real_index
+        if (type(coefficients) is not tuple or len(coefficients) < 2 or any(type(c) is not int for c in coefficients)
+                or type(index) is not int or index < 0):
+            return None
+        part = squarefree_part(coefficients)
+        if len(part) < 2 or index >= count_roots(part, None, None):
+            return None
+        return "algebraic", (part, index)
+    found = field_coordinates(value)
+    if found is None:
+        return None
+    u, v, d = found
+    if not v.numerator:
+        return "rational", u
+    # u + v sqrt(d) is a root of t**2 - 2 u t + (u**2 - v**2 d): the larger one when v > 0.
+    return "algebraic", (tp.primitive(tp.from_rationals((u * u - v * v * d, -2 * u, Rational(1)))[0]),
+                         0 if v.numerator < 0 else 1)
+
+
+def _isolator(p, index):
+    """The index-th of the checker's isolating intervals of the square-free p."""
+    intervals = isolate(p)
+    return intervals[index] if index < len(intervals) else None
+
+
+def _bisect(p, interval):
+    lo, hi = interval
+    middle = (lo + hi) / 2
+    return (lo, middle) if count_roots(p, lo, middle) else (middle, hi)
+
+
+def compare(left, right) -> int | None:
+    """-1, 0 or 1 for two endpoint_of values, by the checker's own isolating intervals (lo, hi]: refined until they
+    separate; two algebraic numbers are equal exactly when the gcd of their polynomials has a root in both
+    intervals. None for an invalid descriptor."""
+    if left is None or right is None:
+        return None
+    if left[0] == "rational" and right[0] == "rational":
+        return (left[1] > right[1]) - (left[1] < right[1])
+    if left[0] == "rational":
+        result = compare(right, left)
+        return None if result is None else -result
+    p, index = left[1]
+    a = _isolator(p, index)
+    if a is None:
+        return None
+    if right[0] == "rational":
+        r = right[1]
+        if tp.sign_at(p, r.numerator, r.denominator) == 0 and a[0] < r <= a[1]:
+            return 0
+        while a[0] < r <= a[1]:
+            a = _bisect(p, a)
+        return -1 if a[1] < r else 1
+    q, other = right[1]
+    b = _isolator(q, other)
+    if b is None:
+        return None
+    common = euclid_gcd(p, q)
+    if len(common) > 1:
+        low, high = max(a[0], b[0]), min(a[1], b[1])
+        if low < high and count_roots(squarefree_part(common), low, high) >= 1:
+            return 0
+    while not (a[1] <= b[0] or b[1] <= a[0]):
+        a, b = _bisect(p, a), _bisect(q, b)
+    return -1 if a[1] <= b[0] else 1
+
+
+def _rational_enclosure(expression, bits: int):
+    """Rationals (lo, hi) enclosing a tree of Rational, Sqrt, Add, Mul and Pow nodes: exact rational arithmetic,
+    with sqrt(p/q) between s / (q 2**bits) and (s + 1) / (q 2**bits) for s = isqrt(p q 4**bits)."""
+    from math import isqrt
+    from ..model import Add, Mul, Pow, Sqrt
+    kind = type(expression)
+    if kind is Rational:
+        return expression, expression
+    if kind is Sqrt:
+        radicand = expression.radicand
+        if type(radicand) is not Rational or radicand.numerator < 0:
+            raise ValueError("radicand")
+        root = isqrt(radicand.numerator * radicand.denominator << (2 * bits))
+        scale = radicand.denominator << bits
+        return Rational(root, scale), Rational(root + 1, scale)
+    if kind is Add:
+        low = high = Rational(0)
+        for term in expression.terms:
+            a, b = _rational_enclosure(term, bits)
+            low, high = low + a, high + b
+        return low, high
+    if kind is Mul:
+        low = high = Rational(1)
+        for factor in expression.factors:
+            a, b = _rational_enclosure(factor, bits)
+            products = (low * a, low * b, high * a, high * b)
+            low, high = min(products), max(products)
+        return low, high
+    if kind is Pow:
+        exponent = expression.exponent
+        if type(exponent) is not int or exponent < 0:
+            raise ValueError("exponent")
+        a, b = _rational_enclosure(expression.base, bits)
+        low = high = Rational(1)
+        for _ in range(exponent):
+            products = (low * a, low * b, high * a, high * b)
+            low, high = min(products), max(products)
+        return low, high
+    raise ValueError(kind.__name__)
+
+
+def check_sign(left, right, sign: int, bits: int) -> bool:
+    """sign = sign(left - right) for closed real expressions of Rational, Sqrt, Add, Mul and Pow nodes, decided by
+    rational enclosures at the given precision that do not overlap: the claim is checked, never trusted."""
+    if sign not in (-1, 1) or type(bits) is not int or not 0 < bits <= 1 << 16:
+        return False
+    try:
+        a, b = _rational_enclosure(left, bits)
+        c, d = _rational_enclosure(right, bits)
+    except (ValueError, RecursionError):
+        return False
+    return b < c if sign < 0 else d < a
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Real root records: v0.7's root_isolation.verify_root_records criterion
+
+def _root_data(root):
+    """(kind, payload) of a record's root: ("rational", Rational) or ("algebraic", (polynomial, index))."""
+    return endpoint_of(root)
+
+
+def check_root_records(p: tuple[int, ...], records) -> bool:
+    """v0.7's verify_root_records criterion for the nonzero integer polynomial p: as many records as distinct real
+    roots, their roots strictly increasing, each a root of p of the recorded multiplicity.
+
+    The checker isolates the roots of p's square-free part S with its own Sturm chain; record j must hold the j-th
+    root: a Rational inside the j-th interval with S = 0 there, or the index-th root of a polynomial c dividing S that
+    lies in the j-th interval (Sturm counts on c). The multiplicity of the j-th root is 1 plus the number of the
+    iterated gcds G_1 = gcd(p, p'), G_(k+1) = gcd(G_k, G_k') that vanish there."""
+    if type(records) is not tuple or not p:
+        return False
+    part = squarefree_part(p)
+    intervals = isolate(part)
+    if len(intervals) != len(records):
+        return False
+    gcds = []
+    current = tp.primitive(p)
+    while len(current) > 1:
+        current = euclid_gcd(current, tp.derivative(current))
+        if len(current) > 1:
+            gcds.append(squarefree_part(current))
+    for record, (lo, hi) in zip(records, intervals):
+        multiplicity = getattr(record, "multiplicity", None)
+        if (type(record).__name__ != "RootRecord" or type(multiplicity) is not int or multiplicity < 1):
+            return False
+        data = _root_data(record.root)
+        if data is None:
+            return False
+        kind, payload = data
+        if kind == "rational":
+            r = payload
+            if lo == hi:
+                if r != lo:
+                    return False
+            elif not (lo < r <= hi):
+                return False
+            if _sign_at(part, r.numerator, r.denominator) != 0:
+                return False
+            vanishing = sum(1 for g in gcds if _sign_at(g, r.numerator, r.denominator) == 0)
+        else:
+            c, index = payload
+            c = tp.primitive(c)
+            division = tp.divmod_exact(part, c)
+            if division is None or division[1] or len(c) < 2:
+                return False
+            if lo == hi:
+                return False  # an exact rational point is not an irrational root
+            if not (count_roots(c, None, lo) <= index < count_roots(c, None, hi)):
+                return False
+            vanishing = 0
+            for g in gcds:
+                if count_roots(g, lo, hi) >= 1:
+                    vanishing += 1
+        if vanishing + 1 != multiplicity:
+            return False
+    return True
 
 
 # ---------------------------------------------------------------------------------------------------------------

@@ -336,7 +336,7 @@ def _check_operation(operation, args, value, evidence):
     if operation in ("evaluate", "substitute", "simplify"):
         return _check_rewrite(operation, args, value, evidence)
     if operation in _MATRIX_OPERATIONS:
-        from .matrices import (Matrix, RREFResult, check_determinant, check_nullspace,
+        from .matrices import (Matrix, RREFResult, check_determinant, check_inverse, check_nullspace,
                                check_rank, verify_row_reduction)
         A = args["A"]
         if type(A) is not Matrix:
@@ -352,9 +352,8 @@ def _check_operation(operation, args, value, evidence):
             return check_rank(A, value) if operation == "rank" else check_nullspace(A, value)
         if operation == "det":
             return evidence == () and check_determinant(A, value)
-        return (evidence == () and type(value) is Matrix and A.shape == value.shape
-                and A.shape[0] == A.shape[1]
-                and A @ value == value @ A == Matrix.identity(A.shape[0]))
+        # A B = I for square matrices: one integer product (mathforge.certify.linalg.inverse), and B A = I follows.
+        return evidence == () and check_inverse(A, value)
     if operation == "solve_system":
         from .matrices import verify_linear_solution
         return verify_linear_solution(_system(args), value, evidence)

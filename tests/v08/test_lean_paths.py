@@ -384,7 +384,17 @@ class LeanPathTest(unittest.TestCase):
         for label, entry in broken.items():
             with self.subTest(label), patch.dict(operations.LEGACY, {"det": entry}):
                 self.assertIs(lean.run_value("det", dict(SMALL_INPUTS["det"])), lean.FALLBACK)
+        # The lean det runs the integer kernel and its certify checker (mathforge.lean.linalg_matrices) instead.
+        from mathforge.lean import linalg_matrices
+        for label, patcher in (("wrong value", patch.object(linalg_matrices, "determinant", lambda rows: 999)),
+                               ("truthy check", patch.object(linalg_matrices, "check_integer_determinant",
+                                                             lambda *a: 1)),
+                               ("rejecting check", patch.object(linalg_matrices, "check_integer_determinant",
+                                                                lambda *a: False))):
+            with self.subTest(label), patcher:
                 self.assertIs(lean.functions.det(SMALL_INPUTS["det"]["A"]), lean.FALLBACK)
+        self.assertEqual(lean.functions.det(SMALL_INPUTS["det"]["A"]),
+                         operations.det(SMALL_INPUTS["det"]["A"]).unwrap())
         produce = number_theory.produce
 
         def off_by_one(operation, args):

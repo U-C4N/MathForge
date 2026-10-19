@@ -75,19 +75,29 @@ class SubstitutionTest(unittest.TestCase):
             self.assertFalse(certify.check_substitution(expression, pairs, wrong), wrong)
 
     def test_refused_inputs_fall_back(self):
+        """The fast path leaves these inputs to the generic lean path, whose answer is the structured one."""
+        from mathforge.lean import expr_poly
         positive = mf.Symbol("p", assumptions=(mf.Assumption("positive", mf.Truth.TRUE),))
         twin = mf.Symbol("other name", uid=X.uid)
         rational_function = mf.rational_function(1, X + 1, variable=X)
-        for expression, bindings in (((X + 1), {positive: 2}), (X + 1, {"x": 2}), (X + twin, {X: 1}),
-                                     (rational_function, {X: 2}), (X + 1, [(X, 2)]), (X + 1, {X: 2**70000}),
-                                     (mf.RealAlgebraicRoot((-2, 0, 1), 1) + X, {X: 1}), (1.5, {X: 1})):
-            with self.subTest(expression=expression, bindings=bindings):
-                self.assertIs(lean.functions.substitute(expression, bindings), lean.FALLBACK)
         deep = X
         for _ in range(150):
             deep = Add((deep, Rational(1)))
-        self.assertIs(lean.functions.substitute(deep, {X: 1}), lean.FALLBACK)
-
+        cases = (((X + 1), {positive: 2}), (X + 1, {"x": 2}), (X + twin, {X: 1}), (rational_function, {X: 2}),
+                 (X + 1, [(X, 2)]), (X + 1, {X: 2**70000}), (mf.RealAlgebraicRoot((-2, 0, 1), 1) + X, {X: 1}),
+                 (1.5, {X: 1}), (deep, {X: 1}))
+        for index, (expression, bindings) in enumerate(cases):
+            with self.subTest(case=index):
+                self.assertIs(expr_poly._substitute(expression, bindings), lean.FALLBACK)
+                value = lean.functions.substitute(expression, bindings)
+                try:
+                    expected = ("value", operations.substitute(expression, bindings).unwrap())
+                except Exception:
+                    expected = ("error",)
+                if expected[0] == "error":
+                    self.assertIs(value, lean.FALLBACK)
+                else:
+                    self.assertEqual(mf.to_data(value), mf.to_data(expected[1]))
 
 if __name__ == "__main__":
     unittest.main()

@@ -19,7 +19,7 @@ from ..certify import substitution as certify
 from ..kernels import substitution as kernels
 from ..limits import ComputationLimits, computation, current_budget
 from ..model import Add, Mul, Pow, Rational, Sqrt, Symbol
-from . import FALLBACK
+from . import FALLBACK, run_legacy
 from ._poly import real_variable, small_int
 
 _EXPRESSIONS = frozenset({Rational, Symbol, Add, Mul, Pow, Sqrt})
@@ -99,7 +99,7 @@ def _exact(value):
     return value if type(value) in _EXPRESSIONS else None
 
 
-def substitute(expression: object, bindings: object) -> object:
+def _substitute(expression: object, bindings: object) -> object:
     if current_budget() is not None or type(bindings) is not dict:
         return FALLBACK
     source = _exact(expression)
@@ -126,6 +126,15 @@ def substitute(expression: object, bindings: object) -> object:
         return value
     except Exception:
         return FALLBACK
+
+
+def substitute(expression: object, bindings: object) -> object:
+    """The fast path above, else the generic lean path of the legacy entry for the inputs it leaves (a
+    RationalFunction, bindings of constrained symbols, other mappings)."""
+    value = _substitute(expression, bindings)
+    if value is FALLBACK:
+        return run_legacy("substitute", {"expression": expression, "bindings": bindings})
+    return value
 
 
 LEAN = {"substitute": substitute}

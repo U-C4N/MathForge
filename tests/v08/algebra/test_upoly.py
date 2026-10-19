@@ -188,18 +188,24 @@ class LeanCalculusTest(unittest.TestCase):
                      operations.poly_divmod(polynomial, divisor).unwrap())
 
     def test_refused_inputs_fall_back(self):
+        """Inputs the fast paths leave: the lean answer is FALLBACK exactly where the structured path fails."""
+        from mathforge.lean import algebra_poly, analysis_legacy, integrals_legacy
         polynomial = Polynomial((1, 2, 3), X)
         other = mf.Symbol("x")
         positive = mf.Symbol("p", assumptions=(mf.Assumption("positive", mf.Truth.TRUE),))
         for arguments in ((polynomial, other, 1), (polynomial, X, -1), (polynomial, X, True), (polynomial, positive, 1),
                           (polynomial, X, 2**70000)):
+            self.assertIs(analysis_legacy._differentiate_polynomial(*arguments), lean.FALLBACK, arguments)
             self.assertIs(lean.functions.differentiate(*arguments), lean.FALLBACK, arguments)
-        self.assertIs(lean.functions.poly_divmod(polynomial, Polynomial((0,), X)), lean.FALLBACK)
-        self.assertIs(lean.functions.poly_divmod(polynomial, Polynomial((1, 1), other)), lean.FALLBACK)
-        self.assertIs(lean.functions.antiderivative(Polynomial((0,) * 1024 + (1,), X), X), lean.FALLBACK)
+        for arguments in ((polynomial, Polynomial((0,), X)), (polynomial, Polynomial((1, 1), other))):
+            self.assertIs(algebra_poly._poly_divmod(*arguments), lean.FALLBACK)
+            self.assertIs(lean.functions.poly_divmod(*arguments), lean.FALLBACK)
+        high = Polynomial((0,) * 1024 + (1,), X)
+        self.assertIs(integrals_legacy._antiderivative_polynomial(high, X), lean.FALLBACK)
+        self.assertIs(lean.functions.antiderivative(high, X), lean.FALLBACK)
         forged = Polynomial((1, 2), X)
         object.__setattr__(forged, "coefficients", (Rational(1), 2))
-        self.assertIs(lean.functions.poly_divmod(forged, polynomial), lean.FALLBACK)
+        self.assertIs(algebra_poly._poly_divmod(forged, polynomial), lean.FALLBACK)
 
     def test_checks_reject_wrong_results(self):
         values = (Rational(1), Rational(-2), Rational(3, 4), Rational(5))

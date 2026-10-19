@@ -261,11 +261,11 @@ class CriteriaTests(unittest.TestCase):
             speed_file = Path(directory) / "latest.json"
             speed_file.write_text(json.dumps({"operations": {
                 "continued_fraction": 2.5, "verify": {"exempt": "no SymPy counterpart", "budget_met": True},
-                "integer_is_prime": {"budget_met": False, "exempt": "proven primality (spec H2)"}}}), encoding="utf-8")
+                "is_prime": {"budget_met": False, "exempt": "proven primality (spec H2)"}}}), encoding="utf-8")
             self.assertEqual(dict(criteria.gather_facts(REPOSITORY, speed_file=speed_file).speed),
                              {"continued_fraction": 2.5,
                               "verify": criteria.SpeedExemption("no SymPy counterpart", True),
-                              "integer_is_prime": criteria.SpeedExemption("proven primality (spec H2)", False)})
+                              "is_prime": criteria.SpeedExemption("proven primality (spec H2)", False)})
             for entry in ({"exempt": "no SymPy counterpart"}, {"budget_met": True}, {},
                           {"exempt": "no SymPy counterpart", "budget_met": True, "ratio": 1.0},
                           {"exempt": "", "budget_met": True}, {"exempt": " \t", "budget_met": True},

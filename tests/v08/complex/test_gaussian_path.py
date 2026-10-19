@@ -377,6 +377,35 @@ class GaussianPathTest(unittest.TestCase):
                 with computation():
                     self.assertIs(getattr(lean.functions, operation)(*args), lean.FALLBACK)
 
+    def test_forged_scalars_are_left_to_the_structured_path(self):
+        """A Rational that is not in lowest terms (a pickle can make one) and a part of the wrong type."""
+        from mathforge import lean, operations
+        unreduced = mf.Rational(1, 2)
+        unreduced.__setstate__({"numerator": 2, "denominator": 4})
+        negative = mf.Rational(1, 2)
+        negative.__setstate__({"numerator": -1, "denominator": -2})
+        def forge(real, imag):
+            value = object.__new__(mf.ComplexAlgebraic)
+            object.__setattr__(value, "real", real)
+            object.__setattr__(value, "imag", imag)
+            return value
+
+        z = mf.ComplexAlgebraic(1, 2)
+        for operand in (forge(unreduced, mf.Rational(1)), forge(mf.Rational(1), unreduced), unreduced, negative,
+                        forge(1.5, mf.Rational(1)), forge(mf.Rational(1), 1.5), forge(negative, negative)):
+            for operation, args in (("complex_add", (operand, z)), ("complex_mul", (z, operand)),
+                                    ("complex_div", (z, operand)), ("complex_conjugate", (operand,)),
+                                    ("complex_real", (operand,)), ("complex_imag", (operand,)),
+                                    ("complex_norm_squared", (operand,)), ("complex_sqrt", (operand,)),
+                                    ("complex_pow", (operand, 3)), ("quadratic_roots", (operand, 2, 1))):
+                with self.subTest(operation=operation, operand=operand):
+                    want = outcome(lambda: getattr(operations, operation)(*args))
+                    got = getattr(lean.functions, operation)(*args)
+                    if want[0] == "value":
+                        self.assertSameValue(got, want[1])
+                    else:
+                        self.assertIs(got, lean.FALLBACK)
+
     def test_special_values(self):
         z = mf.ComplexAlgebraic(mf.Rational(1, 2), mf.Rational(-3, 4))
         self.assertEqual(mf.complex_pow(mf.ComplexAlgebraic(0, 0), 0), mf.ComplexAlgebraic(1, 0))

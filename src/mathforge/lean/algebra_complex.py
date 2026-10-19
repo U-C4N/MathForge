@@ -230,9 +230,8 @@ def complex_real(value):
     try:
         kind = type(value)
         if kind is ComplexAlgebraic:
-            part = value.real
-            if type(part) is Rational and _valid(part.numerator, part.denominator, _BITS):
-                return part
+            if _gauss(value, _BITS) is not None:  # Both parts are checked, as the structured path checks them.
+                return value.real
         elif kind is Rational:
             if _valid(value.numerator, value.denominator, _BITS):
                 return value
@@ -250,9 +249,8 @@ def complex_imag(value):
     try:
         kind = type(value)
         if kind is ComplexAlgebraic:
-            part = value.imag
-            if type(part) is Rational and _valid(part.numerator, part.denominator, _BITS):
-                return part
+            if _gauss(value, _BITS) is not None:
+                return value.imag
         elif kind is Rational:
             if _valid(value.numerator, value.denominator, _BITS):
                 return trusted_rational(0, 1)

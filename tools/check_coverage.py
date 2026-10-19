@@ -11,10 +11,11 @@ no row that the inventory lacks. Then the frozen-inventory guard: when the freez
 "Frozen inventory changed: <expected> != <found>". Any of these failures exits with status 2 and lists the problems;
 nothing is written.
 
---freeze writes the manifest, {"digest", "rows", "examples", "frozen", "history": [{"digest", "date", "reason"}]}, and
-nothing else. Once a manifest exists, only --freeze --reason TEXT rewrites it, for a changed digest: the replaced record
-(its digest and the date it was frozen) joins the history with the reason. A re-freeze exists to correct a recorded
-error, never to drop a hard example or to shrink a set.
+--freeze writes the manifest, {"digest", "rows", "examples", "frozen", "history": [{"digest", "rows", "examples",
+"date", "reason"}]}, and nothing else. Once a manifest exists, only --freeze --reason TEXT rewrites it, for a changed
+digest: the replaced record (its digest, its row and example counts and the date it was frozen) joins the history with
+the reason. A re-freeze exists to correct a recorded error, never to drop a hard example or to shrink a set: when the
+new freeze has fewer rows or fewer examples than the one it replaces, a warning on stderr says so.
 
 Otherwise every row is evaluated against the eight criteria of coverage_gate.criteria, and the report goes to --report
 (default: coverage/ beside the inventory): report.json holds every row's verdict; report.md the totals, the "yes
@@ -25,9 +26,11 @@ status in the inventory's status field, which the digest does not cover. --gate 
 of the rows are yes; it counts the frozen inventory only, so it needs the manifest.
 
 Exit status: 0 when the run completes (and, with --gate, the gate passes); 1 when the gate fails; 2 for a usage or
-input error, failed prechecks or a changed frozen inventory. The same inputs give the same report bytes. Run it with the
-interpreter that has SymPy 1.14 (.venv-mcp): the adapters compare with SymPy. This is internal tooling: mathforge never
-imports it, and the inventory, the examples and the reports stay under the gitignored docs/.
+input error, failed prechecks or a changed frozen inventory. The same inputs give the same report bytes, unless an
+example's adapter call takes about criteria.EXAMPLE_BUDGET seconds: whether it ends within the budget depends on the
+machine's load. Run it with the interpreter that has SymPy 1.14 (.venv-mcp): the adapters compare with SymPy. This is
+internal tooling: mathforge never imports it, and the inventory, the examples and the reports stay under the gitignored
+docs/.
 """
 
 import argparse
@@ -55,6 +58,8 @@ from coverage_gate.inventory import (PLAN_GROUPS, Inventory, frozen_digest, load
 
 MANIFEST = TOOLS / "coverage_gate" / "freeze.json"
 MANIFEST_KEYS = ("digest", "rows", "examples", "frozen", "history")
+HISTORY_KEYS = ("digest", "rows", "examples", "date", "reason")  # A replaced record, in the manifest's own key order
+COUNTS = ("rows", "examples")
 GATE, TARGET = Fraction(1, 2), Fraction(11, 20)  # The release fails below GATE; TARGET leaves a margin.
 STATUSES = ("yes", "partial", "no")
 
@@ -171,23 +176,30 @@ def read_manifest(path: Path) -> dict[str, Any] | None:
         digest, history = document["digest"], document["history"]
         if not (isinstance(digest, str) and len(digest) == 64 and set(digest) <= set("0123456789abcdef")):
             raise ValueError("digest is not a SHA-256 hex digest")
-        if not all(type(document[key]) is int and document[key] >= 0 for key in ("rows", "examples")):
+        if not all(_is_count(document[key]) for key in COUNTS):
             raise ValueError("rows and examples are counts")
         if not isinstance(document["frozen"], str):
             raise ValueError("frozen is not a date")
         if not isinstance(history, list) or not all(
-                isinstance(entry, dict) and set(entry) == {"digest", "date", "reason"}
-                and all(isinstance(value, str) for value in entry.values()) for entry in history):
-            raise ValueError("history is not a list of {digest, date, reason} records")
+                isinstance(entry, dict) and set(entry) == set(HISTORY_KEYS)
+                and all(isinstance(entry[key], str) for key in ("digest", "date", "reason"))
+                and all(_is_count(entry[key]) for key in COUNTS) for entry in history):
+            raise ValueError(f"history is not a list of {{{', '.join(HISTORY_KEYS)}}} records (rows and examples "
+                             "counts, the others strings)")
         return document
     except ValueError as error:
         raise ValueError(f"{path}: {error}") from error
 
 
+def _is_count(value: object) -> bool:
+    return type(value) is int and value >= 0
+
+
 def freeze(path: Path, recorded: Mapping[str, Any] | None, digest: str, inventory: Inventory,
            examples: Mapping[str, Sequence[Example]], reason: str | None, today: str) -> int:
     """Write the manifest for the digest: the first freeze takes no reason, a re-freeze needs one and a changed
-    digest."""
+    digest. A re-freeze keeps the replaced record, counts included, in the history, and warns on stderr when it has
+    fewer rows or examples than that record."""
     reason = None if reason is None else reason.strip()
     if recorded is None and reason is not None:
         print("error: --reason records why a frozen inventory is frozen again; the first freeze takes none",
@@ -202,10 +214,17 @@ def freeze(path: Path, recorded: Mapping[str, Any] | None, digest: str, inventor
         if recorded["digest"] == digest:
             print("error: the frozen digest is unchanged; there is nothing to freeze again", file=sys.stderr)
             return 2
-        history = [*recorded["history"], {"digest": recorded["digest"], "date": recorded["frozen"], "reason": reason}]
-    record = {"digest": digest, "rows": len(inventory.rows), "examples": _count(examples), "frozen": today,
-              "history": history}
+        history = [*recorded["history"], {"digest": recorded["digest"], "rows": recorded["rows"],
+                                          "examples": recorded["examples"], "date": recorded["frozen"],
+                                          "reason": reason}]
+    counts = {"rows": len(inventory.rows), "examples": _count(examples)}
+    record = {"digest": digest, **counts, "frozen": today, "history": history}
     _write_atomically(path, json.dumps(record, ensure_ascii=False, indent=1) + "\n")
+    fewer = [f"fewer {name} ({recorded[name]} -> {counts[name]})" for name in COUNTS
+             if recorded is not None and counts[name] < recorded[name]]
+    if fewer:
+        print(f"warning: the new freeze has {' and '.join(fewer)} than the one it replaces; a re-freeze corrects a "
+              "recorded error and never drops a hard example or shrinks a set", file=sys.stderr)
     again = f"; {len(history)} earlier record{'s' if len(history) > 1 else ''} in its history" if history else ""
     print(f"Froze {record['rows']} rows and {record['examples']} examples: {digest} in {path}{again}.")
     return 0

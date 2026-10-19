@@ -2,12 +2,14 @@
 to its MathForge operations (coverage_gate.criteria describes the protocol).
 
 Each area module registers its adapters in criteria.ADAPTERS when it is imported; criteria imports this package last,
-so importing criteria makes every adapter available. A new area module joins the imports at the end of this file. The
-adapters import SymPy, a development dependency, only when they run.
+so importing criteria makes every adapter available. A new area module joins the imports at the end of this file (a
+test fails for a module of this directory that importing criteria leaves out). The adapters import SymPy, a
+development dependency, only when they run.
 
 An example is SymPy's own documentation or test code, frozen with the inventory. example_call executes its setup in this
 process, as the harvester's worker did when it recorded the example (but without the worker's isolation), to evaluate
-the call that the example makes.
+the call that the example makes. Neither that nor the comparison with SymPy has a limit of its own: evaluate_row runs
+each adapter call in a worker thread and gives it criteria.EXAMPLE_BUDGET seconds.
 """
 
 import ast

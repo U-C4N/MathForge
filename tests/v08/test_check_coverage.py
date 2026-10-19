@@ -185,11 +185,12 @@ class CheckCoverageTests(unittest.TestCase):
         self.assertEqual(self.run_tool("--freeze")[0], 2)
         self.assertEqual(self.run_tool()[0], 2)  # Until then the guard stops every run.
         code, out, err = self.run_tool("--freeze", "--reason", "91.03/01 was recorded wrongly", today="2026-10-20")
-        self.assertEqual(code, 0, err)
+        self.assertEqual((code, err), (0, ""))  # The same counts: nothing to warn about.
         second = json.loads(self.manifest.read_text(encoding="utf-8"))
         self.assertEqual(second, {"digest": self.digest(), "rows": 4, "examples": 12, "frozen": "2026-10-20",
-                                  "history": [{"digest": first["digest"], "date": "2026-10-18",
-                                               "reason": "91.03/01 was recorded wrongly"}]})
+                                  "history": [{"digest": first["digest"], "rows": 4, "examples": 12,
+                                               "date": "2026-10-18", "reason": "91.03/01 was recorded wrongly"}]})
+        self.assertEqual(list(second["history"][0]), ["digest", "rows", "examples", "date", "reason"])
         self.assertEqual(self.run_tool()[0], 0)
         self.assertTrue(self.manifest.read_bytes().endswith(b"}\n") and b"\r" not in self.manifest.read_bytes())
         # --reason belongs to a re-freeze only.
@@ -202,11 +203,50 @@ class CheckCoverageTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertFalse(self.manifest.exists())
 
+    def test_refreeze_records_the_replaced_counts_and_warns_when_they_shrink(self):
+        self.assertEqual(self.run_tool("--freeze")[0], 0)
+        first = json.loads(self.manifest.read_text(encoding="utf-8"))
+        # One example fewer: the re-freeze is written, with a warning that names what shrank.
+        examples = load_examples(self.examples)
+        examples["91.03"] = examples["91.03"][:2]
+        write_examples(self.examples, examples)
+        code, out, err = self.run_tool("--freeze", "--reason", "91.03/03 repeated 91.03/02", today="2026-10-20")
+        self.assertEqual(code, 0, err)
+        self.assertEqual(err.strip(), "warning: the new freeze has fewer examples (12 -> 11) than the one it "
+                                      "replaces; a re-freeze corrects a recorded error and never drops a hard example "
+                                      "or shrinks a set")
+        second = json.loads(self.manifest.read_text(encoding="utf-8"))
+        self.assertEqual((second["rows"], second["examples"]), (4, 11))
+        self.assertEqual(second["history"], [{"digest": first["digest"], "rows": 4, "examples": 12,
+                                              "date": "2026-10-18", "reason": "91.03/03 repeated 91.03/02"}])
+        # A row fewer (92.01, with its three examples): both counts are named.
+        inventory = model.load_inventory(self.inventory)
+        model.write_inventory(self.inventory, dataclasses.replace(inventory, rows=inventory.rows[:3]))
+        write_examples(self.examples, {key: value for key, value in examples.items() if key != "92.01"})
+        code, out, err = self.run_tool("--freeze", "--reason", "92.01 is not in SymPy 1.14", today="2026-10-21")
+        self.assertEqual(code, 0, err)
+        self.assertIn("warning: the new freeze has fewer rows (4 -> 3) and fewer examples (11 -> 8) than the one it "
+                      "replaces", err)
+        third = json.loads(self.manifest.read_text(encoding="utf-8"))
+        self.assertEqual(third["history"][1], {"digest": second["digest"], "rows": 4, "examples": 11,
+                                               "date": "2026-10-20", "reason": "92.01 is not in SymPy 1.14"})
+        # More examples than before: no warning.
+        write_examples(self.examples, {**load_examples(self.examples), "91.03": make_examples("91.03", 5)})
+        code, out, err = self.run_tool("--freeze", "--reason", "91.03 gains two examples", today="2026-10-22")
+        self.assertEqual((code, err), (0, ""))
+        self.assertEqual(json.loads(self.manifest.read_text(encoding="utf-8"))["history"][2]["examples"], 8)
+
     def test_malformed_manifest_stops(self):
         self.assertEqual(self.run_tool("--freeze")[0], 0)
         record = json.loads(self.manifest.read_text(encoding="utf-8"))
+        entry = {"digest": record["digest"], "rows": 4, "examples": 12, "date": "2026-10-17", "reason": "corrected"}
         for broken in ({**record, "digest": "abc"}, {key: value for key, value in record.items() if key != "history"},
-                       {**record, "rows": "4"}, {**record, "history": [{"digest": record["digest"]}]}, []):
+                       {**record, "rows": "4"}, {**record, "history": [{"digest": record["digest"]}]}, [],
+                       {**record, "history": [{key: entry[key] for key in ("digest", "date", "reason")}]},
+                       {**record, "history": [{**entry, "rows": "4"}]},
+                       {**record, "history": [{**entry, "examples": -1}]},
+                       {**record, "history": [{**entry, "examples": True}]},
+                       {**record, "history": [{**entry, "reason": None}]}):
             with self.subTest(broken=broken):
                 self.manifest.write_text(json.dumps(broken), encoding="utf-8")
                 code, out, err = self.run_tool()

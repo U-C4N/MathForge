@@ -12,10 +12,13 @@ from fractions import Fraction
 import importlib.util
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
 import textwrap
+import threading
+import time
 import unittest
 from unittest import mock
 
@@ -84,6 +87,15 @@ def evaluate(*, row=None, examples=None, facts=None, adapter=MATCHING):
     examples = make_examples(10) if examples is None else examples
     with mock.patch.dict(criteria.ADAPTERS, {} if adapter is None else {row.id: adapter}):
         return criteria.evaluate_row(row, examples, facts or make_facts())
+
+
+def frozen_srepr(value):
+    """srepr(value) as the frozen examples file holds it: the harvester's worker renumbers the Dummy indices from 0 in
+    order of appearance, so the Dummies of the value rebuilt from it are never an adapter's."""
+    import sympy
+    numbers = {}
+    return re.sub(r"dummy_index=(\d+)",
+                  lambda match: f"dummy_index={numbers.setdefault(match.group(1), len(numbers))}", sympy.srepr(value))
 
 
 class CriteriaTests(unittest.TestCase):
@@ -213,6 +225,67 @@ class CriteriaTests(unittest.TestCase):
                         criteria.gather_facts(REPOSITORY, speed_file=speed_file)
                     self.assertIn(str(speed_file), str(raised.exception))
 
+    def test_exempt_operations_meet_speed_by_their_budget(self):
+        # Spec H2: an operation that SymPy has no counterpart to time against (verify, proof records, the proven
+        # is_prime) is exempt from the ratio gate and has an absolute time budget instead.
+        kept = criteria.SpeedExemption("no SymPy counterpart: verify", True)
+        missed = criteria.SpeedExemption("no SymPy counterpart: proof record", False)
+        verdict = evaluate(facts=make_facts(speed={"op_alpha": 3.0, "op_beta": kept}))  # 3.0 is still within the limit.
+        self.assertEqual((verdict.status, verdict.criteria["speed"], verdict.details), ("yes", True, ()))
+        verdict = evaluate(facts=make_facts(speed={"op_alpha": 1.5, "op_beta": missed}))
+        self.assertEqual(dict(verdict.criteria), {name: name != "speed" for name in criteria.CRITERIA})
+        self.assertEqual(verdict.details,
+                         ("speed: absolute time budget not met: op_beta (exempt: no SymPy counterpart: proof record)",))
+        # In the speed file an operation has either form; the exemption object is checked strictly.
+        with tempfile.TemporaryDirectory() as directory:
+            speed_file = Path(directory) / "latest.json"
+            speed_file.write_text(json.dumps({"operations": {
+                "continued_fraction": 2.5, "verify": {"exempt": "no SymPy counterpart", "budget_met": True},
+                "integer_is_prime": {"budget_met": False, "exempt": "proven primality (spec H2)"}}}), encoding="utf-8")
+            self.assertEqual(dict(criteria.gather_facts(REPOSITORY, speed_file=speed_file).speed),
+                             {"continued_fraction": 2.5,
+                              "verify": criteria.SpeedExemption("no SymPy counterpart", True),
+                              "integer_is_prime": criteria.SpeedExemption("proven primality (spec H2)", False)})
+            for entry in ({"exempt": "no SymPy counterpart"}, {"budget_met": True}, {},
+                          {"exempt": "no SymPy counterpart", "budget_met": True, "ratio": 1.0},
+                          {"exempt": "", "budget_met": True}, {"exempt": " \t", "budget_met": True},
+                          {"exempt": None, "budget_met": True}, {"exempt": ["verify"], "budget_met": True},
+                          {"exempt": "no SymPy counterpart", "budget_met": 1},
+                          {"exempt": "no SymPy counterpart", "budget_met": "true"},
+                          {"exempt": "no SymPy counterpart", "budget_met": None},
+                          ["no SymPy counterpart", True], "exempt", None):
+                with self.subTest(entry=entry):
+                    speed_file.write_text(json.dumps({"operations": {"verify": entry}}), encoding="utf-8")
+                    with self.assertRaises(ValueError) as raised:
+                        criteria.gather_facts(REPOSITORY, speed_file=speed_file)
+                    for named in (str(speed_file), "verify"):
+                        self.assertIn(named, str(raised.exception))
+
+    def test_an_example_over_the_time_budget_is_an_error_and_the_gate_goes_on(self):
+        release = threading.Event()
+        self.addCleanup(release.set)  # The stuck call cannot be stopped; this lets its thread end with the test.
+
+        def sleepy(example):
+            if example.id == f"{ROW}/03":
+                release.wait(30)  # Sleeps far past the budget.
+            return Outcome.MATCH, VERIFIED
+
+        self.assertEqual(criteria.EXAMPLE_BUDGET, 60.0)
+        started = time.monotonic()
+        with mock.patch.object(criteria, "EXAMPLE_BUDGET", 0.2):
+            verdict = evaluate(adapter=sleepy)
+        self.assertLess(time.monotonic() - started, 10)  # The gate did not wait for the stuck call.
+        self.assertEqual((verdict.matched, verdict.examples), (9, 10))
+        self.assertIn(f"{ROW}/03: error: time budget exceeded (0.2 s)", verdict.details)
+        self.assertTrue(verdict.criteria["depth"])  # The examples after it ran: 9 of 10 still meet depth.
+        # Released, the adapter answers at once: every call ends within the budget and keeps its outcome. What an
+        # adapter raises in its thread is still reported as that example's failure.
+        release.set()
+        with mock.patch.object(criteria, "EXAMPLE_BUDGET", 5.0):
+            self.assertEqual(evaluate(adapter=sleepy).matched, 10)
+            failing = evaluate(adapter=lambda example: 1 / 0)
+        self.assertIn(f"{ROW}/01: error: ZeroDivisionError: division by zero", failing.details)
+
 
 class FactsTests(unittest.TestCase):
     def test_covered_operations_are_registered(self):
@@ -298,6 +371,23 @@ class FactsTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
 
 
+class AdapterPackageTests(unittest.TestCase):
+    def test_every_adapter_module_is_imported(self):
+        """Importing criteria imports every module of coverage_gate/adapters/: an area module that the package's
+        __init__ leaves out would never register its adapters, and its rows would silently have none."""
+        code = ("import json, pkgutil, sys; sys.path[:0] = [sys.argv[1], sys.argv[2]]; import coverage_gate.criteria; "
+                "import coverage_gate.adapters as package; "
+                "print(json.dumps([sorted(module.name for module in pkgutil.iter_modules(package.__path__)), "
+                "sorted(name.split('.')[2] for name in sys.modules "
+                "if name.startswith('coverage_gate.adapters.') and name.count('.') == 2)]))")
+        completed = subprocess.run([sys.executable, "-c", code, str(REPOSITORY / "src"), str(REPOSITORY / "tools")],
+                                   capture_output=True, text=True, timeout=120)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        on_disk, imported = json.loads(completed.stdout)
+        self.assertIn("ntheory", on_disk)
+        self.assertEqual(imported, on_disk)
+
+
 @unittest.skipUnless(SYMPY, NO_SYMPY)
 class SameValueTests(unittest.TestCase):
     def test_same_value(self):
@@ -320,6 +410,62 @@ class SameValueTests(unittest.TestCase):
         self.assertFalse(criteria.same_value("Rational(1, 2)", "1/2"))
         with self.assertRaises(ValueError):
             criteria.same_value("NoSuchClass(1)", 1)
+
+    def test_dummies_match_up_to_a_consistent_renaming(self):
+        import sympy
+        from sympy import Dummy, Function, ImageSet, Integral, Lambda, RootSum, S, Symbol, Tuple, exp, log, pi, sin
+        x, f = Symbol("x"), Function("f")
+
+        def image_set(n, shift=pi / 2):
+            return ImageSet(Lambda(n, 2 * n * pi + shift), S.Integers)
+
+        def root_sum(z, i):
+            return RootSum(4 * z**2 + 1, Lambda(i, i * log(2 * i + exp(x))))
+
+        def integral(t):
+            return Integral(f(t) / t, (t, 1, x))
+
+        # SymPy's records, and their adapter-side twins with Dummies of their own, also under other names. simplify
+        # may not run: the renaming alone has to make them equal.
+        records = {"ImageSet": sympy.solveset(sin(x) - 1, x, S.Reals),
+                   "RootSum": sympy.integrate(exp(x) / (1 + exp(2 * x)), x),
+                   "Integral": integral(Dummy("t"))}
+        twins = {"ImageSet": (image_set(Dummy("n", integer=True)), image_set(Dummy("k", integer=True))),
+                 "RootSum": (root_sum(Dummy("z"), Dummy("i")), root_sum(Dummy("w"), Dummy("a"))),
+                 "Integral": (integral(Dummy("t")), integral(Dummy("u")))}
+        self.assertEqual(frozen_srepr(records["ImageSet"]), frozen_srepr(twins["ImageSet"][0]))  # The same record.
+        with mock.patch.object(sympy, "simplify", side_effect=AssertionError("simplify ran")):
+            for name, record in records.items():
+                for twin in twins[name]:
+                    with self.subTest(name, twin=twin):
+                        self.assertIn("dummy_index=0", frozen_srepr(record))
+                        self.assertTrue(criteria.same_value(frozen_srepr(record), twin))
+        # Genuinely different values still differ: another set, a Dummy of other assumptions (a renaming keeps them),
+        # a Symbol for the Dummy, another integrand (simplify finds no zero), a renaming that is not consistent
+        # ((a, b) -> a - b is not (c, d) -> d - c), two Dummies for one.
+        a, b, c, d = Dummy("a"), Dummy("b"), Dummy("c"), Dummy("d")
+        for record, value in ((records["ImageSet"], image_set(Dummy("n", integer=True), shift=pi)),
+                              (records["ImageSet"], image_set(Dummy("n"))),
+                              (records["ImageSet"], image_set(Symbol("n", integer=True))),
+                              (records["Integral"], Integral(f(c) * c, (c, 1, x))),
+                              (Lambda((a, b), a - b), Lambda((c, d), d - c)),
+                              (Tuple(a, b), Tuple(c, c))):
+            with self.subTest(record=record, value=value):
+                self.assertFalse(criteria.same_value(frozen_srepr(record), value))
+        self.assertTrue(criteria.same_value(frozen_srepr(Lambda((a, b), a - b)), Lambda((c, d), c - d)))
+
+    def test_every_renaming_is_tried_when_an_order_follows_the_dummies(self):
+        from sympy import Dummy, Tuple, sin
+        # The Add sorts sin(_a) + sin(_a) by the Dummies' indices: the record's first Dummy is created first, the
+        # twin's last, so pairing the Dummies in order of first appearance swaps them.
+        first, second = Dummy("a"), Dummy("a")
+        record = frozen_srepr(Tuple(sin(first) + sin(second), first))
+        other = Dummy("a")
+        twin_of_first = Dummy("a")
+        twin = Tuple(sin(twin_of_first) + sin(other), twin_of_first)
+        with mock.patch.object(criteria, "_RENAMINGS", 0):  # Only the renaming in order of first appearance
+            self.assertFalse(criteria.same_value(record, twin))
+        self.assertTrue(criteria.same_value(record, twin))
 
 
 @unittest.skipUnless(SYMPY, NO_SYMPY)

@@ -15,7 +15,8 @@ An inventory row counts as covered ("yes") only when all eight criteria hold for
    operations. or an area module, as in mf.ntheory.continued_fraction(...). tools/check_docs.py executes those
    examples in the gate, so this criterion only finds the calls;
 6. differential: tools/check_sympy.py compares every operation with SymPy (its COVERED_OPERATIONS);
-7. speed: every operation's worst speed ratio against SymPy is at most SPEED_LIMIT;
+7. speed: every operation's worst speed ratio against SymPy is at most SPEED_LIMIT, or, for an operation that the
+   spec exempts from the ratio gate, its absolute time budget is met;
 8. depth: the row has an adapter, and at least ceil(DEPTH_THRESHOLD x n) of its n reference examples MATCH.
 
 No criterion holds vacuously: criteria 2 and 4-7 need the row to list an operation, like criterion 1. The status of a
@@ -24,11 +25,17 @@ that capabilities() does not list is reported as "unknown operation: <name>", ne
 
 The speed file of criterion 7 is JSON that the Phase 1 speed suite writes:
 
-    {"operations": {"<operation name>": <ratio>, ...}}
+    {"operations": {"<operation name>": <ratio> | {"exempt": "<reason>", "budget_met": <true | false>}, ...}}
 
-where a ratio is the operation's worst MathForge-to-SymPy time ratio over its fixtures, a positive finite number. Other
-top-level keys are ignored. A missing file, or an operation that the file does not list, leaves criterion 7 unmet; a
-malformed file raises ValueError.
+An operation is listed with one of two values. A ratio is its worst MathForge-to-SymPy time ratio over its fixtures, a
+positive finite number; the criterion holds for the operation when the ratio is at most SPEED_LIMIT. The exemption
+object is for an operation that the spec exempts from the ratio gate because SymPy has no counterpart to time it
+against (verify, provenance and proof records, the proven is_prime: spec H2), which gets an absolute time budget
+instead. It has exactly two keys: "exempt", a non-empty string that says why, and "budget_met", a JSON boolean that
+says whether the operation kept its budget; the criterion holds for the operation exactly when budget_met is true.
+Other top-level keys are ignored. A missing file, or an operation that the file does not list, leaves criterion 7
+unmet; a malformed file (another value, an exemption object with a key missing, another key, an empty reason or a
+budget_met that is not a boolean) raises ValueError.
 
 The adapter protocol. An adapter (ADAPTERS maps a row id to it) poses one SymPy reference example to the row's MathForge
 operation and judges the answer: adapter(example) -> (outcome, result), where
@@ -38,8 +45,15 @@ operation and judges the answer: adapter(example) -> (outcome, result), where
 - UNVERIFIED: MathForge computed a value whose verification does not pass; result is the Result;
 - UNEVALUATED: the example cannot be posed to the operation (an input outside its domain, an API it does not compute),
   or MathForge returned no value (invalid input, unsupported, no conclusion); result is None;
-- ERROR: the adapter failed; result is None. evaluate_row also records an exception the adapter raises, or a reply
-  outside the protocol, as ERROR, and goes on with the next example.
+- ERROR: the adapter failed; result is None. evaluate_row also records an exception the adapter raises, a reply
+  outside the protocol, or an adapter call that exceeds the time budget, as ERROR, and goes on with the next example.
+
+evaluate_row runs each adapter call in a worker thread of its own and waits for it at most EXAMPLE_BUDGET seconds,
+measured with the monotonic clock: the adapter executes the example's setup in this process and compares with SymPy,
+and neither has a limit of its own. An example over budget is ERROR with the detail "time budget exceeded" (and the
+budget in seconds). Its thread cannot be stopped: it runs on in the background, as a daemon thread that does not keep
+the process alive, and shares the interpreter with the examples after it. Whether an example that takes about
+EXAMPLE_BUDGET seconds finishes in time depends on the machine's load.
 
 Only a MATCH whose Result passes criterion 3's checks counts towards depth. The modules of coverage_gate.adapters
 register their adapters in ADAPTERS; this module imports that package last, so importing it makes every adapter
@@ -49,9 +63,12 @@ available. SymPy is imported only when same_value or an adapter runs.
 import ast
 import contextlib
 import functools
+import itertools
 import json
 import math
-from collections.abc import Callable, Mapping, Sequence
+import threading
+import time
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from fractions import Fraction
@@ -67,15 +84,27 @@ from mathforge.registry_v07 import LEGACY_CATALOG
 from .examples import Example
 from .inventory import Row
 
-__all__ = ["CRITERIA", "DEPTH_THRESHOLD", "SPEED_LIMIT", "Facts", "Outcome", "Adapter", "ADAPTERS", "RowVerdict",
-           "gather_facts", "evaluate_row", "same_value", "public_name"]
+__all__ = ["CRITERIA", "DEPTH_THRESHOLD", "SPEED_LIMIT", "EXAMPLE_BUDGET", "SpeedExemption", "Facts", "Outcome",
+           "Adapter", "ADAPTERS", "RowVerdict", "gather_facts", "evaluate_row", "same_value", "public_name"]
 
 CRITERIA = ("capabilities", "checker", "json", "mcp", "docs", "differential", "speed", "depth")
 DEPTH_THRESHOLD = 0.8
 SPEED_LIMIT = 3.0
+EXAMPLE_BUDGET = 60.0  # Seconds of wall time, on the monotonic clock, that one adapter call may take
+_POLL = 0.5  # Seconds between two checks of a running adapter call, so that Ctrl+C reaches the gate on every platform
+_RENAMINGS = 720  # same_value tries every renaming of Dummies when there are at most this many (six of one kind)
 
 # The names before ".<public name>(" that make a call in a documentation example a call of an operation (criterion 5).
 _QUALIFIERS = frozenset({"mf", "mathforge", "operations", *registry.AREAS})
+
+
+@dataclass(frozen=True)
+class SpeedExemption:
+    """The speed-file entry of an operation that the spec exempts from the ratio gate, SymPy having no counterpart to
+    time it against (verify, provenance and proof records, the proven is_prime: spec H2): why it is exempt, and whether
+    it kept the absolute time budget that it gets instead."""
+    reason: str
+    budget_met: bool
 
 
 @dataclass(frozen=True)
@@ -86,7 +115,7 @@ class Facts:
     mcp: frozenset[str]           # The operations that an MCP tool serves
     documented: frozenset[str]    # The public names that the Python examples of documentation/*.md call
     differential: frozenset[str]  # tools/check_sympy.COVERED_OPERATIONS
-    speed: Mapping[str, float]    # Operation -> worst speed ratio; empty without a speed file
+    speed: Mapping[str, float | SpeedExemption]  # Operation -> worst speed ratio or exemption; empty without a file
 
 
 class Outcome(Enum):
@@ -127,8 +156,8 @@ def public_name(operation: str) -> str:
 
 def gather_facts(root: Path, *, speed_file: Path | None) -> Facts:
     """The facts of the installed mathforge, of root/documentation (root is the checkout) and of tools/check_sympy.py,
-    with the speed ratios of speed_file (none when it is None or does not exist). The module docstring gives the rule
-    of each criterion and the speed file's format."""
+    with the speed ratios and exemptions of speed_file (none when it is None or does not exist). The module docstring
+    gives the rule of each criterion and the speed file's format."""
     import check_sympy  # A script beside coverage_gate: tools/ is on sys.path whenever coverage_gate imports.
 
     operations = frozenset(entry["name"] for entry in mathforge.capabilities()["operations"])
@@ -143,7 +172,7 @@ def gather_facts(root: Path, *, speed_file: Path | None) -> Facts:
     called = _called_names(Path(root) / "documentation")
     return Facts(operations=operations, checkers=frozenset(checkers), mcp=frozenset(mcp),
                  documented=frozenset(name for name in map(public_name, operations) if name in called),
-                 differential=frozenset(check_sympy.COVERED_OPERATIONS), speed=_speed_ratios(speed_file))
+                 differential=frozenset(check_sympy.COVERED_OPERATIONS), speed=_speed_entries(speed_file))
 
 
 def _called_names(documentation: Path) -> set[str]:
@@ -168,21 +197,35 @@ def _called_names(documentation: Path) -> set[str]:
     return called
 
 
-def _speed_ratios(path: Path | None) -> dict[str, float]:
+def _speed_entries(path: Path | None) -> dict[str, float | SpeedExemption]:
     if path is None or not Path(path).exists():
         return {}
     try:
         document = json.loads(Path(path).read_bytes().decode("utf-8-sig"))
-        ratios = document.get("operations") if isinstance(document, dict) else None
-        if not isinstance(ratios, dict):
+        entries = document.get("operations") if isinstance(document, dict) else None
+        if not isinstance(entries, dict):
             raise ValueError('a speed file is an object with an "operations" object')
-        for name, ratio in ratios.items():
-            if (isinstance(ratio, bool) or not isinstance(ratio, (int, float)) or not math.isfinite(ratio)
-                    or ratio <= 0):
-                raise ValueError(f"the ratio of {name} must be a positive finite number, not {ratio!r}")
-        return {name: float(ratio) for name, ratio in ratios.items()}
+        return {name: _speed_entry(name, entry) for name, entry in entries.items()}
     except ValueError as error:  # json.JSONDecodeError and UnicodeDecodeError are ValueErrors as well.
         raise ValueError(f"{path}: {error}") from error
+
+
+def _speed_entry(name: str, entry: object) -> float | SpeedExemption:
+    """One operation's value in the speed file, checked strictly: a ratio or an exemption object."""
+    if isinstance(entry, dict):
+        if set(entry) != {"exempt", "budget_met"}:
+            raise ValueError(f'the exemption of {name} must have exactly the keys "exempt" and "budget_met", not '
+                             f"{sorted(entry)}")
+        reason, met = entry["exempt"], entry["budget_met"]
+        if not isinstance(reason, str) or not reason.strip():
+            raise ValueError(f'the exemption of {name} must say why in a non-empty "exempt" string, not {reason!r}')
+        if not isinstance(met, bool):
+            raise ValueError(f'"budget_met" of {name} must be true or false, not {met!r}')
+        return SpeedExemption(reason, met)
+    if isinstance(entry, bool) or not isinstance(entry, (int, float)) or not math.isfinite(entry) or entry <= 0:
+        raise ValueError(f"the value of {name} must be a positive finite ratio or an exemption object "
+                         f'{{"exempt": ..., "budget_met": ...}}, not {entry!r}')
+    return float(entry)
 
 
 def evaluate_row(row: Row, examples: Sequence[Example], facts: Facts) -> RowVerdict:
@@ -224,13 +267,22 @@ def evaluate_row(row: Row, examples: Sequence[Example], facts: Facts) -> RowVerd
     per_operation("differential", "no SymPy differential test",
                   [name for name in operations if name not in facts.differential])
     unmeasured = [name for name in operations if name not in facts.speed]
-    slow = [f"{name} ({facts.speed[name]})" for name in operations
-            if name in facts.speed and facts.speed[name] > SPEED_LIMIT]
+    slow: list[str] = []
+    over_budget: list[str] = []
+    for name in operations:
+        entry = facts.speed.get(name)
+        if isinstance(entry, SpeedExemption):
+            if not entry.budget_met:
+                over_budget.append(f"{name} (exempt: {entry.reason})")
+        elif entry is not None and entry > SPEED_LIMIT:
+            slow.append(f"{name} ({entry})")
     if operations and unmeasured:
         details.append(f"speed: no speed ratio: {', '.join(unmeasured)}")
     if slow:
         details.append(f"speed: ratio above {SPEED_LIMIT}: {', '.join(slow)}")
-    met["speed"] = bool(operations) and not unmeasured and not slow
+    if over_budget:
+        details.append(f"speed: absolute time budget not met: {', '.join(over_budget)}")
+    met["speed"] = bool(operations) and not unmeasured and not slow and not over_budget
 
     matched = sum(outcome is Outcome.MATCH and result is not None and not problem
                   for outcome, result, problem in judged)
@@ -260,16 +312,44 @@ def evaluate_row(row: Row, examples: Sequence[Example], facts: Facts) -> RowVerd
 
 def _judge(adapter: Adapter, example: Example) -> tuple[Outcome, Result[Any] | None, str]:
     """The adapter's (outcome, result) for an example, and what is wrong: for ERROR, the failure; for a Result, why it
-    fails criterion 3 ("" when it passes)."""
+    fails criterion 3 ("" when it passes). The adapter call has EXAMPLE_BUDGET seconds (see _call_in_budget)."""
     try:
-        reply: object = adapter(example)
+        finished, reply = _call_in_budget(adapter, example)
     except Exception as error:  # One failing example must not stop the gate's report.
         return Outcome.ERROR, None, f"{type(error).__name__}: {error}"
+    if not finished:
+        return Outcome.ERROR, None, f"time budget exceeded ({EXAMPLE_BUDGET:g} s)"
     if not (isinstance(reply, tuple) and len(reply) == 2 and isinstance(reply[0], Outcome)
             and (reply[1] is None or isinstance(reply[1], Result))):
         return Outcome.ERROR, None, f"the adapter returned {reply!r:.200}, not (Outcome, Result | None)"
     outcome, result = reply
     return outcome, result, "" if result is None else _result_problem(result)
+
+
+def _call_in_budget(adapter: Adapter, example: Example) -> tuple[bool, object]:
+    """(True, the adapter's reply) when the call ends within EXAMPLE_BUDGET seconds of the monotonic clock, else (False,
+    None). The call runs in a daemon worker thread of its own, so that an example over budget does not hold up the gate;
+    that thread cannot be stopped and finishes in the background. An exception that the adapter raises is raised here,
+    in the caller's thread."""
+    ended: list[tuple[bool, object]] = []  # (raised, the reply or the exception), once the call is over
+
+    def call() -> None:
+        try:
+            ended.append((False, adapter(example)))
+        except BaseException as error:  # Handed to the caller, which decides; nothing escapes the thread.
+            ended.append((True, error))
+
+    worker = threading.Thread(target=call, name=f"coverage-example-{example.id}", daemon=True)
+    deadline = time.monotonic() + EXAMPLE_BUDGET
+    worker.start()
+    while worker.is_alive() and (left := deadline - time.monotonic()) > 0:
+        worker.join(min(left, _POLL))
+    if not ended:
+        return False, None
+    raised, value = ended[0]
+    if raised and isinstance(value, BaseException):
+        raise value
+    return True, value
 
 
 def _result_problem(result: Result[Any]) -> str:
@@ -292,10 +372,19 @@ def _result_problem(result: Result[Any]) -> str:
 
 def same_value(sympy_srepr: str, candidate: object) -> bool:
     """Whether candidate equals the value that SymPy recorded as sympy_srepr, judged on the SymPy side: structural
-    equality first, then, for two expressions, simplify(a - b) == 0. Lists and tuples (and SymPy Tuples) compare
-    element by element, dicts key by key (keys structurally). A candidate is a SymPy object, a Python number, bool or
-    Fraction, or a container of them: adapters convert MathForge values first, and anything SymPy does not convert
-    strictly is unequal.
+    equality first, then structural equality up to a consistent renaming of Dummies, then, for two expressions,
+    simplify(a - b) == 0. Lists and tuples (and SymPy Tuples) compare element by element, dicts key by key (keys
+    structurally). A candidate is a SymPy object, a Python number, bool or Fraction, or a container of them: adapters
+    convert MathForge values first, and anything SymPy does not convert strictly is unequal.
+
+    A Dummy (the variable of an ImageSet's Lambda, of a RootSum, of an Integral) is equal only to itself, and the frozen
+    srepr renumbers SymPy's Dummies from 0, so the Dummies of the value rebuilt from it never equal an adapter's. The
+    candidate's Dummies are therefore renamed to the reference's, each to a distinct one of the same class and
+    assumptions (the name may differ): first in order of first appearance in a preorder walk of the two values, then,
+    when that does not make them equal and there are at most _RENAMINGS renamings, in every other way, because the order
+    of a sorted container (an Add, a FiniteSet) can follow the Dummies' indices. The simplify fallback compares with the
+    candidate renamed in order of first appearance. Nothing is renamed when the two values hold different numbers or
+    kinds of Dummies: no renaming is consistent then.
 
     The text is SymPy's srepr from the frozen examples file; it is evaluated with SymPy's names and no builtins, the
     inverse that srepr documents (eval(srepr(expr)) == expr). ValueError when it does not evaluate."""
@@ -304,7 +393,15 @@ def same_value(sympy_srepr: str, candidate: object) -> bool:
         expected = eval(sympy_srepr, {"__builtins__": {}, **_sympy_names()})
     except Exception as error:
         raise ValueError(f"cannot rebuild a SymPy value from {sympy_srepr!r}: {error}") from error
-    return _same(sympy, expected, candidate)
+    if _same(sympy, expected, candidate, simplify=False):
+        return True
+    first = candidate
+    for number, renamed in enumerate(_renamings(sympy, expected, candidate)):
+        if _same(sympy, expected, renamed, simplify=False):
+            return True
+        if number == 0:
+            first = renamed
+    return _same(sympy, expected, first)
 
 
 @functools.cache
@@ -313,11 +410,11 @@ def _sympy_names() -> dict[str, Any]:
     return {name: value for name, value in vars(sympy).items() if not name.startswith("_")}
 
 
-def _same(sympy: Any, expected: object, candidate: object) -> bool:
+def _same(sympy: Any, expected: object, candidate: object, *, simplify: bool = True) -> bool:
     sequences = (list, tuple, sympy.Tuple)
     if isinstance(expected, sequences):
         return (isinstance(candidate, sequences) and len(candidate) == len(expected)
-                and all(_same(sympy, item, other) for item, other in zip(expected, candidate)))
+                and all(_same(sympy, item, other, simplify=simplify) for item, other in zip(expected, candidate)))
     if isinstance(expected, dict):
         if not isinstance(candidate, dict) or len(candidate) != len(expected):
             return False
@@ -329,7 +426,8 @@ def _same(sympy: Any, expected: object, candidate: object) -> bool:
             keyed[converted] = value
         for key, value in expected.items():
             converted = _sympified(sympy, key)
-            if converted is None or converted not in keyed or not _same(sympy, value, keyed[converted]):
+            if (converted is None or converted not in keyed
+                    or not _same(sympy, value, keyed[converted], simplify=simplify)):
                 return False
         return True
     if expected is None or isinstance(expected, str):
@@ -339,9 +437,71 @@ def _same(sympy: Any, expected: object, candidate: object) -> bool:
         return False
     if value == reference:
         return True
-    if isinstance(value, sympy.Expr) and isinstance(reference, sympy.Expr):
+    if simplify and isinstance(value, sympy.Expr) and isinstance(reference, sympy.Expr):
         return bool(sympy.simplify(reference - value) == 0)
     return False
+
+
+def _renamings(sympy: Any, expected: object, candidate: object) -> Iterator[object]:
+    """candidate with its Dummies consistently renamed to those of expected: each to a distinct Dummy of expected with
+    the same class and assumptions. The first renaming pairs the Dummies of a kind in their order of first appearance;
+    every other renaming follows when there are at most _RENAMINGS in all. Nothing when no renaming is consistent."""
+    targets: dict[tuple[Any, ...], list[Any]] = {}
+    sources: dict[tuple[Any, ...], list[Any]] = {}
+    for groups, value in ((targets, expected), (sources, candidate)):
+        for dummy in _dummies(sympy, value):
+            groups.setdefault((type(dummy), tuple(sorted(dummy.assumptions0.items()))), []).append(dummy)
+    if not sources or {kind: len(group) for kind, group in targets.items()} != {
+            kind: len(group) for kind, group in sources.items()}:
+        return
+    kinds = list(sources)
+    if math.prod(math.factorial(len(sources[kind])) for kind in kinds) <= _RENAMINGS:
+        choices: Iterator[tuple[tuple[Any, ...], ...]] = itertools.product(
+            *(itertools.permutations(targets[kind]) for kind in kinds))  # The identities come first.
+    else:
+        choices = iter([tuple(tuple(targets[kind]) for kind in kinds)])
+    for choice in choices:
+        yield _renamed(sympy, candidate, {old: new for kind, chosen in zip(kinds, choice)
+                                          for old, new in zip(sources[kind], chosen)})
+
+
+def _dummies(sympy: Any, value: object) -> list[Any]:
+    """The Dummies of value, each once, in order of first appearance in a preorder walk: a SymPy object through its
+    args, a list or tuple item by item, a dict key and value in its order, another object as SymPy converts it."""
+    found: dict[Any, None] = {}
+    pending = [value]
+    while pending:
+        item = pending.pop()
+        if isinstance(item, sympy.Dummy):
+            found.setdefault(item, None)
+            continue
+        if isinstance(item, dict):
+            children = [part for pair in item.items() for part in pair]
+        elif isinstance(item, (list, tuple)):
+            children = list(item)
+        elif isinstance(item, sympy.Basic):
+            children = list(item.args)
+        else:
+            converted = _sympified(sympy, item)
+            children = [converted] if isinstance(converted, sympy.Basic) else []
+        pending.extend(reversed(children))
+    return list(found)
+
+
+def _renamed(sympy: Any, value: object, renaming: Mapping[Any, Any]) -> object:
+    """value with the Dummies of renaming replaced throughout (lists, tuples and dicts rebuilt); a value that holds
+    none of them unchanged."""
+    if isinstance(value, dict):
+        return {_renamed(sympy, key, renaming): _renamed(sympy, item, renaming) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        items = [_renamed(sympy, item, renaming) for item in value]
+        return items if isinstance(value, list) else tuple(items)
+    if isinstance(value, sympy.Basic):
+        return value.xreplace(renaming)
+    converted = _sympified(sympy, value)
+    if isinstance(converted, sympy.Basic) and converted.has(*renaming):
+        return converted.xreplace(renaming)
+    return value
 
 
 def _sympified(sympy: Any, value: object) -> Any:

@@ -242,8 +242,10 @@ def _plan(operation: str, spec: Any) -> Callable[[Mapping[str, object]], object]
     return _no_plan
 
 
-def _registry_plan(operation: str, spec: Any) -> Callable[[Mapping[str, object]], object]:
-    """The lean path of operations_v5.run or operations_v6.run for one registry operation."""
+def _registry_plan(operation: str, spec: Any,
+                   check: Callable[..., object] | None = None) -> Callable[[Mapping[str, object]], object]:
+    """The lean path of operations_v5.run or operations_v6.run for one registry operation. A lean module may pass
+    ``check``, called as ``check_operation`` is, to put an independent checker of its own in its place."""
     from ..model import Symbol
     from ..operations_v5 import _freeze
     family = registry.family(operation, spec.version)  # A superseded v0.7 operation's spec is its v6 family's.
@@ -305,7 +307,8 @@ def _registry_plan(operation: str, spec: Any) -> Callable[[Mapping[str, object]]
                 return FALLBACK
             if partial is not None:
                 partial(operation, request, value)
-            if checker.check_operation(operation, request, value, evidence) is not True:
+            # The checker's function is read at each call, as the structured path reads it.
+            if (checker.check_operation if check is None else check)(operation, request, value, evidence) is not True:
                 return FALLBACK
         return value
 

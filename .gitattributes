@@ -5,6 +5,8 @@ tests/fixtures/v2/*.json text eol=lf
 tests/fixtures/v2/serialization_v2.py text eol=lf
 # The v0.7 surface snapshots that the v0.8 tests compare against.
 tests/fixtures/v8/*.json text eol=lf
+# The v0.7 value corpus (tests/fixtures/v8/values_v07/<area>.json) is stored with LF line ends on every platform.
+tests/fixtures/v8/**/*.json text eol=lf
 # Later working-tree snapshots retain their original mixed line endings.
 tests/fixtures/v5/* -text
 tests/fixtures/v6/* -text

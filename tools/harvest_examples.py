@@ -19,7 +19,9 @@ docs/v08/harvest/report.md) gives per row the candidate, selected and excluded c
 example, the curation applied (each drop with its reason, a sympy-incorrect drop with its evidence too), the short rows
 (fewer than ten examples) and the API paths that do not resolve. Neither file holds a time or a thread or process
 detail, and no record depends on the number of workers; which examples are selected is decided by the runs at
-PYTHONHASHSEED=0 in long-lived workers (coverage_gate.examples states what is and is not guaranteed).
+PYTHONHASHSEED=0 in long-lived workers (coverage_gate.examples states what is and is not guaranteed). The exclusion
+counts can vary by a few between runs, because whether an example near the timeout finishes depends on the machine's
+load; the report's header says so.
 
 Exit status 0 when both files are written; 2 for a usage, input or curation error, or when the harvester's SymPy is not
 1.14; 1 when the harvest fails (a traceback and a message go to stderr); 130 when interrupted. Only status 0 means the
@@ -272,6 +274,9 @@ def render_report(*, inventory: Path, out: Path, doc_src: Path | None, curation:
              f"- Every candidate ran at PYTHONHASHSEED=0 with a {TIMEOUT:g} s timeout; each selected one ran again at "
              "PYTHONHASHSEED=1 and 2, each time in a worker process started for it alone, and had to give the same "
              "record.",
+             f"- Exclusion counts can vary by a few between runs: whether an example near the {TIMEOUT:g} s timeout "
+             "finishes depends on the machine's load. Each selected record, by contrast, was verified in fresh "
+             "processes.",
              ""]
     reasons = Counter(item.reason for result in results for item in result.excluded)
     short = [result for result in results if len(result.examples) < harvesting.LOW]

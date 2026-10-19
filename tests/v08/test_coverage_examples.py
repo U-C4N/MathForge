@@ -67,9 +67,16 @@ def line_containing(text, fragment):
     return next(number for number, line in enumerate(text.splitlines(), 1) if fragment in line)
 
 
+def own_docstring(path):
+    """The docstring that harvest reads for the API path: the object's own (for a bound method its function's),
+    cleaned like inspect.getdoc cleans it, but never inherited."""
+    value = harvesting.resolve_api(path)
+    return inspect.cleandoc(value.__func__.__doc__ if isinstance(value, types.MethodType) else value.__doc__)
+
+
 def docstring_line(path, statement):
     """The line of statement in the docstring of the API path, as harvest numbers it."""
-    return line_of(inspect.getdoc(harvesting.resolve_api(path)), statement)
+    return line_of(own_docstring(path), statement)
 
 
 class TemporaryDirectoryTestCase(unittest.TestCase):
@@ -560,8 +567,7 @@ class HarvestTests(RunnerTestCase):
         candidates, _ = harvesting.harvest(make_row("16.01", "sympy.expand"), self.first, doc_src=None,
                                            check_runner=self.second)
         pair = [(item.source, item.output) for item in candidates if item.code == "log(x**2*y).expand(log=True)"]
-        first, second = lines_of(inspect.getdoc(harvesting.resolve_api("sympy.expand")),
-                                 "log(x**2*y).expand(log=True)")
+        first, second = lines_of(own_docstring("sympy.expand"), "log(x**2*y).expand(log=True)")
         self.assertEqual(pair, [(f"docstring:sympy.expand:{first}", "log(x**2*y)"),
                                 (f"docstring:sympy.expand:{second}", "2*log(x) + log(y)")])
 
@@ -635,7 +641,7 @@ class HarvestTests(RunnerTestCase):
         candidates, excluded = harvesting.harvest(make_row("13.01", path), self.first, doc_src=None,
                                                   check_runner=self.second)
         code = "dsolve(genform, f(x), hint='separable_Integral')"
-        line = line_containing(inspect.getdoc(harvesting.resolve_api(path)), f">>> pprint({code})")
+        line = line_containing(own_docstring(path), f">>> pprint({code})")
         self.assertEqual([(item.source, item.output) for item in candidates if item.code == code],
                          [(f"docstring:{path}:{line}",
                            "Eq(Integral(b(_y)/d(_y), (_y, f(x))), C1 + Integral(c(x)/a(x), x))")])
@@ -806,6 +812,30 @@ class HarvestTests(RunnerTestCase):
         with harvesting.ExampleRunner(hash_seed=0) as other:
             for item in selected:
                 self.assertEqual(other.run(item.setup, item.code), (item.output, item.srepr), item.code)
+
+    def test_only_an_apis_own_docstring_is_harvested(self):
+        # ArrayDerivative has no docstring of its own: inspect.getdoc hands it Derivative's, whose examples were then
+        # recorded under ArrayDerivative's name. Derivative, a class with doctests of its own, keeps them.
+        inherits, owns = "sympy.tensor.array.array_derivatives.ArrayDerivative", "sympy.Derivative"
+        self.assertIsNone(harvesting.resolve_api(inherits).__doc__)
+        self.assertEqual(inspect.getdoc(harvesting.resolve_api(inherits)), own_docstring(owns))  # What it inherits.
+        no_tests = self.directory / "sympy"  # No test module to top a short set up from.
+        no_tests.mkdir()
+        with mock.patch.object(harvesting, "_sympy_package_directory", return_value=no_tests):
+            # Nor do Sum.doit (it overrides Basic.doit without a docstring), SparseMatrix and Array take any.
+            for path in (inherits, "Sum.doit", "sympy.SparseMatrix", "sympy.Array"):
+                with self.subTest(path):
+                    self.assertEqual(harvesting.harvest(make_row("26.03", path), self.first, doc_src=None,
+                                                        check_runner=self.second), ([], []))
+            # Listed first, ArrayDerivative used to take Derivative's text, and Derivative's own copy was then skipped
+            # as already seen; now every example of that text is Derivative's.
+            candidates, excluded = harvesting.harvest(make_row("26.03", inherits, owns), self.first, doc_src=None,
+                                                      check_runner=self.second)
+        self.assertGreaterEqual(len(candidates), 10)
+        self.assertEqual({re.sub(r":\d+$", "", item.source) for item in candidates + excluded}, {f"docstring:{owns}"})
+        code = "Derivative(x**2, x, evaluate=True)"
+        self.assertEqual([(item.source, item.output) for item in candidates if item.code == code],
+                         [(f"docstring:{owns}:{docstring_line(owns, code)}", "2*x")])
 
     def test_harvest_tops_up_short_sets_from_test_modules(self):
         package = self.directory / "sympy"
@@ -1148,6 +1178,15 @@ class FileTests(TemporaryDirectoryTestCase):
         shown = [line for line in lines if line.startswith(f"- dropped (sympy-incorrect): `{awkward.source}`")]
         self.assertEqual(len(shown), 1)
         self.assertEqual(json.loads(shown[0].partition("; evidence: ")[2].strip("` ")), long_evidence)
+
+    def test_report_header_says_why_exclusion_counts_can_vary(self):
+        import harvest_examples
+        text = harvest_examples.render_report(inventory=Path("inventory.json"), out=Path("examples.json"), doc_src=None,
+                                              curation="none", sympy="1.14.0", results=[])
+        header = text.partition("## Summary")[0].splitlines()
+        self.assertIn("- Exclusion counts can vary by a few between runs: whether an example near the 60 s timeout "
+                      "finishes depends on the machine's load. Each selected record, by contrast, was verified in "
+                      "fresh processes.", header)
 
     def test_curation_drops_one_of_two_same_code_examples_by_its_line(self):
         code = "log(x**2*y).expand(log=True)"

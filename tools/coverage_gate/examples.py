@@ -8,9 +8,10 @@ frozen with the output SymPy recorded for it. This module finds and records them
 - ExampleRunner runs examples in a persistent worker process with a fixed PYTHONHASHSEED: a fresh namespace and a cleared
   SymPy cache per example, a timeout after which the worker is replaced, and a reason instead of a value for what cannot
   serve as a reference; FreshRunner runs each example in a worker process started for it alone;
-- harvest collects a row's candidates from, in priority order, the docstrings of its APIs, the SymPy guide sources
-  (doc/src, optional) and, only for a set that stays below ten, the equality asserts of SymPy's installed test modules;
-  it excludes the plan's exclusions with their reasons and verifies every selected example;
+- harvest collects a row's candidates from, in priority order, the docstrings of its APIs (each API's own docstring,
+  never one inherited from a base class or an overridden method), the SymPy guide sources (doc/src, optional) and,
+  only for a set that stays below ten, the equality asserts of SymPy's installed test modules; it excludes the plan's
+  exclusions with their reasons and verifies every selected example;
 - select keeps one example per record and picks at most twenty in turn across the row's APIs; curate applies the
   curators' recorded replacements and numbers the result; load_examples and write_examples read and write the examples
   file (docs/v08/reference_examples.json, local and never committed).
@@ -1186,11 +1187,17 @@ def _docstring_groups(text: str) -> tuple[_Group, ...]:
 
 
 def _docstring(value: object) -> str | None:
+    """The API's own docstring, with its indentation cleaned as inspect.cleandoc does, when it holds doctests: the
+    object's __doc__, for a bound method its function's. Never an inherited one: inspect.getdoc, for a class or method
+    without a docstring of its own, takes that of a base class or of the method it overrides, whose examples would then
+    be harvested under this API's name (ArrayDerivative would take Derivative's)."""
+    if isinstance(value, types.MethodType):
+        value = value.__func__
     try:
-        text = inspect.getdoc(value)
+        text = value.__doc__
     except Exception:
         return None
-    return text if isinstance(text, str) and ">>>" in text else None
+    return inspect.cleandoc(text) if isinstance(text, str) and ">>>" in text else None
 
 
 _GUIDES: dict[Path, tuple[tuple[str, tuple[_Group, ...]], ...]] = {}
@@ -1581,7 +1588,8 @@ def harvest(row: Row, runner: ExampleRunner, *, doc_src: Path | None,
             check_runner: "Verifiers | None" = None) -> tuple[list[Example], list[Excluded]]:
     """The row's candidates and its exclusions.
 
-    Candidates come from the docstrings of the row's resolvable APIs (in row order), then from the guide pages under
+    Candidates come from each resolvable API's own docstring, in row order (an API without a docstring of its own gives
+    none, whatever its base classes document), then from the guide pages under
     doc_src (attributed to the first API, in row order, whose name the code calls or reads as an attribute), each in
     document order; a candidate's setup is sliced from the statements before it to those its code needs. Every
     candidate is ruled out by the document, by the static rules or by its run at runner's hash seed, or becomes usable;

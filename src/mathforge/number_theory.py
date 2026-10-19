@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from math import gcd, isqrt
 
 from .errors import InvalidInput
+from .kernels.integers import factor
 from .limits import computation, current_budget, ResourceLimitError
 
 
@@ -97,21 +98,15 @@ def _powmod(a, exponent, modulus):
 
 
 def _trial_factors(n):
-    pairs, divisor = [], 2
-    while divisor <= n // divisor:
-        current_budget().tick()
-        exponent = 0
-        while n % divisor == 0:
-            current_budget().tick()
-            n //= divisor
-            exponent += 1
-        if exponent:
-            pairs.append((divisor, exponent))
-            current_budget().nodes()
-        divisor = 3 if divisor == 2 else divisor + 2
-    if n > 1:
-        pairs.append((n, 1))
-    return tuple(pairs)
+    """The (prime, exponent) pairs of n >= 0, sorted (() below 2), from the integer kernel: trial division by the
+    primes below 2**10, then Pollard-Brent rho, charging the active budget once per batch. v0.7 divided by every
+    odd number up to the square root; the pairs are the same, the factorization of an integer being unique, and every
+    prime is still certified by _prime_certificate."""
+    if n < 2:
+        return ()
+    pairs = factor(n)
+    current_budget().nodes(len(pairs))
+    return pairs
 
 
 def _prime_certificate(n, depth=0):

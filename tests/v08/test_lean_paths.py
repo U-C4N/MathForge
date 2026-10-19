@@ -272,7 +272,8 @@ class LeanPathTest(unittest.TestCase):
         self.assertIs(lean.run_value("no_such_operation", {}), lean.FALLBACK)
         self.assertIs(lean.run_value("integer_gcd", {"a": 1}), lean.FALLBACK)  # A missing argument.
         self.assertIs(lean.run_value("integer_gcd", None), lean.FALLBACK)
-        self.assertIs(lean.functions.integer_gcd(84), lean.FALLBACK)  # A wrong arity.
+        # A wrong arity of a generic lean function (integer_gcd has a hand-written one, lean/ntheory_integers.py).
+        self.assertIs(lean.functions.continued_fraction(84, 30), lean.FALLBACK)
 
     def test_legacy_table(self):
         from mathforge import exact_dispatch
@@ -394,8 +395,8 @@ class LeanPathTest(unittest.TestCase):
         for label, patcher in (("wrong value", patch.object(number_theory, "produce", off_by_one)),
                                ("truthy check", patch.object(number_theory, "check_operation", lambda *a: 1))):
             with self.subTest(label), patcher:
+                # The generic runner; integer_gcd's own lean function checks its Bezout triple (tests/v08/ntheory).
                 self.assertIs(lean.run_value("integer_gcd", {"a": 84, "b": 30}), lean.FALLBACK)
-                self.assertIs(lean.functions.integer_gcd(84, 30), lean.FALLBACK)
         value = mf.Rational(415, 93)
         with self.subTest("rejecting v6 check"), patch.object(checker, "check_operation", lambda *a: False):
             self.assertIs(lean.run_value("continued_fraction", {"value": value}), lean.FALLBACK)

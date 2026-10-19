@@ -21,15 +21,29 @@ def record_types():
     return registry.record_types(5)
 
 
+# operation -> (the v5 argument table it was looked up in, its family module, its argument names). One registry
+# build answers every entry: an entry of an older table (the registry rebuilt) is looked up again.
+_LOOKUPS: dict = {}
+
+
+def _lookup(operation):
+    table = registry.operation_arguments(5)
+    entry = _LOOKUPS.get(operation)
+    if entry is None or entry[0] is not table:
+        names = table.get(operation)
+        if names is None:
+            raise UnsupportedOperation("Unknown v5 operation")
+        entry = _LOOKUPS[operation] = (table, registry.family(operation), names)
+    return entry
+
+
 def module_for(operation):
-    if operation not in registry.operation_arguments(5):
-        raise UnsupportedOperation("Unknown v5 operation")
-    return registry.family(operation)
+    return _lookup(operation)[1]
 
 
 def validate_arguments(operation, args):
-    module = module_for(operation)
-    if type(args) is not dict or set(args) != registry.operation_arguments(5)[operation]:
+    _, module, names = _lookup(operation)
+    if type(args) is not dict or args.keys() != names:
         raise InvalidInput("Arguments do not match the v5 operation contract")
     return module
 

@@ -457,7 +457,7 @@ class LeanPathTest(unittest.TestCase):
         # structured path, because they move when the arithmetic gets cheaper; the hints are the last ones measured.
         sum_of = lambda terms: Add(tuple(mf.Rational(i, 7) * _x for i in range(1, terms)))  # noqa: E731
         sample = lambda count: tuple(mf.Rational(i, 7) for i in range(1, count + 1))  # noqa: E731
-        cases = (("simplify", sum_of, lambda e: dict(expression=e), 1666),  # _run's records reach max_evidence_items.
+        cases = (("simplify", sum_of, lambda e: dict(expression=e), 2500),  # The verifier reaches max_evidence_items.
                  ("median", sample, lambda d: dict(data=d), 1000))  # The quadratic median checker reaches max_work.
         for operation, build, arguments_of, hint in cases:
             refused = first_refused(lambda size: structured_function(operation)(**arguments_of(build(size))), hint)

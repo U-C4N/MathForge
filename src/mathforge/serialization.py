@@ -6,7 +6,7 @@ no source code and never imports a type named by the document.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from contextvars import ContextVar
 from enum import Enum
 import json
@@ -260,141 +260,105 @@ class _Encoder:
         self.minimum_version = 1
 
     def encode(self, value: Any) -> dict[str, Any]:
-        from .workspace import FrozenOptions, ObjectRef, OperationRecord, Workspace
-
         t = type(value)
-        if value is None:
-            return {"type": "none"}
-        if t in (bool, str):
-            return {"type": "boolean" if t is bool else "text", "value": value}
-        if t is tuple:
-            return {"type": "tuple", "items": [self.encode(item) for item in value]}
-        if t is int:
-            return {"type": "integer", "value": _decimal(value)}
-        for tag, cls in _ENUMS.items():
-            if t is cls:
-                return {"type": tag, "value": value.value}
-        if t is m.Rational:
-            return {"type": "rational", "numerator": _decimal(value.numerator),
-                    "denominator": _decimal(value.denominator)}
-        if t is m.Assumption:
-            return {"type": "assumption", "name": value.name, "truth": value.truth.value}
-        if t is m.Symbol:
-            encoded = {"type": "symbol", "name": value.name, "uid": str(value.uid),
-                       "domain": value.domain.value,
-                       "assumptions": [self.encode(a) for a in value.assumptions]}
-            self._symbol(str(value.uid), encoded)
-            return encoded
-        if t is m.Add:
-            return {"type": "add", "terms": [self.encode(v) for v in value.terms]}
-        if t is m.Mul:
-            return {"type": "mul", "factors": [self.encode(v) for v in value.factors]}
-        if t is m.Pow:
-            return {"type": "pow", "base": self.encode(value.base),
-                    "exponent": _decimal(value.exponent)}
-        if t is m.Sqrt:
-            return {"type": "sqrt", "radicand": self.encode(value.radicand)}
-        if t is Polynomial:
-            return {"type": "polynomial", "coefficients": [self.encode(v) for v in value.coefficients],
-                    "variable": self.encode(value.variable)}
-        if t is c.Eq:
-            return {"type": "equation", "lhs": self.encode(value.lhs), "rhs": self.encode(value.rhs)}
-        if t is c.FiniteSet:
-            return {"type": "finite_set", "values": [self.encode(v) for v in value.values],
-                    "domain": value.domain.value}
-        if t in (c.EmptySet, c.UniversalSet):
-            return {"type": "empty_set" if t is c.EmptySet else "universal_set", "domain": value.domain.value}
-        if t is c.Condition:
-            return {"type": "condition", "lhs": self.encode(value.lhs), "relation": value.relation,
-                    "rhs": self.encode(value.rhs), "truth": value.truth.value}
-        if t is c.Check:
-            return {"type": "check", "claim": value.claim, "status": value.status.value,
-                    "level": value.level.value, "method": value.method,
-                    "subject": self.optional(value.subject), "details": value.details}
-        if t is c.VerificationReport:
-            return {"type": "verification_report", "checks": [self.encode(v) for v in value.checks]}
-        if t is c.Step:
-            if value.rule.startswith("v6."):
-                self.minimum_version = max(self.minimum_version, 6)
-            if value.rule.startswith("v5."):
-                self.minimum_version = max(self.minimum_version, 5)
-            if value.rule.startswith("v4."):
-                self.minimum_version = max(self.minimum_version, 4)
-            return {"type": "step", "rule": value.rule,
-                    "inputs": [self.encode(v) for v in value.inputs],
-                    "outputs": [self.encode(v) for v in value.outputs],
-                    "preconditions": [self.encode(v) for v in value.preconditions],
-                    "relation": value.relation.value, "audit": [self.encode(v) for v in value.audit],
-                    "explanation": value.explanation}
-        if t is c.ErrorInfo:
-            return {"type": "error_info", "code": value.code, "message": value.message}
-        if t is c.Result:
-            if type(value.expression) is Polynomial:
-                self.minimum_version = max(self.minimum_version, 2)
-            result = {"type": "result", "execution_status": value.execution_status.value,
-                    "outcome": value.outcome.value, "value": self.optional(value.value),
-                    "exactness": value.exactness.value, "completeness": value.completeness.value,
-                    "verification": [self.encode(v) for v in value.verification],
-                    "method": value.method, "domain": None if value.domain is None else value.domain.value,
-                    "assumptions": [self.encode(v) for v in value.assumptions],
-                    "steps": [self.encode(v) for v in value.steps], "problem": self.optional(value.problem),
-                    "expression": self.optional(value.expression), "for_": self.optional(value.for_),
-                    "precision": None if value.precision is None else _decimal(value.precision),
-                    "tolerance": self.optional(value.tolerance), "error_bound": self.optional(value.error_bound),
-                    "error": self.optional(value.error)}
-            if value.request is not None:
-                self.minimum_version = max(self.minimum_version, 2)
-                result["request"] = self.encode(value.request)
-            if value.deferred is not None:
-                self.minimum_version = max(self.minimum_version, 5)
-                result["deferred"] = self.encode(value.deferred)
-            return result
-        if t is ObjectRef:
-            return {"type": "object_ref", "identifier": value.identifier}
-        if t is OperationRecord:
-            return {"type": "operation_record", "operation": value.operation,
-                    "inputs": [{"name": name, "ref": self.encode(ref)} for name, ref in value.inputs],
-                    "options": self.option(value.options), "result_ref": self.encode(value.result_ref)}
-        if t is FrozenOptions:
-            return self.option(value)
-        if t is Workspace:
-            if not self.allow_workspace:
-                raise SerializationError("A Workspace must be the top-level document")
-            self.allow_workspace = False
-            return {"type": "workspace", "objects": [
-                {"ref": key, "object": self.encode(obj)} for key, obj in sorted(value._objects.items())
-            ], "history": [self.encode(record) for record in value.history]}
-        classes = _v2_types()
-        tag = next((tag for tag, cls in classes.items() if t is cls), None)
-        if tag is not None:
-            self.minimum_version = max(self.minimum_version, 2)
-            if tag == "operation_request":
-                required_version = _request_version(value)
-                _validate_v3_request(value, version=required_version)
-                self.minimum_version = max(self.minimum_version, required_version)
-                if required_version >= 6:  # A v6 request names its format, even where its operation is unknown.
-                    return {**self.v2(tag, value), "version": required_version}
-            return self.v2(tag, value)
-        classes = _v3_types()
-        tag = next((tag for tag, cls in classes.items() if t is cls), None)
-        if tag is not None:
-            self.minimum_version = max(self.minimum_version, 3)
-            if tag == "limit_value" and value.value is not None and type(value.value) is not m.Rational:
-                self.minimum_version = max(self.minimum_version, 4)
-            return self.v3(tag, value)
-        classes = _v4_types()
-        tag = next((tag for tag, cls in classes.items() if t is cls), None)
-        if tag is not None:
-            self.minimum_version = max(self.minimum_version, 4)
-            return self.v4(tag, value)
-        for prefix, version in _RECORD_PREFIXES.items():
-            for tag, cls in _record_types(version).items():
-                if t is cls:
-                    self.minimum_version = max(self.minimum_version, version)
-                    return {"type": prefix + tag, **{
-                        field.name: self.encode(getattr(value, field.name))
-                        for field in dataclass_fields(cls)}}
+        handler = (_ENCODERS or _build_encoders()).get(t)
+        if handler is not None:
+            return handler(self, value)
+        return self.registry_record(value, t)
+
+    def registry_record(self, value: Any, t: type) -> dict[str, Any]:
+        """A registry record (format v5 or v6), field by field; any other class is unsupported.
+
+        The registry defines record classes only in its record modules, so a class of another module is refused
+        without building the registry.
+        """
+        from . import registry
+        if registry.record_module(t.__module__):
+            entry = _registry_tags().get(t)
+            if entry is not None:
+                tag, version = entry
+                names = _RECORD_FIELDS.get(t)
+                if names is None:
+                    names = _RECORD_FIELDS[t] = tuple(field.name for field in dataclass_fields(t))
+                self.minimum_version = max(self.minimum_version, version)
+                return {"type": tag, **{name: self.encode(getattr(value, name)) for name in names}}
         raise SerializationError(f"Unsupported object type: {t.__name__}")
+
+    def symbol(self, value: Any) -> dict[str, Any]:
+        encoded = {"type": "symbol", "name": value.name, "uid": str(value.uid),
+                   "domain": value.domain.value,
+                   "assumptions": [self.encode(a) for a in value.assumptions]}
+        self._symbol(str(value.uid), encoded)
+        return encoded
+
+    def step(self, value: Any) -> dict[str, Any]:
+        if value.rule.startswith("v6."):
+            self.minimum_version = max(self.minimum_version, 6)
+        if value.rule.startswith("v5."):
+            self.minimum_version = max(self.minimum_version, 5)
+        if value.rule.startswith("v4."):
+            self.minimum_version = max(self.minimum_version, 4)
+        return {"type": "step", "rule": value.rule,
+                "inputs": [self.encode(v) for v in value.inputs],
+                "outputs": [self.encode(v) for v in value.outputs],
+                "preconditions": [self.encode(v) for v in value.preconditions],
+                "relation": value.relation.value, "audit": [self.encode(v) for v in value.audit],
+                "explanation": value.explanation}
+
+    def result(self, value: Any) -> dict[str, Any]:
+        if type(value.expression) is Polynomial:
+            self.minimum_version = max(self.minimum_version, 2)
+        result = {"type": "result", "execution_status": value.execution_status.value,
+                "outcome": value.outcome.value, "value": self.optional(value.value),
+                "exactness": value.exactness.value, "completeness": value.completeness.value,
+                "verification": [self.encode(v) for v in value.verification],
+                "method": value.method, "domain": None if value.domain is None else value.domain.value,
+                "assumptions": [self.encode(v) for v in value.assumptions],
+                "steps": [self.encode(v) for v in value.steps], "problem": self.optional(value.problem),
+                "expression": self.optional(value.expression), "for_": self.optional(value.for_),
+                "precision": None if value.precision is None else _decimal(value.precision),
+                "tolerance": self.optional(value.tolerance), "error_bound": self.optional(value.error_bound),
+                "error": self.optional(value.error)}
+        if value.request is not None:
+            self.minimum_version = max(self.minimum_version, 2)
+            result["request"] = self.encode(value.request)
+        if value.deferred is not None:
+            self.minimum_version = max(self.minimum_version, 5)
+            result["deferred"] = self.encode(value.deferred)
+        return result
+
+    def operation_record(self, value: Any) -> dict[str, Any]:
+        return {"type": "operation_record", "operation": value.operation,
+                "inputs": [{"name": name, "ref": self.encode(ref)} for name, ref in value.inputs],
+                "options": self.option(value.options), "result_ref": self.encode(value.result_ref)}
+
+    def workspace(self, value: Any) -> dict[str, Any]:
+        if not self.allow_workspace:
+            raise SerializationError("A Workspace must be the top-level document")
+        self.allow_workspace = False
+        return {"type": "workspace", "objects": [
+            {"ref": key, "object": self.encode(obj)} for key, obj in sorted(value._objects.items())
+        ], "history": [self.encode(record) for record in value.history]}
+
+    def tagged_v2(self, tag: str, value: Any) -> dict[str, Any]:
+        self.minimum_version = max(self.minimum_version, 2)
+        if tag == "operation_request":
+            required_version = _request_version(value)
+            _validate_v3_request(value, version=required_version)
+            self.minimum_version = max(self.minimum_version, required_version)
+            if required_version >= 6:  # A v6 request names its format, even where its operation is unknown.
+                return {**self.v2(tag, value), "version": required_version}
+        return self.v2(tag, value)
+
+    def tagged_v3(self, tag: str, value: Any) -> dict[str, Any]:
+        self.minimum_version = max(self.minimum_version, 3)
+        if tag == "limit_value" and value.value is not None and type(value.value) is not m.Rational:
+            self.minimum_version = max(self.minimum_version, 4)
+        return self.v3(tag, value)
+
+    def tagged_v4(self, tag: str, value: Any) -> dict[str, Any]:
+        self.minimum_version = max(self.minimum_version, 4)
+        return self.v4(tag, value)
 
     def v4(self, tag, value):
         data = {"type": tag}
@@ -492,6 +456,86 @@ class _Encoder:
         if type(value) is tuple:
             return {"type": "option_array", "items": [self.option(item) for item in value]}
         raise SerializationError("Options must be deeply immutable JSON data")
+
+
+# The encoder's dispatch, exact class -> handler(encoder, value) -> document node, for every class with a fixed tag
+# (formats v1-v4 and the workspace records). Built once, on first use: the workspace and the v2-v4 record modules
+# load after this one. Registry records (v5, v6) are looked up in _registry_tags, which builds the registry.
+_ENCODERS: dict[type, Callable[[Any, Any], dict[str, Any]]] = {}
+_REGISTRY_TAGS: tuple[Any, Any, dict[type, tuple[str, int]]] | None = None
+_RECORD_FIELDS: dict[type, tuple[str, ...]] = {}  # A registry record class -> its field names, in order.
+
+
+def _build_encoders() -> dict[type, Callable[[Any, Any], dict[str, Any]]]:
+    global _ENCODERS
+    from .workspace import FrozenOptions, ObjectRef, OperationRecord, Workspace
+
+    encoders: dict[type, Callable[[Any, Any], dict[str, Any]]] = {
+        type(None): lambda self, value: {"type": "none"},
+        bool: lambda self, value: {"type": "boolean", "value": value},
+        str: lambda self, value: {"type": "text", "value": value},
+        tuple: lambda self, value: {"type": "tuple", "items": [self.encode(item) for item in value]},
+        int: lambda self, value: {"type": "integer", "value": _decimal(value)},
+    }
+    for tag, cls in _ENUMS.items():
+        encoders.setdefault(cls, lambda self, value, tag=tag: {"type": tag, "value": value.value})
+    fixed: dict[type, Callable[[Any, Any], dict[str, Any]]] = {
+        m.Rational: lambda self, value: {"type": "rational", "numerator": _decimal(value.numerator),
+                                         "denominator": _decimal(value.denominator)},
+        m.Assumption: lambda self, value: {"type": "assumption", "name": value.name, "truth": value.truth.value},
+        m.Symbol: _Encoder.symbol,
+        m.Add: lambda self, value: {"type": "add", "terms": [self.encode(v) for v in value.terms]},
+        m.Mul: lambda self, value: {"type": "mul", "factors": [self.encode(v) for v in value.factors]},
+        m.Pow: lambda self, value: {"type": "pow", "base": self.encode(value.base),
+                                    "exponent": _decimal(value.exponent)},
+        m.Sqrt: lambda self, value: {"type": "sqrt", "radicand": self.encode(value.radicand)},
+        Polynomial: lambda self, value: {"type": "polynomial",
+                                         "coefficients": [self.encode(v) for v in value.coefficients],
+                                         "variable": self.encode(value.variable)},
+        c.Eq: lambda self, value: {"type": "equation", "lhs": self.encode(value.lhs), "rhs": self.encode(value.rhs)},
+        c.FiniteSet: lambda self, value: {"type": "finite_set", "values": [self.encode(v) for v in value.values],
+                                          "domain": value.domain.value},
+        c.EmptySet: lambda self, value: {"type": "empty_set", "domain": value.domain.value},
+        c.UniversalSet: lambda self, value: {"type": "universal_set", "domain": value.domain.value},
+        c.Condition: lambda self, value: {"type": "condition", "lhs": self.encode(value.lhs),
+                                          "relation": value.relation, "rhs": self.encode(value.rhs),
+                                          "truth": value.truth.value},
+        c.Check: lambda self, value: {"type": "check", "claim": value.claim, "status": value.status.value,
+                                      "level": value.level.value, "method": value.method,
+                                      "subject": self.optional(value.subject), "details": value.details},
+        c.VerificationReport: lambda self, value: {"type": "verification_report",
+                                                   "checks": [self.encode(v) for v in value.checks]},
+        c.Step: _Encoder.step,
+        c.ErrorInfo: lambda self, value: {"type": "error_info", "code": value.code, "message": value.message},
+        c.Result: _Encoder.result,
+        ObjectRef: lambda self, value: {"type": "object_ref", "identifier": value.identifier},
+        OperationRecord: _Encoder.operation_record,
+        FrozenOptions: lambda self, value: self.option(value),
+        Workspace: _Encoder.workspace,
+    }
+    for cls, handler in fixed.items():
+        encoders.setdefault(cls, handler)
+    for types, tagged in ((_v2_types(), _Encoder.tagged_v2), (_v3_types(), _Encoder.tagged_v3),
+                          (_v4_types(), _Encoder.tagged_v4)):
+        for tag, cls in types.items():
+            encoders.setdefault(cls, lambda self, value, tag=tag, tagged=tagged: tagged(self, tag, value))
+    _ENCODERS = encoders  # Published whole: a concurrent first call builds an equal table.
+    return encoders
+
+
+def _registry_tags() -> dict[type, tuple[str, int]]:
+    """Registry record class -> (its tag with the format prefix, its format version), for the current registry."""
+    global _REGISTRY_TAGS
+    v5, v6 = _record_types(5), _record_types(6)
+    cached = _REGISTRY_TAGS
+    if cached is not None and cached[0] is v5 and cached[1] is v6:
+        return cached[2]
+    tags: dict[type, tuple[str, int]] = {}
+    for prefix, version in _RECORD_PREFIXES.items():
+        for tag, cls in (v5 if version == 5 else v6).items():
+            tags.setdefault(cls, (prefix + tag, version))
+    _REGISTRY_TAGS = (v5, v6, tags)
+    return tags
 
 
 class _Decoder:

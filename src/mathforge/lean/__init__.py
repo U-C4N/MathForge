@@ -35,8 +35,10 @@ entry's check, all in one budget, as there; it falls back for the inputs that th
 As in v0.7, a legacy operation never builds the registry tables: unless ``registry.is_v6_operation`` says that a v6
 family took it over, its lean function resolves from the legacy catalogue alone.
 
-Building no records, the runner still charges each budget at least what the structured path charges for them: the
-request's and the step's inspections, and the verifier's inspection of the whole Result. Its own inspections run with
+Building no records, the runner still charges each budget at least what the structured path charges: the run's
+inspections of the arguments, the value and the evidence, those of the request and the step that operations_v6.run
+builds with the public constructors (operations_v5.run and operations._run build theirs without inspection), and the
+verifier's inspection of the whole Result, and on the legacy path of its step as well. Its own inspections run with
 ``max_depth`` lowered by the depth at which the Result nests an argument, so an argument too deep for the record
 falls back here too. A value returned here is therefore one that the structured path returns as well; at the edge of
 a limit, the lean path falls back sooner, never later.
@@ -258,6 +260,9 @@ def _registry_plan(operation: str, spec: Any) -> Callable[[Mapping[str, object]]
     symbol_variable = spec.version == 5 and "variable" in expected
     # The arguments that run copies into the Result: the expression (else A), and a Symbol variable.
     context_keys = frozenset(expected & {"expression", "A", "variable"})
+    # operations_v6.run builds its request and its step with the public constructors, which inspect them as well;
+    # operations_v5.run builds both without inspection.
+    public_records = spec.version == 6
 
     def run(arguments: Mapping[str, object]) -> object:
         if current_budget() is not None:
@@ -272,9 +277,10 @@ def _registry_plan(operation: str, spec: Any) -> Callable[[Mapping[str, object]]
         if expression is not None and not _record_expression(expression):
             return FALLBACK
         with computation(_PRODUCER_LIMITS, fresh=True) as budget:
-            size, sizes = _inspect_arguments(budget, args, context_keys)
+            size, sizes = _inspect_arguments(budget, args, context_keys)  # As run inspects the arguments.
             request = {key: _immutable(args[key]) for key in sorted(args)}
-            budget.nodes(size + len(args))  # The request inspects its (name, value) pairs.
+            if public_records:
+                budget.nodes(size + len(args))  # The request inspects its (name, value) pairs.
             value, evidence = family.produce(operation, args)
             if type(value) in deferrals:
                 return FALLBACK
@@ -287,7 +293,8 @@ def _registry_plan(operation: str, spec: Any) -> Callable[[Mapping[str, object]]
             if partial is not None:
                 partial(operation, args, value)
             request_size = _request_size(size, len(args))
-            budget.evidence(_step_inputs_size(request_size, value_size, evidence_size))
+            if public_records:
+                budget.evidence(_step_inputs_size(request_size, value_size, evidence_size))
             value, evidence = _immutable(value), _immutable(evidence)
         if value is None or type(evidence) is not tuple:
             return FALLBACK
@@ -356,9 +363,9 @@ def _legacy(operation: str, arguments: Mapping[str, object], entry: Any, unsuppo
         try:
             args = operations._arguments(operation, arguments)
             context = operations._context(operation, args)
+            # As _run inspects the raw arguments, which never count more nodes than these normalized ones.
             size, sizes = _inspect_arguments(budget, args, _LEGACY_CONTEXT_KEYS)
             request = {key: _immutable(args[key]) for key in sorted(args)}
-            budget.nodes(2 * size + len(args))  # _run inspects the raw arguments (at most these) and the request.
             produced = entry.produce(args)
         except UnsupportedOperation:
             return unsupported
@@ -374,7 +381,7 @@ def _legacy(operation: str, arguments: Mapping[str, object], entry: Any, unsuppo
             budget.inspect(problem, evidence=True)
             problem_size = 0
         before = budget.evidence_count
-        budget.inspect(value, evidence=True)
+        budget.inspect(value, evidence=True)  # As _run inspects the value and the evidence.
         value_size = budget.evidence_count - before
         before = budget.evidence_count
         budget.inspect(evidence, evidence=True)
@@ -383,13 +390,10 @@ def _legacy(operation: str, arguments: Mapping[str, object], entry: Any, unsuppo
         if value is None or not _record_context(operation, context, value):
             return FALLBACK
         context_size = _legacy_context_size(operation, sizes, context, problem_size)
-        # What _run's records inspect beyond the value, the evidence and a linear system inspected above: the step
-        # that _run builds, the verifier's whole Result and its step, and the step again when _run attaches its audit.
+        # What the verifier inspects in _run's budget: the whole Result and its step.
         request_size = _request_size(size, len(args))
-        step = _step_inputs_size(request_size, value_size, evidence_size)
-        budget.evidence(step - value_size - evidence_size
-                        + _result_size(request_size, value_size, evidence_size, context_size)
-                        + _step_size(request_size, value_size, evidence_size) + step)
+        budget.evidence(_result_size(request_size, value_size, evidence_size, context_size)
+                        + _step_size(request_size, value_size, evidence_size))
         if not _legacy_source(operation, request, context):
             return FALLBACK
         if not _symbols_consistent((tuple(request.items()), value, evidence, context.get("problem"))):
@@ -413,8 +417,9 @@ def _request_size(arguments_size: int, count: int) -> int:
 
 
 def _step_inputs_size(request_size: int, value_size: int, evidence_size: int) -> int:
-    """What building a Step inspects: (inputs, outputs, preconditions) with the request as the one input, the value
-    and the evidence as the outputs, and no preconditions."""
+    """What the public Step constructor inspects: (inputs, outputs, preconditions) with the request as the one input,
+    the value and the evidence as the outputs, and no preconditions. operations_v6.run builds its step that way;
+    operations_v5.run and operations._run build theirs without the inspection."""
     return request_size + value_size + evidence_size + 4
 
 

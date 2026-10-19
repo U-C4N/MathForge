@@ -57,9 +57,20 @@ def _choose(n, k):
     if k > n:
         return 0
     k = min(k, n - k)
+    budget = current_budget()
+    tick, max_bits = budget.tick, budget.limits.max_integer_bits
     value = 1
     for index in range(1, k + 1):
-        value = _mul(value, n - k + index) // index
+        # value = _mul(value, factor) // index, with _mul's charges inline: Budget.product's work unit and its bound
+        # on the operands' bits (both are positive), then Budget.check_int's bound on the product.
+        factor = n - k + index
+        tick()
+        if value.bit_length() + factor.bit_length() > max_bits + 1:
+            raise ResourceLimitError("Computation limit exceeded: product integer bits")
+        value *= factor
+        if value.bit_length() > max_bits:
+            raise ResourceLimitError("Computation limit exceeded: integer bits")
+        value //= index
     return value
 
 
@@ -151,8 +162,17 @@ def _check_choose(n, k, value):
     if k > n:
         return value == 0
     k = min(k, n - k)
+    budget = current_budget()
+    tick, max_bits = budget.tick, budget.limits.max_integer_bits
     for index in range(k, 0, -1):
-        dividend = _mul(value, index)
+        # dividend = _mul(value, index), with _mul's charges inline as in _choose; Budget.product leaves out the
+        # bound on the operands' bits when one of them is 0.
+        tick()
+        if value and value.bit_length() + index.bit_length() > max_bits + 1:
+            raise ResourceLimitError("Computation limit exceeded: product integer bits")
+        dividend = value * index
+        if dividend.bit_length() > max_bits:
+            raise ResourceLimitError("Computation limit exceeded: integer bits")
         value, remainder = divmod(dividend, n - k + index)
         if remainder:
             return False

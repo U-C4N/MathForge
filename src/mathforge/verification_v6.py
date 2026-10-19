@@ -11,16 +11,16 @@ from .errors import InvalidInput, MathForgeError
 from .limits import ResourceLimitError, computation
 from .operations import _safe_context
 from .operations_v6 import source_context, validate_arguments
-from .verification_v2 import _symbol_consistency
+from .verification_v5 import _symbol_consistency
 
 
 def _check(claim, passed, details=""):
-    return c.Check(claim, c.CheckStatus.VERIFIED if passed else c.CheckStatus.FAILED,
-                   c.VerificationLevel.ALGORITHMIC_CHECK, "independent_v6_check", details=details)
+    return c._trusted_check(claim, c.CheckStatus.VERIFIED if passed else c.CheckStatus.FAILED,
+                            c.VerificationLevel.ALGORITHMIC_CHECK, "independent_v6_check", details)
 
 
 def _unknown(claim, details):
-    return c.Check(claim, c.CheckStatus.UNKNOWN, c.VerificationLevel.NONE, "verification_scope", details=details)
+    return c._trusted_check(claim, c.CheckStatus.UNKNOWN, c.VerificationLevel.NONE, "verification_scope", details)
 
 
 def _source(result, request, args):
@@ -85,9 +85,9 @@ def verify_result(result, *, limits=None):
             budget.inspect(result, evidence=True)
             request = result.request
             if type(request) is not c.OperationRequest:
-                return c.VerificationReport((_check("result.request", False),))
+                return c._trusted_report((_check("result.request", False),))
             if request.operation not in registry.operation_arguments(6):
-                return c.VerificationReport((_unknown("result.operation", "unknown v6 operation"),))
+                return c._trusted_report((_unknown("result.operation", "unknown v6 operation"),))
             args = dict(request.arguments)
             validate_arguments(request.operation, args)
             checks = [_check("result.source", _source(result, request, args))]
@@ -105,8 +105,8 @@ def verify_result(result, *, limits=None):
                 checks.append(_check("result.trace", connected))
                 if connected:
                     checks.append(_mathematics(request, args, result))
-            return c.VerificationReport(tuple(checks))
+            return c._trusted_report(tuple(checks))
     except (ResourceLimitError, RecursionError) as exc:
-        return c.VerificationReport((_unknown("result.resources", str(exc)),))
+        return c._trusted_report((_unknown("result.resources", str(exc)),))
     except (MathForgeError, ArithmeticError, AttributeError, IndexError, KeyError, TypeError, ValueError) as exc:
-        return c.VerificationReport((_check("result.validity", False, str(exc)),))
+        return c._trusted_report((_check("result.validity", False, str(exc)),))

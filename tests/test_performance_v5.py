@@ -62,15 +62,16 @@ class ExactPerformanceTests(unittest.TestCase):
                          ((Rational(0), Rational(0)), (Rational(2), Rational(2))))
 
     def test_work_and_refinement_failures_remain_local(self):
+        # v0.8 fast Rational arithmetic: rref needs 33 work units (v0.7: 251), isolation 763 (v0.7: 4,821).
         with self.assertRaises(ResourceLimitError):
-            reduce_with_trace(self.matrix, limits=ComputationLimits(max_work=200))
-        for limits in (ComputationLimits(max_work=4_000), ComputationLimits(max_refinements=10)):
+            reduce_with_trace(self.matrix, limits=ComputationLimits(max_work=25))
+        for limits in (ComputationLimits(max_work=600), ComputationLimits(max_refinements=10)):
             with self.subTest(limits=limits), self.assertRaises(ResourceLimitError):
                 isolate_real_roots(self.polynomial, limits=limits)
         # A failed call cannot populate a cache that bypasses the next budget.
         for _ in range(2):
             with self.assertRaises(ResourceLimitError):
-                isolate_real_roots(self.polynomial, limits=ComputationLimits(max_work=4_000))
+                isolate_real_roots(self.polynomial, limits=ComputationLimits(max_work=600))
         self.assertEqual(len(isolate_real_roots(self.polynomial,
                                               limits=ComputationLimits(max_work=6_000))), 5)
 

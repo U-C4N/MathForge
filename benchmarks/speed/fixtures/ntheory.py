@@ -6,8 +6,8 @@ realistic ones, a size a student, an engineer or an agent would use and a scaled
 * ``micro``: the smallest inputs that still make 2,048 *distinct* calls of one shape, for example
   ``integer_gcd(84 + 6*i, 30 + 6*i)``. Distinct inputs matter: a suite sample makes k consecutive calls, and a repeated
   input would be answered from a cache (SymPy's ``cacheit``, the ``lru_cache`` of ``igcd``) instead of being computed.
-  ``ilcm`` ends in ``igcd``, which keeps 1,024 results that ``clear_cache()`` does not empty, so the lcm fixtures have
-  more than 1,024 variants even when they are not micro fixtures.
+  ``igcd`` keeps 1,024 results that ``clear_cache()`` does not empty, and ``ilcm`` ends in ``igcd``, so the gcd and
+  lcm fixtures have more than 1,024 variants even when they are not micro fixtures.
 * ``realistic``, plausible: RSA-sized moduli, a CRT over 128 primes, a Mersenne modulus, the v0.7 case
   ``factor_integer(600851475143)``.
 * ``realistic``, scaled: the same operation near the largest size the default limits allow (65,536 bits) and that v0.7
@@ -28,61 +28,77 @@ MICRO = 2048
 BIG = 1 << 140000  # 140,001 bits: more than twice max_integer_bits (65,536), so clearly over the limit
 TINY = {"max_integer_bits": 1}  # every integer of two or more bits is over this explicit limit
 
-# The SymPy call each fixture is timed against, then the other candidates measured on the same inputs. A candidate is a
-# SymPy call that returns the same mathematical object (checked with agree). The fastest candidate is chosen, but the
-# documented top-level function wins any tie within 30%. Medians are microseconds per call over three interleaved
-# passes of 11 to 100 samples (k consecutive variants per sample, SymPy caches cleared before every sample,
-# SYMPY_GROUND_TYPES=python) on a machine that other jobs share: differences under about 30% are noise.
-# "not counted" marks a formula or an alias that is not a SymPy call for the operation.
+# The SymPy call each fixture is timed against, then the other candidates measured on the same inputs. A candidate is
+# a SymPy-level public function or method that a user calls for the operation and that returns the same mathematical
+# object (checked with agree): igcd, factorial(Integer), the sympy.stats functions. Scalar domain-element primitives
+# (ZZ.gcd, ZZ.factorial, QQ and PythonMPQ arithmetic) are ground arithmetic and never count, like dup_*, dmp_* and
+# gf_*. Where SymPy has no call for the operation, the reference is the shortest expression a SymPy user would write
+# with SymPy objects (Rational, Integer, sqrt), inputs prebuilt. The fastest candidate is chosen, but the documented
+# top-level function wins any tie within 30%. Medians are microseconds per call over three interleaved passes of 11 to
+# 100 samples (k consecutive variants per sample, SymPy caches cleared before every sample, SYMPY_GROUND_TYPES=python)
+# on a machine that other jobs share: differences under about 30% are noise.
+# "not counted" marks a formula, an alias or a domain-element primitive that is not a candidate.
 _REFERENCE = {
     "integer_gcd/micro/pairs": (
-        "ZZ.gcd(a, b): 0.117 us; other candidates: igcd.__wrapped__ (no lru) 0.494 us; igcd(Integer, "
-        "Integer) 0.9 us; Integer.gcd 1.99 us; gcd(Integer, Integer) 70.9 us; not counted: igcd2 / "
-        "sympy.external.gmpy.gcd (math.gcd alias) 0.0859 us. igcd keeps an lru_cache that clear_cache() "
-        "leaves alone (emptied before every sample here); igcd2, an alias of math.gcd, is not a "
-        "documented SymPy call"),
+        "igcd(a, b): 0.645 us; other candidates: igcd(Integer, Integer) 0.924 us; Integer.gcd 2.07 us; "
+        "gcd(Integer, Integer) 71.4 us; not counted: igcd2 / sympy.external.gmpy.gcd (math.gcd alias) "
+        "0.0875 us; ZZ.gcd (domain-element primitive) 0.119 us; igcd.__wrapped__ (igcd without its lru; "
+        "not what a user calls) 0.495 us. igcd keeps an lru_cache of 1,024 results that clear_cache() "
+        "leaves alone (emptied before every sample here), so the fixtures have more than 1,024 variants; "
+        "ZZ.gcd and igcd2 are math.gcd, ground arithmetic, not counted"),
     "integer_gcd/realistic/rsa_moduli": (
-        "ZZ.gcd(a, b): 8.65 us; other candidates: igcd.__wrapped__ (no lru) 9.01 us; igcd(Integer, "
-        "Integer) 9.86 us; Integer.gcd 13.9 us; gcd(Integer, Integer) 98.8 us; not counted: igcd2 / "
-        "sympy.external.gmpy.gcd (math.gcd alias) 8.59 us. igcd keeps an lru_cache that clear_cache() "
-        "leaves alone (emptied before every sample here); igcd2, an alias of math.gcd, is not a "
-        "documented SymPy call"),
+        "igcd(a, b): 9.82 us; other candidates: igcd(Integer, Integer) 10.2 us; Integer.gcd 13.8 us; "
+        "gcd(Integer, Integer) 100 us; not counted: igcd2 / sympy.external.gmpy.gcd (math.gcd alias) 8.66 "
+        "us; ZZ.gcd (domain-element primitive) 8.72 us; igcd.__wrapped__ (igcd without its lru; not what "
+        "a user calls) 9.12 us. igcd keeps an lru_cache of 1,024 results that clear_cache() leaves alone "
+        "(emptied before every sample here), so the fixtures have more than 1,024 variants; ZZ.gcd and "
+        "igcd2 are math.gcd, ground arithmetic, not counted"),
     "integer_gcd/realistic/bits30000": (
-        "ZZ.gcd(a, b): 1.16 ms; other candidates: igcd(Integer, Integer) 1.19 ms; igcd.__wrapped__ (no "
-        "lru) 1.2 ms; Integer.gcd 1.21 ms; gcd(Integer, Integer) 1.32 ms; not counted: igcd2 / "
-        "sympy.external.gmpy.gcd (math.gcd alias) 1.18 ms. igcd keeps an lru_cache that clear_cache() "
-        "leaves alone (emptied before every sample here); igcd2, an alias of math.gcd, is not a "
-        "documented SymPy call"),
+        "igcd(a, b): 1.17 ms; other candidates: Integer.gcd 1.2 ms; igcd(Integer, Integer) 1.21 ms; "
+        "gcd(Integer, Integer) 1.35 ms; not counted: igcd.__wrapped__ (igcd without its lru; not what a "
+        "user calls) 1.15 ms; ZZ.gcd (domain-element primitive) 1.15 ms; igcd2 / sympy.external.gmpy.gcd "
+        "(math.gcd alias) 1.16 ms. igcd keeps an lru_cache of 1,024 results that clear_cache() leaves "
+        "alone (emptied before every sample here), so the fixtures have more than 1,024 variants; ZZ.gcd "
+        "and igcd2 are math.gcd, ground arithmetic, not counted"),
     "integer_lcm/micro/pairs": (
-        "ilcm(a, b): 0.538 us; other candidates: ZZ.lcm 0.572 us; ilcm(Integer, Integer) 0.668 us; "
-        "Integer.lcm 3.32 us; lcm(Integer, Integer) 79.2 us. ilcm calls igcd, whose lru_cache holds 1,024 "
-        "results, so the fixtures have more than 1,024 variants"),
+        "ilcm(a, b): 0.538 us; other candidates: ilcm(Integer, Integer) 0.668 us; Integer.lcm 3.32 us; "
+        "lcm(Integer, Integer) 79.2 us; not counted: ZZ.lcm (domain-element primitive) 0.572 us. ilcm "
+        "calls igcd, whose lru_cache holds 1,024 results, so the fixtures have more than 1,024 variants; "
+        "ZZ.lcm is a domain-element primitive, not counted"),
     "integer_lcm/realistic/rsa_moduli": (
-        "ilcm(a, b): 13 us; other candidates: ilcm(Integer, Integer) 13.1 us; ZZ.lcm 13.1 us; Integer.lcm "
-        "18 us; lcm(Integer, Integer) 106 us. ilcm calls igcd, whose lru_cache holds 1,024 results, so "
-        "the fixtures have more than 1,024 variants"),
+        "ilcm(a, b): 13 us; other candidates: ilcm(Integer, Integer) 13.1 us; Integer.lcm 18 us; "
+        "lcm(Integer, Integer) 106 us; not counted: ZZ.lcm (domain-element primitive) 13.1 us. ilcm calls "
+        "igcd, whose lru_cache holds 1,024 results, so the fixtures have more than 1,024 variants; ZZ.lcm "
+        "is a domain-element primitive, not counted"),
     "integer_lcm/realistic/bits20000": (
-        "ilcm(a, b): 738 us; other candidates: ilcm(Integer, Integer) 740 us; Integer.lcm 765 us; ZZ.lcm "
-        "814 us; lcm(Integer, Integer) 861 us. ilcm calls igcd, whose lru_cache holds 1,024 results, so "
-        "the fixtures have more than 1,024 variants"),
+        "ilcm(a, b): 738 us; other candidates: ilcm(Integer, Integer) 740 us; Integer.lcm 765 us; "
+        "lcm(Integer, Integer) 861 us; not counted: ZZ.lcm (domain-element primitive) 814 us. ilcm calls "
+        "igcd, whose lru_cache holds 1,024 results, so the fixtures have more than 1,024 variants; ZZ.lcm "
+        "is a domain-element primitive, not counted"),
     "integer_xgcd/micro/pairs": (
-        "igcdex(a, b): 0.837 us; other candidates: igcdex(Integer, Integer) 0.928 us; ZZ.gcdex 0.929 us; "
-        "gcdex(Integer, Integer) 81 us"),
+        "igcdex(a, b): 0.837 us; other candidates: igcdex(Integer, Integer) 0.928 us; gcdex(Integer, "
+        "Integer) 81 us; not counted: ZZ.gcdex (domain-element primitive) 0.929 us. ZZ.gcdex is a "
+        "domain-element primitive, not counted"),
     "integer_xgcd/realistic/bits4096": (
-        "igcdex(a, b): 1.87 ms; other candidates: ZZ.gcdex 1.83 ms; igcdex(Integer, Integer) 1.85 ms; "
-        "gcdex(Integer, Integer) 1.95 ms"),
+        "igcdex(a, b): 1.87 ms; other candidates: igcdex(Integer, Integer) 1.85 ms; gcdex(Integer, "
+        "Integer) 1.95 ms; not counted: ZZ.gcdex (domain-element primitive) 1.83 ms. ZZ.gcdex is a "
+        "domain-element primitive, not counted"),
     "integer_xgcd/realistic/bits16000": (
-        "igcdex(a, b): 21.7 ms; other candidates: gcdex(Integer, Integer) 21.4 ms; ZZ.gcdex 22.1 ms; "
-        "igcdex(Integer, Integer) 22.3 ms"),
+        "igcdex(a, b): 21.7 ms; other candidates: gcdex(Integer, Integer) 21.4 ms; igcdex(Integer, "
+        "Integer) 22.3 ms; not counted: ZZ.gcdex (domain-element primitive) 22.1 ms. ZZ.gcdex is a "
+        "domain-element primitive, not counted"),
     "mod_inverse/micro/prime_modulus": (
-        "mod_inverse(a, m): 1.71 us; other candidates: ZZ.invert 1.57 us; mod_inverse(Integer, Integer) "
-        "1.84 us; invert(Integer, Integer) 76.2 us"),
+        "mod_inverse(a, m): 1.71 us; other candidates: mod_inverse(Integer, Integer) 1.84 us; "
+        "invert(Integer, Integer) 76.2 us; not counted: ZZ.invert (domain-element primitive) 1.57 us. "
+        "ZZ.invert is a domain-element primitive, not counted"),
     "mod_inverse/realistic/mersenne4423": (
-        "mod_inverse(a, m): 2.12 ms; other candidates: mod_inverse(Integer, Integer) 2.12 ms; ZZ.invert "
-        "2.16 ms; invert(Integer, Integer) 2.27 ms"),
+        "mod_inverse(a, m): 2.12 ms; other candidates: mod_inverse(Integer, Integer) 2.12 ms; "
+        "invert(Integer, Integer) 2.27 ms; not counted: ZZ.invert (domain-element primitive) 2.16 ms. "
+        "ZZ.invert is a domain-element primitive, not counted"),
     "mod_inverse/realistic/mersenne19937": (
-        "mod_inverse(a, m): 31.5 ms; other candidates: mod_inverse(Integer, Integer) 31.6 ms; ZZ.invert "
-        "31.6 ms; invert(Integer, Integer) 31.9 ms"),
+        "mod_inverse(a, m): 31.5 ms; other candidates: mod_inverse(Integer, Integer) 31.6 ms; "
+        "invert(Integer, Integer) 31.9 ms; not counted: ZZ.invert (domain-element primitive) 31.6 ms. "
+        "ZZ.invert is a domain-element primitive, not counted"),
     "crt/micro/three_moduli": (
         "crt(m, v, check=False): 3.65 us; other candidates: crt(m, v, check=True) 5.67 us; "
         "solve_congruence(*pairs) 8.35 us; crt(Integer lists, check=False) 23 us"),
@@ -279,12 +295,11 @@ def _same_divisors(m, s):
 # SymPy builders: variant i -> the timed zero-argument call, inputs prebuilt. SymPy is imported here and nowhere else.
 
 
-def _sp_gcd(inputs):
+def _sp_igcd(inputs):
     def build(i):
-        from sympy import ZZ
+        from sympy import igcd
         a, b = inputs(i)
-        gcd = ZZ.gcd
-        return lambda: gcd(a, b)
+        return lambda: igcd(a, b)
     return build
 
 
@@ -365,11 +380,11 @@ def _mf_one(function, number):
 
 FIXTURES = (
     # integer_gcd -----------------------------------------------------------------------------------------------------
-    _fixture("integer_gcd", "micro", "pairs", _mf_pair(mf.integer_gcd, _small_pair), _sp_gcd(_small_pair),
+    _fixture("integer_gcd", "micro", "pairs", _mf_pair(mf.integer_gcd, _small_pair), _sp_igcd(_small_pair),
              _same_int, variants=MICRO),
-    _fixture("integer_gcd", "realistic", "rsa_moduli", _mf_pair(mf.integer_gcd, _rsa_pair), _sp_gcd(_rsa_pair),
+    _fixture("integer_gcd", "realistic", "rsa_moduli", _mf_pair(mf.integer_gcd, _rsa_pair), _sp_igcd(_rsa_pair),
              _same_int, variants=MICRO),
-    _fixture("integer_gcd", "realistic", "bits30000", _mf_pair(mf.integer_gcd, _gcd_big_pair), _sp_gcd(_gcd_big_pair),
+    _fixture("integer_gcd", "realistic", "bits30000", _mf_pair(mf.integer_gcd, _gcd_big_pair), _sp_igcd(_gcd_big_pair),
              _same_int, variants=1100),
     # integer_lcm -----------------------------------------------------------------------------------------------------
     _fixture("integer_lcm", "micro", "pairs", _mf_pair(mf.integer_lcm, _small_pair), _sp_ilcm(_small_pair),

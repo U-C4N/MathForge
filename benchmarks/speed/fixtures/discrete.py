@@ -23,27 +23,32 @@ MICRO = 1024
 BIG = 1 << 140000  # 140,001 bits: more than twice max_integer_bits (65,536), so clearly over the limit
 TINY = {"max_integer_bits": 1}  # every integer of two or more bits is over this explicit limit
 
-# The SymPy call each fixture is timed against, then the other candidates measured on the same inputs. A candidate is a
-# SymPy call that returns the same mathematical object (checked with agree). The fastest candidate is chosen, but the
-# documented top-level function wins any tie within 30%. Medians are microseconds per call over three interleaved
-# passes of 11 to 100 samples (k consecutive variants per sample, SymPy caches cleared before every sample,
-# SYMPY_GROUND_TYPES=python) on a machine that other jobs share: differences under about 30% are noise.
-# "not counted" marks a formula or an alias that is not a SymPy call for the operation.
+# The SymPy call each fixture is timed against, then the other candidates measured on the same inputs. A candidate is
+# a SymPy-level public function or method that a user calls for the operation and that returns the same mathematical
+# object (checked with agree): igcd, factorial(Integer), the sympy.stats functions. Scalar domain-element primitives
+# (ZZ.gcd, ZZ.factorial, QQ and PythonMPQ arithmetic) are ground arithmetic and never count, like dup_*, dmp_* and
+# gf_*. Where SymPy has no call for the operation, the reference is the shortest expression a SymPy user would write
+# with SymPy objects (Rational, Integer, sqrt), inputs prebuilt. The fastest candidate is chosen, but the documented
+# top-level function wins any tie within 30%. Medians are microseconds per call over three interleaved passes of 11 to
+# 100 samples (k consecutive variants per sample, SymPy caches cleared before every sample, SYMPY_GROUND_TYPES=python)
+# on a machine that other jobs share: differences under about 30% are noise.
+# "not counted" marks a formula, an alias or a domain-element primitive that is not a candidate.
 _REFERENCE = {
     "factorial/micro/range_5_to_1004": (
-        "ZZ.factorial(n): 0.24 us; other candidates: factorial(Integer(n)) 91.5 us; ff(n, n) "
-        "(FallingFactorial, n! as n(n-1)...1) 107 us; factorial(int) 193 us. ZZ.factorial is mpmath's "
-        "ifac, which keeps the factorials up to 1,000 in a table that clear_cache() cannot empty (the "
-        "cache symmetry rule lets MathForge keep a verified table too); above 1,000 factorial(Integer(n)) "
-        "is faster"),
+        "factorial(Integer(n)): 88 us; other candidates: ff(n, n) (FallingFactorial, n! as n(n-1)...1) "
+        "98.8 us; factorial(int) 203 us; not counted: ZZ.factorial(n) (domain-element primitive: mpmath's "
+        "ifac, memoized up to 1,000) 0.289 us. ZZ.factorial is a domain-element primitive (mpmath's ifac, "
+        "a table up to 1,000), not counted"),
     "factorial/realistic/n2000": (
-        "factorial(Integer(n)): 449 us; other candidates: ff(n, n) (FallingFactorial, n! as n(n-1)...1) "
-        "447 us; ZZ.factorial(n) (domain method: mpmath's ifac, memoized up to 1,000) 569 us; "
-        "factorial(int) 572 us"),
+        "factorial(Integer(n)): 458 us; other candidates: ff(n, n) (FallingFactorial, n! as n(n-1)...1) "
+        "468 us; factorial(int) 579 us; not counted: ZZ.factorial(n) (domain-element primitive: mpmath's "
+        "ifac, memoized up to 1,000) 582 us. ZZ.factorial is a domain-element primitive (mpmath's ifac, a "
+        "table up to 1,000), not counted"),
     "factorial/realistic/n5000": (
-        "factorial(Integer(n)): 1.01 ms; other candidates: ff(n, n) (FallingFactorial, n! as n(n-1)...1) "
-        "1.02 ms; factorial(int) 1.15 ms; ZZ.factorial(n) (domain method: mpmath's ifac, memoized up to "
-        "1,000) 4.37 ms"),
+        "factorial(Integer(n)): 1.04 ms; other candidates: ff(n, n) (FallingFactorial, n! as n(n-1)...1) "
+        "1.05 ms; factorial(int) 1.18 ms; not counted: ZZ.factorial(n) (domain-element primitive: "
+        "mpmath's ifac, memoized up to 1,000) 4.32 ms. ZZ.factorial is a domain-element primitive "
+        "(mpmath's ifac, a table up to 1,000), not counted"),
     "binomial/micro/triangle": (
         "binomial(Integer(n), Integer(k)): 174 us; other candidates: nC(int, int) 194 us; binomial(int, "
         "int) 216 us"),
@@ -155,16 +160,6 @@ def _sp_factorial(number):
     return build
 
 
-def _sp_zz_factorial(number):
-    """ZZ.factorial is mpmath's ifac, which keeps the factorials up to 1,000 in a table for the whole process."""
-    def build(i):
-        from sympy import ZZ
-        n = number(i)
-        factorial = ZZ.factorial
-        return lambda: factorial(n)
-    return build
-
-
 def _sp_binomial(inputs):
     def build(i):
         from sympy import Integer, binomial
@@ -258,7 +253,7 @@ def _mf_pair(function, inputs):
 FIXTURES = (
     # factorial -------------------------------------------------------------------------------------------------------
     _fixture("factorial", "micro", "range_5_to_1004", _mf_one(mf.factorial, _range_n(5)),
-             _sp_zz_factorial(_range_n(5)), _same_int, variants=1000),
+             _sp_factorial(_range_n(5)), _same_int, variants=1000),
     _fixture("factorial", "realistic", "n2000", _mf_one(mf.factorial, lambda i: 2000),
              _sp_factorial(lambda i: 2000), _same_int),
     _fixture("factorial", "realistic", "n5000", _mf_one(mf.factorial, lambda i: 5000),

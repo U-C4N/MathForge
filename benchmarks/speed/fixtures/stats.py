@@ -16,9 +16,9 @@ agent would use and a scaled one.
   fraction of a second: its median checker is quadratic (0.7 s for 500 values).
 
 SymPy has no sample statistics, so ``mean``, ``median``, ``variance``, ``stddev`` and ``covariance`` are timed against
-plain arithmetic (the fastest formula measured) on prebuilt ``QQ(p, q)`` elements, the documented PythonMPQ objects of
-SymPy's rational domain, which compute 3 to 13 times faster than ``sympy.Rational``; every distribution operation is
-timed against the matching ``sympy.stats`` call on a prebuilt ``FiniteRV`` that carries the same PMF.
+the shortest expression a SymPy user would write (the fastest of the formulas measured) on prebuilt ``sympy.Rational``
+objects, with ``sympy.sqrt`` for the standard deviation; every distribution operation is timed against the matching
+``sympy.stats`` call on a prebuilt ``FiniteRV`` that carries the same PMF.
 """
 
 from __future__ import annotations
@@ -34,12 +34,16 @@ BIG = 1 << 140000  # 140,001 bits: more than twice max_integer_bits (65,536), so
 TINY = {"max_integer_bits": 1, "max_nodes": 1, "max_work": 1}  # an explicit limit that every input below exceeds
 R = mf.Rational
 
-# The SymPy call each fixture is timed against, then the other candidates measured on the same inputs. A candidate is a
-# SymPy call that returns the same mathematical object (checked with agree). The fastest candidate is chosen, but the
-# documented top-level function wins any tie within 30%. Medians are microseconds per call over three interleaved
-# passes of 11 to 100 samples (k consecutive variants per sample, SymPy caches cleared before every sample,
-# SYMPY_GROUND_TYPES=python) on a machine that other jobs share: differences under about 30% are noise.
-# "not counted" marks a formula or an alias that is not a SymPy call for the operation.
+# The SymPy call each fixture is timed against, then the other candidates measured on the same inputs. A candidate is
+# a SymPy-level public function or method that a user calls for the operation and that returns the same mathematical
+# object (checked with agree): igcd, factorial(Integer), the sympy.stats functions. Scalar domain-element primitives
+# (ZZ.gcd, ZZ.factorial, QQ and PythonMPQ arithmetic) are ground arithmetic and never count, like dup_*, dmp_* and
+# gf_*. Where SymPy has no call for the operation, the reference is the shortest expression a SymPy user would write
+# with SymPy objects (Rational, Integer, sqrt), inputs prebuilt. The fastest candidate is chosen, but the documented
+# top-level function wins any tie within 30%. Medians are microseconds per call over three interleaved passes of 11 to
+# 100 samples (k consecutive variants per sample, SymPy caches cleared before every sample, SYMPY_GROUND_TYPES=python)
+# on a machine that other jobs share: differences under about 30% are noise.
+# "not counted" marks a formula, an alias or a domain-element primitive that is not a candidate.
 _REFERENCE = {
     "bernoulli/micro/p_over_1031": (
         "density(Bernoulli('X', p)).dict: 52.4 us; not counted: BernoulliDistribution(p, 1, 0).dict "
@@ -148,77 +152,92 @@ _REFERENCE = {
         "variance(X): 51.6 ms; not counted: moment(X, 2) - E(X)**2 (composite) 36.3 ms; "
         "X.pspace.compute_expectation((X - E)**2) (composite) 43 ms"),
     "mean/micro/five_values": (
-        "sum(data) / n on PythonMPQ elements QQ(p, q): 2.55 us; other candidates: sum(data) / n on "
-        "sympy.Rational 10.6 us; Add(*data) / n on sympy.Rational 27.4 us. SymPy has no sample "
-        "statistics; PythonMPQ (QQ elements) is the documented rational type of SymPy's domains and "
-        "computes 3 to 13 times faster than sympy.Rational"),
+        "sum(data) / n on sympy.Rational: 4.98 us; other candidates: Add(*data) / n 25.4 us; "
+        "Mul(Add(*data), Rational(1, n)) 41.8 us; not counted: sum(data) / n on PythonMPQ (ground "
+        "arithmetic) 2.6 us. SymPy has no sample statistics: the fastest of the expressions a SymPy user "
+        "would write on prebuilt sympy.Rational; PythonMPQ (QQ) arithmetic is ground arithmetic, not "
+        "counted"),
     "mean/realistic/values_200": (
-        "sum(data) / n on PythonMPQ elements QQ(p, q): 109 us; other candidates: sum(data) / n on "
-        "sympy.Rational 542 us; Add(*data) / n on sympy.Rational 758 us. SymPy has no sample statistics; "
-        "PythonMPQ (QQ elements) is the documented rational type of SymPy's domains and computes 3 to 13 "
-        "times faster than sympy.Rational"),
+        "sum(data) / n on sympy.Rational: 530 us; other candidates: Add(*data) / n 740 us; "
+        "Mul(Add(*data), Rational(1, n)) 778 us; not counted: sum(data) / n on PythonMPQ (ground "
+        "arithmetic) 105 us. SymPy has no sample statistics: the fastest of the expressions a SymPy user "
+        "would write on prebuilt sympy.Rational; PythonMPQ (QQ) arithmetic is ground arithmetic, not "
+        "counted"),
     "mean/realistic/values_500": (
-        "sum(data) / n on PythonMPQ elements QQ(p, q): 253 us; other candidates: sum(data) / n on "
-        "sympy.Rational 1.26 ms; Add(*data) / n on sympy.Rational 1.78 ms. SymPy has no sample "
-        "statistics; PythonMPQ (QQ elements) is the documented rational type of SymPy's domains and "
-        "computes 3 to 13 times faster than sympy.Rational"),
+        "sum(data) / n on sympy.Rational: 1.25 ms; other candidates: Add(*data) / n 1.72 ms; "
+        "Mul(Add(*data), Rational(1, n)) 1.75 ms; not counted: sum(data) / n on PythonMPQ (ground "
+        "arithmetic) 246 us. SymPy has no sample statistics: the fastest of the expressions a SymPy user "
+        "would write on prebuilt sympy.Rational; PythonMPQ (QQ) arithmetic is ground arithmetic, not "
+        "counted"),
     "median/micro/five_values": (
-        "sorted(data), then the middle element or the mean of the two, on PythonMPQ elements: 1.21 us; "
-        "other candidates: sorted(data) on sympy.Rational 11.7 us. SymPy has no sample statistics; "
-        "PythonMPQ (QQ elements) is the documented rational type of SymPy's domains and sorts 13 times "
-        "faster than sympy.Rational"),
+        "sorted(data), then the middle element or the mean of the two, on sympy.Rational: 11.5 us; not "
+        "counted: sorted(data) on PythonMPQ (ground arithmetic) 1.29 us. SymPy has no sample statistics: "
+        "the expression a SymPy user would write on prebuilt sympy.Rational; PythonMPQ (QQ) arithmetic is "
+        "ground arithmetic, not counted"),
     "median/realistic/values_200": (
-        "sorted(data), then the middle element or the mean of the two, on PythonMPQ elements: 255 us; "
-        "other candidates: sorted(data) on sympy.Rational 2.76 ms. SymPy has no sample statistics; "
-        "PythonMPQ (QQ elements) is the documented rational type of SymPy's domains and sorts 13 times "
-        "faster than sympy.Rational"),
+        "sorted(data), then the middle element or the mean of the two, on sympy.Rational: 2.69 ms; not "
+        "counted: sorted(data) on PythonMPQ (ground arithmetic) 248 us. SymPy has no sample statistics: "
+        "the expression a SymPy user would write on prebuilt sympy.Rational; PythonMPQ (QQ) arithmetic is "
+        "ground arithmetic, not counted"),
     "median/realistic/values_500": (
-        "sorted(data), then the middle element or the mean of the two, on PythonMPQ elements: 734 us; "
-        "other candidates: sorted(data) on sympy.Rational 8.53 ms. SymPy has no sample statistics; "
-        "PythonMPQ (QQ elements) is the documented rational type of SymPy's domains and sorts 13 times "
-        "faster than sympy.Rational"),
+        "sorted(data), then the middle element or the mean of the two, on sympy.Rational: 8.85 ms; not "
+        "counted: sorted(data) on PythonMPQ (ground arithmetic) 733 us. SymPy has no sample statistics: "
+        "the expression a SymPy user would write on prebuilt sympy.Rational; PythonMPQ (QQ) arithmetic is "
+        "ground arithmetic, not counted"),
     "variance/micro/five_values": (
-        "(sum(x*x) - sum(x)**2 / n) / (n - ddof) on PythonMPQ elements: 9.25 us; other candidates: "
-        "two-pass (x - mean)*(x - mean) on PythonMPQ 14.7 us; one-pass on sympy.Rational 39.6 us. SymPy "
-        "has no sample statistics; PythonMPQ (QQ elements) is the documented rational type of SymPy's "
-        "domains and computes 3 to 13 times faster than sympy.Rational"),
+        "(sum(x*x) - sum(x)**2 / n) / (n - ddof) on sympy.Rational: 39.5 us; other candidates: two-pass "
+        "(x - m)*(x - m) 63 us; one-pass Add(*[x*x]) - Add(*data)**2 / n 203 us; two-pass (x - m)**2 556 "
+        "us; not counted: one-pass on PythonMPQ (ground arithmetic) 9.49 us. SymPy has no sample "
+        "statistics: the fastest of the expressions a SymPy user would write on prebuilt sympy.Rational; "
+        "PythonMPQ (QQ) arithmetic is ground arithmetic, not counted"),
     "variance/realistic/values_200": (
-        "(sum(x*x) - sum(x)**2 / n) / (n - ddof) on PythonMPQ elements: 338 us; other candidates: "
-        "two-pass (x - mean)*(x - mean) on PythonMPQ 543 us; one-pass on sympy.Rational 1.65 ms. SymPy "
-        "has no sample statistics; PythonMPQ (QQ elements) is the documented rational type of SymPy's "
-        "domains and computes 3 to 13 times faster than sympy.Rational"),
+        "(sum(x*x) - sum(x)**2 / n) / (n - ddof) on sympy.Rational: 1.65 ms; other candidates: one-pass "
+        "Add(*[x*x]) - Add(*data)**2 / n 2.23 ms; two-pass (x - m)*(x - m) 2.33 ms; two-pass (x - m)**2 "
+        "20.8 ms; not counted: one-pass on PythonMPQ (ground arithmetic) 338 us. SymPy has no sample "
+        "statistics: the fastest of the expressions a SymPy user would write on prebuilt sympy.Rational; "
+        "PythonMPQ (QQ) arithmetic is ground arithmetic, not counted"),
     "variance/realistic/values_500": (
-        "(sum(x*x) - sum(x)**2 / n) / (n - ddof) on PythonMPQ elements: 824 us; other candidates: "
-        "two-pass (x - mean)*(x - mean) on PythonMPQ 1.34 ms; one-pass on sympy.Rational 4.09 ms. SymPy "
-        "has no sample statistics; PythonMPQ (QQ elements) is the documented rational type of SymPy's "
-        "domains and computes 3 to 13 times faster than sympy.Rational"),
+        "(sum(x*x) - sum(x)**2 / n) / (n - ddof) on sympy.Rational: 4.16 ms; other candidates: one-pass "
+        "Add(*[x*x]) - Add(*data)**2 / n 5.11 ms; two-pass (x - m)*(x - m) 6.06 ms; two-pass (x - m)**2 "
+        "52.6 ms; not counted: one-pass on PythonMPQ (ground arithmetic) 811 us. SymPy has no sample "
+        "statistics: the fastest of the expressions a SymPy user would write on prebuilt sympy.Rational; "
+        "PythonMPQ (QQ) arithmetic is ground arithmetic, not counted"),
     "stddev/micro/five_values": (
-        "sqrt(Rational(v)) for the variance v computed as above on PythonMPQ elements: 465 us; other "
-        "candidates: sqrt(one-pass on sympy.Rational) 493 us. SymPy has no sample statistics; the "
-        "variance is computed on PythonMPQ elements, the root by sympy.sqrt"),
+        "sqrt((sum(x*x) - sum(x)**2 / n) / (n - ddof)) on sympy.Rational: 515 us; other candidates: "
+        "sqrt(two-pass (x - m)*(x - m)) 517 us; sqrt(one-pass Add) 675 us; not counted: sqrt of the "
+        "one-pass variance on PythonMPQ (ground arithmetic) 468 us. SymPy has no sample statistics: "
+        "sympy.sqrt of the fastest variance expression on prebuilt sympy.Rational; PythonMPQ (QQ) "
+        "arithmetic is ground arithmetic, not counted"),
     "stddev/realistic/values_200": (
-        "sqrt(Rational(v)) for the variance v computed as above on PythonMPQ elements: 1.39 ms; other "
-        "candidates: sqrt(one-pass on sympy.Rational) 2.69 ms. SymPy has no sample statistics; the "
-        "variance is computed on PythonMPQ elements, the root by sympy.sqrt"),
+        "sqrt((sum(x*x) - sum(x)**2 / n) / (n - ddof)) on sympy.Rational: 2.75 ms; other candidates: "
+        "sqrt(one-pass Add) 3.21 ms; sqrt(two-pass (x - m)*(x - m)) 3.46 ms; not counted: sqrt of the "
+        "one-pass variance on PythonMPQ (ground arithmetic) 1.36 ms. SymPy has no sample statistics: "
+        "sympy.sqrt of the fastest variance expression on prebuilt sympy.Rational; PythonMPQ (QQ) "
+        "arithmetic is ground arithmetic, not counted"),
     "stddev/realistic/values_500": (
-        "sqrt(Rational(v)) for the variance v computed as above on PythonMPQ elements: 1.81 ms; other "
-        "candidates: sqrt(one-pass on sympy.Rational) 5.13 ms. SymPy has no sample statistics; the "
-        "variance is computed on PythonMPQ elements, the root by sympy.sqrt"),
+        "sqrt((sum(x*x) - sum(x)**2 / n) / (n - ddof)) on sympy.Rational: 5.21 ms; other candidates: "
+        "sqrt(one-pass Add) 6.21 ms; sqrt(two-pass (x - m)*(x - m)) 7.04 ms; not counted: sqrt of the "
+        "one-pass variance on PythonMPQ (ground arithmetic) 1.76 ms. SymPy has no sample statistics: "
+        "sympy.sqrt of the fastest variance expression on prebuilt sympy.Rational; PythonMPQ (QQ) "
+        "arithmetic is ground arithmetic, not counted"),
     "covariance/micro/five_pairs": (
-        "(sum(a*b) - sum(a)*sum(b) / n) / (n - ddof) on PythonMPQ elements: 11.7 us; other candidates: "
-        "two-pass on PythonMPQ 18.3 us; one-pass on sympy.Rational 52.7 us. SymPy has no sample "
-        "statistics; PythonMPQ (QQ elements) is the documented rational type of SymPy's domains and "
-        "computes 3 to 13 times faster than sympy.Rational"),
+        "(sum(a*b) - sum(a)*sum(b) / n) / (n - ddof) on sympy.Rational: 51.9 us; other candidates: "
+        "two-pass (a - mx)*(b - my) 85.9 us; one-pass Add(*[a*b]) - Add(*x)*Add(*y) / n 101 us; not "
+        "counted: one-pass on PythonMPQ (ground arithmetic) 12.2 us. SymPy has no sample statistics: the "
+        "fastest of the expressions a SymPy user would write on prebuilt sympy.Rational; PythonMPQ (QQ) "
+        "arithmetic is ground arithmetic, not counted"),
     "covariance/realistic/pairs_200": (
-        "(sum(a*b) - sum(a)*sum(b) / n) / (n - ddof) on PythonMPQ elements: 440 us; other candidates: "
-        "two-pass on PythonMPQ 647 us; one-pass on sympy.Rational 2.18 ms. SymPy has no sample "
-        "statistics; PythonMPQ (QQ elements) is the documented rational type of SymPy's domains and "
-        "computes 3 to 13 times faster than sympy.Rational"),
+        "(sum(a*b) - sum(a)*sum(b) / n) / (n - ddof) on sympy.Rational: 2.18 ms; other candidates: "
+        "one-pass Add(*[a*b]) - Add(*x)*Add(*y) / n 2.76 ms; two-pass (a - mx)*(b - my) 3.19 ms; not "
+        "counted: one-pass on PythonMPQ (ground arithmetic) 441 us. SymPy has no sample statistics: the "
+        "fastest of the expressions a SymPy user would write on prebuilt sympy.Rational; PythonMPQ (QQ) "
+        "arithmetic is ground arithmetic, not counted"),
     "covariance/realistic/pairs_500": (
-        "(sum(a*b) - sum(a)*sum(b) / n) / (n - ddof) on PythonMPQ elements: 1.1 ms; other candidates: "
-        "two-pass on PythonMPQ 1.65 ms; one-pass on sympy.Rational 5.68 ms. SymPy has no sample "
-        "statistics; PythonMPQ (QQ elements) is the documented rational type of SymPy's domains and "
-        "computes 3 to 13 times faster than sympy.Rational"),
+        "(sum(a*b) - sum(a)*sum(b) / n) / (n - ddof) on sympy.Rational: 5.53 ms; other candidates: "
+        "one-pass Add(*[a*b]) - Add(*x)*Add(*y) / n 6.94 ms; two-pass (a - mx)*(b - my) 8.47 ms; not "
+        "counted: one-pass on PythonMPQ (ground arithmetic) 1.05 ms. SymPy has no sample statistics: the "
+        "fastest of the expressions a SymPy user would write on prebuilt sympy.Rational; PythonMPQ (QQ) "
+        "arithmetic is ground arithmetic, not counted"),
 }
 
 
@@ -389,8 +408,8 @@ def _sp_event(rv, event):
 
 
 def _sp_data(pairs):
-    from sympy import QQ
-    return [QQ(p, q) for p, q in pairs]  # PythonMPQ elements: what SymPy's rational domain computes with
+    from sympy import Rational
+    return [Rational(p, q) for p, q in pairs]
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -567,14 +586,13 @@ def _sp_variance(sample, ddof=0):
 
 def _sp_stddev(sample, ddof=0):
     def build(i):
-        from sympy import Rational, sqrt
+        from sympy import sqrt
         data = _sp_data(sample(i))
         n = len(data)
 
         def stddev():
             total = sum(data)
-            variance = (sum(x * x for x in data) - total * total / n) / (n - ddof)
-            return sqrt(Rational(variance.numerator, variance.denominator))
+            return sqrt((sum(x * x for x in data) - total * total / n) / (n - ddof))
         return stddev
     return build
 

@@ -15,7 +15,11 @@ from typing import Iterable, Mapping
 from uuid import UUID, uuid4
 
 from .errors import InvalidInput, UnsupportedOperation
-from .limits import current_budget
+from .limits import _ACTIVE, ResourceLimitError, _register_rational, current_budget
+
+
+_active_budget = _ACTIVE.get  # The active Budget or None, read once per fast operation.
+_new_object = object.__new__
 
 
 def _extension(value, module, name):
@@ -119,25 +123,43 @@ class Expression:
         return substitute_expression(self, mapping)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True, init=False)
 class Rational(Expression):
+    """An exact rational number in lowest terms with a positive denominator.
+
+    Arithmetic and ordering with another Rational or an int work on the integers directly: each result charges the
+    active budget one work unit and keeps its integers within max_integer_bits. Any other operand, and a subclass
+    receiver, take v0.7's generic Expression path unchanged.
+    """
+
     numerator: int
     denominator: int = 1
 
-    def __post_init__(self):
-        if type(self.numerator) is not int or type(self.denominator) is not int:
+    def __init__(self, numerator: int, denominator: int = 1) -> None:
+        if type(numerator) is not int or type(denominator) is not int:
             raise TypeError("Rational requires exact Python integers, not float or bool")
-        budget = current_budget()
+        budget = _active_budget()
         if budget is not None:
-            budget.tick()
-            budget.check_int(self.numerator)
-            budget.check_int(self.denominator)
-        if self.denominator == 0:
-            raise ZeroDivisionError("rational denominator is zero")
-        divisor = gcd(self.numerator, self.denominator)
-        sign = -1 if self.denominator < 0 else 1
-        object.__setattr__(self, "numerator", sign * self.numerator // divisor)
-        object.__setattr__(self, "denominator", sign * self.denominator // divisor)
+            budget.charge_rational(numerator, denominator)
+        if denominator != 1:
+            if denominator == 0:
+                raise ZeroDivisionError("rational denominator is zero")
+            divisor = gcd(numerator, denominator)
+            if denominator < 0:
+                divisor = -divisor
+            if divisor != 1:
+                numerator //= divisor
+                denominator //= divisor
+        _set_numerator(self, numerator)
+        _set_denominator(self, denominator)
+
+    def __getstate__(self):
+        # v0.7's pickled state was the attribute dict; keeping it lets a pickle load in either version.
+        return {"numerator": self.numerator, "denominator": self.denominator}
+
+    def __setstate__(self, state):
+        _set_numerator(self, state["numerator"])
+        _set_denominator(self, state["denominator"])
 
     def __str__(self):
         if self.denominator == 1:
@@ -148,9 +170,187 @@ class Rational(Expression):
         return self.numerator != 0
 
     def __abs__(self):
-        return Rational(abs(self.numerator), self.denominator)
+        return _exact(abs(self.numerator), self.denominator)
+
+    def __neg__(self):
+        if type(self) is not Rational:
+            return Expression.__neg__(self)
+        return _exact(-self.numerator, self.denominator)
+
+    def __add__(self, other):
+        if type(self) is Rational:
+            kind = type(other)
+            if kind is Rational:
+                na, da, nb, db = self.numerator, self.denominator, other.numerator, other.denominator
+                if da == 1:
+                    return _exact(na + nb, 1) if db == 1 else _exact(na * db + nb, db)
+                if db == 1:
+                    return _exact(na + nb * da, da)
+                divisor = gcd(da, db)
+                if divisor == 1:
+                    return _exact(na * db + nb * da, da * db)
+                scale = da // divisor
+                numerator = na * (db // divisor) + nb * scale
+                common = gcd(numerator, divisor)
+                if common == 1:
+                    return _exact(numerator, scale * db)
+                return _exact(numerator // common, scale * (db // common))
+            if kind is int:
+                da = self.denominator
+                return _exact(self.numerator + other, 1) if da == 1 else _exact(self.numerator + other * da, da)
+        return Expression.__add__(self, other)
+
+    def __radd__(self, other):
+        if type(self) is Rational:
+            kind = type(other)
+            if kind is int:
+                da = self.denominator
+                return _exact(other + self.numerator, 1) if da == 1 else _exact(other * da + self.numerator, da)
+            if kind is Rational:
+                return Rational.__add__(other, self)
+        return Expression.__radd__(self, other)
+
+    def __sub__(self, other):
+        if type(self) is Rational:
+            kind = type(other)
+            if kind is Rational:
+                na, da, nb, db = self.numerator, self.denominator, other.numerator, other.denominator
+                if da == 1:
+                    return _exact(na - nb, 1) if db == 1 else _exact(na * db - nb, db)
+                if db == 1:
+                    return _exact(na - nb * da, da)
+                divisor = gcd(da, db)
+                if divisor == 1:
+                    return _exact(na * db - nb * da, da * db)
+                scale = da // divisor
+                numerator = na * (db // divisor) - nb * scale
+                common = gcd(numerator, divisor)
+                if common == 1:
+                    return _exact(numerator, scale * db)
+                return _exact(numerator // common, scale * (db // common))
+            if kind is int:
+                da = self.denominator
+                return _exact(self.numerator - other, 1) if da == 1 else _exact(self.numerator - other * da, da)
+        return Expression.__sub__(self, other)
+
+    def __rsub__(self, other):
+        if type(self) is Rational:
+            kind = type(other)
+            if kind is int:
+                da = self.denominator
+                return _exact(other - self.numerator, 1) if da == 1 else _exact(other * da - self.numerator, da)
+            if kind is Rational:
+                return Rational.__sub__(other, self)
+        return Expression.__rsub__(self, other)
+
+    def __mul__(self, other):
+        if type(self) is Rational:
+            kind = type(other)
+            if kind is Rational:
+                na, da, nb, db = self.numerator, self.denominator, other.numerator, other.denominator
+                if da == 1 and db == 1:
+                    return _exact(na * nb, 1)
+                divisor = gcd(na, db)
+                if divisor > 1:
+                    na //= divisor
+                    db //= divisor
+                divisor = gcd(nb, da)
+                if divisor > 1:
+                    nb //= divisor
+                    da //= divisor
+                return _exact(na * nb, da * db)
+            if kind is int:
+                return _scale(self.numerator, self.denominator, other)
+        return Expression.__mul__(self, other)
+
+    def __rmul__(self, other):
+        if type(self) is Rational:
+            kind = type(other)
+            if kind is int:
+                return _scale(self.numerator, self.denominator, other)
+            if kind is Rational:
+                return Rational.__mul__(other, self)
+        return Expression.__rmul__(self, other)
+
+    def __truediv__(self, other):
+        if type(self) is Rational:
+            kind = type(other)
+            if kind is Rational:
+                return _quotient(self.numerator, self.denominator, other.numerator, other.denominator)
+            if kind is int:
+                return _quotient(self.numerator, self.denominator, other, 1)
+        return Expression.__truediv__(self, other)
+
+    def __rtruediv__(self, other):
+        if type(self) is Rational:
+            kind = type(other)
+            if kind is int:
+                return _quotient(other, 1, self.numerator, self.denominator)
+            if kind is Rational:
+                return _quotient(other.numerator, other.denominator, self.numerator, self.denominator)
+        return Expression.__rtruediv__(self, other)
+
+    def __pow__(self, exponent):
+        if type(exponent) is not int or type(self) is not Rational:
+            return Expression.__pow__(self, exponent)
+        if exponent < 0:
+            raise UnsupportedOperation("Negative powers and symbolic denominators are unsupported")
+        numerator, denominator = self.numerator, self.denominator
+        budget = _active_budget()
+        if budget is not None:
+            budget.tick()
+            if exponent > 1:
+                # v0.7's estimate: refuse a power before computing it if it could exceed the bound.
+                bound = budget.limits.max_integer_bits
+                for value in (numerator, denominator):
+                    if abs(value) > 1 and value.bit_length() * exponent > bound:
+                        raise ResourceLimitError("Computation limit exceeded: power integer bits")
+        if exponent == 1:
+            return self
+        return trusted_rational(numerator ** exponent, denominator ** exponent)
+
+    def __lt__(self, other):
+        if type(self) is Rational:
+            kind = type(other)
+            if kind is Rational:
+                return _ordered(self.numerator * other.denominator < other.numerator * self.denominator)
+            if kind is int:
+                return _ordered(self.numerator < other * self.denominator)
+        difference = self._compare(other)
+        return NotImplemented if difference is NotImplemented else difference < 0
+
+    def __le__(self, other):
+        if type(self) is Rational:
+            kind = type(other)
+            if kind is Rational:
+                return _ordered(self.numerator * other.denominator <= other.numerator * self.denominator)
+            if kind is int:
+                return _ordered(self.numerator <= other * self.denominator)
+        difference = self._compare(other)
+        return NotImplemented if difference is NotImplemented else difference <= 0
+
+    def __gt__(self, other):
+        if type(self) is Rational:
+            kind = type(other)
+            if kind is Rational:
+                return _ordered(self.numerator * other.denominator > other.numerator * self.denominator)
+            if kind is int:
+                return _ordered(self.numerator > other * self.denominator)
+        difference = self._compare(other)
+        return NotImplemented if difference is NotImplemented else difference > 0
+
+    def __ge__(self, other):
+        if type(self) is Rational:
+            kind = type(other)
+            if kind is Rational:
+                return _ordered(self.numerator * other.denominator >= other.numerator * self.denominator)
+            if kind is int:
+                return _ordered(self.numerator >= other * self.denominator)
+        difference = self._compare(other)
+        return NotImplemented if difference is NotImplemented else difference >= 0
 
     def _compare(self, other):
+        """v0.7's ordering, kept for the operands and receivers that the fast paths leave to it."""
         if type(other) is int:
             other = Rational(other)
         if not isinstance(other, Rational):
@@ -161,21 +361,70 @@ class Rational(Expression):
             budget.product(other.numerator, self.denominator)
         return self.numerator * other.denominator - other.numerator * self.denominator
 
-    def __lt__(self, other):
-        difference = self._compare(other)
-        return NotImplemented if difference is NotImplemented else difference < 0
 
-    def __le__(self, other):
-        difference = self._compare(other)
-        return NotImplemented if difference is NotImplemented else difference <= 0
+_set_numerator = Rational.__dict__["numerator"].__set__  # Slot setters: the frozen __setattr__ refuses writes.
+_set_denominator = Rational.__dict__["denominator"].__set__
+_register_rational(Rational)
 
-    def __gt__(self, other):
-        difference = self._compare(other)
-        return NotImplemented if difference is NotImplemented else difference > 0
 
-    def __ge__(self, other):
-        difference = self._compare(other)
-        return NotImplemented if difference is NotImplemented else difference >= 0
+def trusted_rational(numerator: int, denominator: int) -> Rational:
+    """A Rational from integers already in lowest terms, with no validation and no budget charge.
+
+    The caller guarantees exact ints, denominator > 0 and gcd(numerator, denominator) == 1; the result is then
+    indistinguishable from Rational(numerator, denominator): equal, with the same hash and repr.
+    """
+    value = _new_object(Rational)
+    _set_numerator(value, numerator)
+    _set_denominator(value, denominator)
+    return value
+
+
+def _exact(numerator, denominator):
+    """A fast-path result in lowest terms: one work unit of the active budget, integers within its bound."""
+    budget = _active_budget()
+    if budget is not None:
+        budget.charge_rational(numerator, denominator)
+    value = _new_object(Rational)
+    _set_numerator(value, numerator)
+    _set_denominator(value, denominator)
+    return value
+
+
+def _scale(numerator, denominator, factor):
+    """numerator/denominator times an int, reduced as Fraction does: by gcd(factor, denominator) first."""
+    if denominator == 1:
+        return _exact(numerator * factor, 1)
+    divisor = gcd(factor, denominator)
+    if divisor > 1:
+        factor //= divisor
+        denominator //= divisor
+    return _exact(numerator * factor, denominator)
+
+
+def _quotient(na, da, nb, db):
+    """(na/da) / (nb/db) for reduced operands with positive denominators, reduced as Fraction does."""
+    if nb == 0:
+        raise ZeroDivisionError("division by zero")
+    divisor = gcd(na, nb)
+    if divisor > 1:
+        na //= divisor
+        nb //= divisor
+    divisor = gcd(db, da)
+    if divisor > 1:
+        da //= divisor
+        db //= divisor
+    numerator, denominator = na * db, nb * da
+    if denominator < 0:
+        return _exact(-numerator, -denominator)
+    return _exact(numerator, denominator)
+
+
+def _ordered(result):
+    """A fast comparison's outcome, after charging the active budget one work unit."""
+    budget = _active_budget()
+    if budget is not None:
+        budget.tick()
+    return result
 
 
 @dataclass(frozen=True)
@@ -343,7 +592,25 @@ def _sort_key(expr):
     return (5, tuple(_sort_key(value) for value in expr.terms))
 
 
+def _fold_exact(values, operation, identity):
+    """add() or mul() of exact Rationals and ints: one work unit per pairwise step, or one for a lone result."""
+    if len(values) < 2:
+        value = values[0] if values else identity
+        return _exact(value, 1) if type(value) is int else _exact(value.numerator, value.denominator)
+    total = values[0]
+    if type(total) is int:
+        total = trusted_rational(total, 1)
+    for value in values[1:]:
+        total = operation(total, value)
+    return total
+
+
 def add(*args):
+    for value in args:
+        if type(value) is not Rational and type(value) is not int:
+            break
+    else:
+        return _fold_exact(args, Rational.__add__, 0)
     flat = []
     for value in args:
         value = simplify_expression(as_expression(value))
@@ -368,6 +635,11 @@ def add(*args):
 
 
 def mul(*args):
+    for value in args:
+        if type(value) is not Rational and type(value) is not int:
+            break
+    else:
+        return _fold_exact(args, Rational.__mul__, 1)
     flat = []
     for value in args:
         value = simplify_expression(as_expression(value))

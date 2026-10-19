@@ -25,20 +25,33 @@ def as_scalar(value):
     return as_expression(value)
 
 
+# The v2-v4 record classes that evidence may hold, by class name: the module (below mathforge) that defines each.
+# Computed once; _extended_value compares a value's exact class with the class that module defines now.
+_EXTENSION_MODULES = {name: module for module, names in (
+    ("polynomial", ("SquareFreeFactor", "SquareFreeDecomposition")),
+    ("polynomial_exact", ("PolynomialFactor", "PolynomialFactorization")),
+    ("exact_extensions", ("PartialFractionTerm", "PartialFractionDecomposition")),
+    ("algebraic", ("RootRecord",)),
+    ("rational_function", ("RationalFunction",)),
+    ("matrices", ("Matrix", "RREFResult", "LinearSystem", "AffineSolutionSet")),
+    ("intervals", ("Interval", "IntervalSet")),
+    ("analysis_types", ("LimitValue", "ExcludedPoint", "MonotonicRegion", "LocalExtremum", "FunctionAnalysis",
+                        "ExtremumValue")),
+) for name in names}
+_registry: Any = None  # mathforge.registry, imported on first use: contracts loads very early (no import cycles).
+
+
 def _extended_value(value):
-    from . import registry  # Imported on use: contracts loads very early (no import cycles).
-    if registry.record_module(type(value).__module__):  # Static: other values never build the registry.
-        return type(value) in registry.all_record_types()
-    return any(_extension(value, module, name) for module, names in (
-        ("polynomial", ("SquareFreeFactor", "SquareFreeDecomposition")),
-        ("polynomial_exact", ("PolynomialFactor", "PolynomialFactorization")),
-        ("exact_extensions", ("PartialFractionTerm", "PartialFractionDecomposition")),
-        ("algebraic", ("RootRecord",)),
-        ("rational_function", ("RationalFunction",)),
-        ("matrices", ("Matrix", "RREFResult", "LinearSystem", "AffineSolutionSet")),
-        ("intervals", ("Interval", "IntervalSet")),
-        ("analysis_types", ("LimitValue", "ExcludedPoint", "MonotonicRegion", "LocalExtremum", "FunctionAnalysis", "ExtremumValue")),
-    ) for name in names)
+    global _registry
+    cls = type(value)
+    registry = _registry
+    if registry is None:
+        from . import registry
+        _registry = registry
+    if registry.record_module(cls.__module__):  # Static: other values never build the registry.
+        return cls in registry.all_record_types()
+    module = _EXTENSION_MODULES.get(cls.__name__)
+    return module is not None and _extension(value, module, cls.__name__)
 
 
 class ExecutionStatus(str, Enum):
@@ -312,22 +325,28 @@ class ErrorInfo:
         _text(self.message, "message")
 
 
+_CORE_RECORDS = frozenset((Polynomial, Eq, Inequality, OperationRequest, FiniteSet, EmptySet, UniversalSet,
+                           Condition, Check, VerificationReport, ErrorInfo, Domain, Assumption, Truth))
+
+
 def _immutable_value(value):
     """Only supported immutable mathematical values enter evidence records."""
-    if value is None or type(value) in (str, int, bool):
+    cls = type(value)
+    if value is None or cls is str or cls is int or cls is bool:
         return value
+    if cls is tuple or cls is list:  # Exact containers are no record class, so the record tests below miss them.
+        return tuple([_immutable_value(item) for item in value])
     if isinstance(value, Expression):
         # The same concrete AST allowlist is used by operators and persistence.
         # An arbitrary subclass can introduce mutable fields and has no codec.
         return as_expression(value)
-    if type(value) in (Polynomial, Eq, Inequality, OperationRequest, FiniteSet, EmptySet, UniversalSet,
-                       Condition, Check, VerificationReport, ErrorInfo, Domain, Assumption, Truth):
+    if cls in _CORE_RECORDS:
         return value
     if _extended_value(value):
         return value
     if isinstance(value, (list, tuple)):
         return tuple(_immutable_value(item) for item in value)
-    raise TypeError(f"Unsupported result/evidence value: {type(value).__name__}.")
+    raise TypeError(f"Unsupported result/evidence value: {cls.__name__}.")
 
 
 T = TypeVar("T")
@@ -376,19 +395,8 @@ class Result(Generic[T]):
         object.__setattr__(self, "assumptions", _typed_tuple(self.assumptions, Assumption, "assumptions"))
         object.__setattr__(self, "steps", _typed_tuple(self.steps, Step, "steps"))
         _text(self.method, "method")
-        if self.problem is not None and not (type(self.problem) in (Eq, Inequality)
-                or _extension(self.problem, "matrices", "LinearSystem")):
-            raise TypeError("problem must be a supported mathematical problem")
-        if self.expression is not None:
-            if (type(self.expression) is Polynomial or _extension(self.expression, "matrices", "Matrix")
-                    or any(_extension(self.expression, module, name) for module, name in (
-                        ("functions", "RealExpr"), ("functions", "RealFunction"),
-                        ("rational_integration", "RationalPrimitive")))):
-                pass
-            else:
-                as_scalar(self.expression)
-        for name, item_type in (("domain", Domain),
-                                ("for_", Symbol), ("tolerance", Rational),
+        _check_source(self.problem, self.expression, self.domain, self.for_)
+        for name, item_type in (("tolerance", Rational),
                                 ("error_bound", Rational), ("error", ErrorInfo),
                                 ("request", OperationRequest)):
             value = getattr(self, name)
@@ -408,19 +416,7 @@ class Result(Generic[T]):
                     or self.exactness is not Exactness.NOT_APPLICABLE
                     or self.completeness is not Completeness.NOT_APPLICABLE):
                 raise ValueError("Uncompleted operations cannot claim a mathematical result.")
-        if self.outcome is Outcome.NO_SOLUTION and type(self.value) is not EmptySet:
-            raise ValueError("A no_solution outcome requires an EmptySet.")
-        if self.outcome is Outcome.SOLUTIONS and not (
-                type(self.value) is UniversalSet
-                or (type(self.value) is FiniteSet and len(self.value) > 0)
-                or _extension(self.value, "matrices", "AffineSolutionSet")
-                or (_extension(self.value, "intervals", "IntervalSet") and len(self.value) > 0)):
-            raise ValueError("A solutions outcome requires a nonempty represented solution set.")
-        if self.outcome is Outcome.CANDIDATES and not (
-                type(self.value) is FiniteSet and len(self.value) > 0):
-            raise ValueError("A candidates outcome requires a nonempty FiniteSet.")
-        if self.outcome is Outcome.NO_CONCLUSION and self.value is not None:
-            raise ValueError("A no_conclusion outcome cannot carry a mathematical answer.")
+        _check_outcome(self.outcome, self.value)
 
     @property
     def solution_set(self):
@@ -438,3 +434,102 @@ class Result(Generic[T]):
         if self.execution_status is not ExecutionStatus.COMPLETED or self.value is None:
             raise OperationError(self)
         return self.value
+
+
+# The expression classes that a Result keeps without as_scalar, besides Polynomial: by class name, their module.
+_RESULT_EXPRESSIONS = {"Matrix": "matrices", "RealExpr": "functions", "RealFunction": "functions",
+                       "RationalPrimitive": "rational_integration"}
+
+
+def _check_source(problem, expression, domain, for_):
+    """A Result's checks of its source fields problem, expression, domain and for_, in Result's order."""
+    if problem is not None and not (type(problem) in (Eq, Inequality)
+            or _extension(problem, "matrices", "LinearSystem")):
+        raise TypeError("problem must be a supported mathematical problem")
+    if expression is not None:
+        cls = type(expression)
+        module = _RESULT_EXPRESSIONS.get(cls.__name__)
+        if not (cls is Polynomial or (module is not None and _extension(expression, module, cls.__name__))):
+            as_scalar(expression)
+    if domain is not None and type(domain) is not Domain:
+        raise TypeError("domain must be a supported Domain or None.")
+    if for_ is not None and type(for_) is not Symbol:
+        raise TypeError("for_ must be a supported Symbol or None.")
+
+
+def _check_outcome(outcome, value):
+    """A Result's checks that its outcome fits its value."""
+    if outcome is Outcome.NO_SOLUTION and type(value) is not EmptySet:
+        raise ValueError("A no_solution outcome requires an EmptySet.")
+    if outcome is Outcome.SOLUTIONS and not (
+            type(value) is UniversalSet
+            or (type(value) is FiniteSet and len(value) > 0)
+            or _extension(value, "matrices", "AffineSolutionSet")
+            or (_extension(value, "intervals", "IntervalSet") and len(value) > 0)):
+        raise ValueError("A solutions outcome requires a nonempty represented solution set.")
+    if outcome is Outcome.CANDIDATES and not (
+            type(value) is FiniteSet and len(value) > 0):
+        raise ValueError("A candidates outcome requires a nonempty FiniteSet.")
+    if outcome is Outcome.NO_CONCLUSION and value is not None:
+        raise ValueError("A no_conclusion outcome cannot carry a mathematical answer.")
+
+
+# Trusted construction, for the structured pipelines only (operations, operations_v5 and the verifiers). A trusted
+# builder takes fields that its caller has already validated and normalized as the public constructor would, from
+# pieces that the active budget has already inspected, and runs no __post_init__: no check and no inspection is
+# repeated. The public constructors keep all of their validation.
+
+_new_record = object.__new__
+_set_field = object.__setattr__
+_RESULT_DEFAULTS = {name: field.default for name, field in Result.__dataclass_fields__.items()}
+
+
+def _trusted_request(operation: str, arguments: tuple[tuple[str, Any], ...]) -> OperationRequest:
+    """An OperationRequest without version: a nonempty operation name and the pairs of _request_arguments."""
+    request = _new_record(OperationRequest)
+    _set_field(request, "__dict__", {"operation": operation, "arguments": arguments, "version": None})
+    return request
+
+
+def _request_arguments(arguments: dict[str, Any]) -> tuple[tuple[str, Any], ...]:
+    """An OperationRequest's pairs for arguments by distinct nonempty names: each value normalized, then sorted."""
+    return tuple(sorted([(name, _immutable_value(value)) for name, value in arguments.items()]))
+
+
+def _trusted_step(rule: str, inputs: tuple[Any, ...], outputs: tuple[Any, ...], relation: StepRelation) -> Step:
+    """A Step without preconditions, audit or explanation: a nonempty rule and normalized inputs and outputs."""
+    step = _new_record(Step)
+    _set_field(step, "__dict__", {"rule": rule, "inputs": inputs, "outputs": outputs, "preconditions": (),
+                                  "relation": relation, "audit": (), "explanation": None})
+    return step
+
+
+def _trusted_result(fields: dict[str, Any]) -> Result[Any]:
+    """A Result of the given fields, the others at their defaults: each field one that Result.__post_init__ keeps
+    as it stands."""
+    result = _new_record(Result)
+    values = dict(_RESULT_DEFAULTS)
+    values.update(fields)
+    _set_field(result, "__dict__", values)
+    return result
+
+
+def _trusted_check(claim: str, status: CheckStatus, level: VerificationLevel, method: str,
+                   details: str = "") -> Check:
+    """A Check without subject: a nonempty claim, enum members and text."""
+    check = _new_record(Check)
+    _set_field(check, "__dict__", {"claim": claim, "status": status, "level": level, "method": method,
+                                   "subject": None, "details": details})
+    return check
+
+
+def _trusted_report(checks: tuple[Check, ...]) -> VerificationReport:
+    """A VerificationReport of a tuple of Checks."""
+    report = _new_record(VerificationReport)
+    _set_field(report, "__dict__", {"checks": checks})
+    return report
+
+
+def _attach(record: Any, name: str, value: Any) -> None:
+    """Set a field of a record that its builder has not handed out yet: a Result's verification, a Step's audit."""
+    _set_field(record, name, value)

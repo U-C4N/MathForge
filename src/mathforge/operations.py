@@ -8,6 +8,8 @@ from .analysis_types import FunctionAnalysis, LimitValue, ExtremumValue
 from . import algorithms, matrices
 from .contracts import (Completeness, EmptySet, FiniteSet, UniversalSet, Eq, Inequality, ErrorInfo, Exactness,
     ExecutionStatus, OperationRequest, Outcome, Result, Step, StepRelation)
+from .contracts import (_attach, _check_outcome, _check_source, _immutable_value, _request_arguments,
+    _trusted_request, _trusted_result, _trusted_step)
 from .errors import InvalidInput, MathForgeError, UnsupportedOperation
 from .limits import ComputationLimits, computation, ResourceLimitError
 from .model import (Expression, Rational, Reals, Symbol, as_expression, evaluate_expression,
@@ -137,6 +139,13 @@ def _failure(exc, *, method, context, request=None):
 
 
 def _run(operation, arguments, producer, *, limits=None, solutions=False, _rule_version=None):
+    """Run a legacy producer into a verified Result.
+
+    The arguments are inspected once, before _arguments normalizes them, and the value and the evidence once each;
+    the request, the step and the Result are built from them by contracts' trusted builders, which repeat no
+    inspection, and the Result's own checks of its source and outcome run once. The verifier then inspects the whole
+    Result; its verification and the step's audit are attached to the records built here, with no copy.
+    """
     request = None
     context = _context(operation, arguments)
     try:
@@ -144,21 +153,32 @@ def _run(operation, arguments, producer, *, limits=None, solutions=False, _rule_
             budget.inspect(arguments)
             args = _arguments(operation, arguments)
             context = _context(operation, args)
-            request = OperationRequest(operation, tuple(args.items()))
+            request = _trusted_request(operation, _request_arguments(args))
             produced = producer(args)
+            step = None
             if type(produced) is Result:
                 result = replace(produced, request=request)
             else:
                 value, evidence = produced
                 if operation == "solve_system":
                     context["problem"] = _system(args)
+                budget.inspect(value, evidence=True)
+                budget.inspect(evidence, evidence=True)
                 outcome = ((Outcome.NO_SOLUTION if type(value) is EmptySet else Outcome.SOLUTIONS)
                            if solutions else Outcome.VALUE)
-                result = Result(execution_status=ExecutionStatus.COMPLETED, outcome=outcome,
-                    value=value, exactness=Exactness.EXACT, completeness=Completeness.COMPLETE,
-                    method=operation, request=request, **context,
-                    steps=(Step((f"v{_rule_version}." if _rule_version else "v3." if operation in ("limit", "analyze_function") else "v2.") + operation, (request,), (value, evidence),
-                                relation=StepRelation.EQUIVALENCE if solutions else StepRelation.EVALUATION),))
+                # What the Step and the Result check and normalize, in their order, once.
+                value, evidence = _immutable_value(value), _immutable_value(evidence)
+                _check_source(context.get("problem"), context.get("expression"), context.get("domain"),
+                              context.get("for_"))
+                _check_outcome(outcome, value)
+                rule = (f"v{_rule_version}." if _rule_version
+                        else "v3." if operation in ("limit", "analyze_function") else "v2.") + operation
+                step = _trusted_step(rule, (request,), (value, evidence),
+                                     StepRelation.EQUIVALENCE if solutions else StepRelation.EVALUATION)
+                result = _trusted_result({
+                    "execution_status": ExecutionStatus.COMPLETED, "outcome": outcome, "value": value,
+                    "exactness": Exactness.EXACT, "completeness": Completeness.COMPLETE, "method": operation,
+                    "request": request, **context, "steps": (step,)})
             from .verification import verify
             report = verify(result)
             if not report.verified:
@@ -166,8 +186,12 @@ def _run(operation, arguments, producer, *, limits=None, solutions=False, _rule_
                     raise ResourceLimitError("Independent verification exceeded the computation budget")
                 raise ArithmeticError("Independent verification rejected the produced result")
             if len(result.steps) == 1 and result.steps[0].rule.startswith(("v2.", "v3.", "v4.")):
-                result = replace(result, steps=(replace(result.steps[0], audit=(report.checks[-1],)),))
-            return replace(result, verification=report.checks)
+                if result.steps[0] is step:
+                    _attach(step, "audit", (report.checks[-1],))
+                else:
+                    _attach(result, "steps", (replace(result.steps[0], audit=(report.checks[-1],)),))
+            _attach(result, "verification", report.checks)
+            return result
     except Exception as exc:
         return _failure(exc, method=operation, context=context, request=request)
 

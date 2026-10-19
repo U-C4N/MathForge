@@ -66,7 +66,7 @@ class ContinuedFractionTests(unittest.TestCase):
                 self.assertTrue(m.verify(result).verified)
 
     def test_registry_entry(self):
-        self.assertEqual(registry.V6_FAMILIES, ("mathforge.areas.ntheory.continued_fraction",))
+        self.assertEqual(registry.v6_families(), ("mathforge.areas.ntheory.continued_fraction",))
         self.assertEqual(registry.spec("continued_fraction"), SPEC)
         self.assertIs(registry.family("continued_fraction"), family)
         self.assertEqual(registry.checker("continued_fraction").__name__,

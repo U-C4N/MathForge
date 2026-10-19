@@ -265,11 +265,22 @@ def build_schema(version=2):
         definitions["result"]["properties"]["deferred"] = variant(*deferrals)
     if version >= 5:
         from mathforge import registry  # dispatch_v5's tables are registry.record_types(5) and operation_arguments(5).
+    # A v0.7 operation that a v6 family supersedes keeps its older request shape beside the v6 one; a legacy one
+    # without a shape of its own keeps the generic shape for its older requests.
+    superseded_legacy = []
     for later_version in later:
         for tag, cls in registry.record_types(later_version).items():
             node(f"v{later_version}_{tag}", **{field.name: ref("node") for field in dataclass_fields(cls)})
         new_parameters = registry.operation_arguments(later_version)
-        legacy_request["properties"]["operation"]["not"]["enum"].extend(sorted(new_parameters))
+        shaped = {entry["properties"]["operation"]["const"]
+                  for entry in definitions["operation_request"]["oneOf"] if entry is not legacy_request}
+        for name in sorted(new_parameters):
+            if name in shaped:  # Already outside the generic shape.
+                continue
+            if later_version >= 6 and registry.is_older_operation(name):
+                superseded_legacy.append(name)
+            else:
+                legacy_request["properties"]["operation"]["not"]["enum"].append(name)
         definitions["operation_request"]["oneOf"].extend(
             request(name, {key: ref("node") for key in sorted(keys)}, later_version if later_version >= 6 else None)
             for name, keys in sorted(new_parameters.items()))
@@ -299,8 +310,13 @@ def build_schema(version=2):
         # such as an operation of a later build that the decoder still accepts, selects the generic shape,
         # where a request of format 6 or later names its format version.
         legacy_request["properties"]["version"] = {"type": "integer", "minimum": 6}
-        pairs = [(entry["properties"]["operation"]["const"], entry)
-                 for entry in definitions["operation_request"]["oneOf"] if entry is not legacy_request]
+        branches: dict[str, list] = {}
+        for entry in definitions["operation_request"]["oneOf"]:
+            if entry is not legacy_request:
+                branches.setdefault(entry["properties"]["operation"]["const"], []).append(entry)
+        for name in superseded_legacy:
+            branches[name].append(legacy_request)
+        pairs = [(name, shapes[0] if len(shapes) == 1 else {"anyOf": shapes}) for name, shapes in branches.items()]
         definitions["operation_request"] = {"type": "object", "required": ["operation"], "allOf": [
             *switch("operation", pairs),
             {"if": {"properties": {"operation": {"not": {"enum": sorted(name for name, _ in pairs)}}},

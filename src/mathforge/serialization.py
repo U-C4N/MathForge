@@ -124,21 +124,27 @@ def _record_types(version):
 def _request_version(request):
     """The format version of an operation request.
 
-    An operation this build knows has its own version, and a request that carries another one is rejected.
-    Any other name keeps the version its request carries, else 2, so that a later build's v6 request still
-    decodes and, carrying its version, encodes to the same bytes again.
+    A request that carries version 6 for an operation this build runs as v6, a superseding family's included,
+    is validated as v6 and has format 6, before every other rule: a superseded v0.7 operation's name thus has
+    v6 requests for new results beside its older ones. Otherwise an operation this build knows has its own
+    version, and a request that carries another one is rejected. Any other name keeps the version its request
+    carries, else 2, so that a later build's v6 request still decodes and, carrying its version, encodes to the
+    same bytes again.
     """
-    from .dispatch_v5 import operation_arguments, validate_arguments as validate_new
     from . import registry
+    from .operations_v6 import validate_arguments as validate_v6
+    if request.version == 6 and registry.is_v6_operation(request.operation):
+        validate_v6(request.operation, dict(request.arguments))
+        return 6
+    from .dispatch_v5 import operation_arguments, validate_arguments as validate_new
     if request.operation in operation_arguments():
         validate_new(request.operation, dict(request.arguments))
         version = 5
-    elif request.operation in registry.operation_arguments(6):
-        from .operations_v6 import validate_arguments as validate_v6
+    elif not registry.is_older_operation(request.operation):
+        if request.operation not in registry.operation_arguments(6):
+            return 2 if request.version is None else request.version
         validate_v6(request.operation, dict(request.arguments))
         version = 6
-    elif not registry.is_older_operation(request.operation):
-        return 2 if request.version is None else request.version
     else:
         from .exact_dispatch import NEW_OPERATIONS, validate_arguments
         if request.operation in NEW_OPERATIONS:

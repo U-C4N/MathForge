@@ -244,8 +244,8 @@ def _registry_plan(operation: str, spec: Any) -> Callable[[Mapping[str, object]]
     """The lean path of operations_v5.run or operations_v6.run for one registry operation."""
     from ..model import Symbol
     from ..operations_v5 import _freeze
-    family = registry.family(operation)
-    checker = registry.checker(operation)  # v5: the family itself; v6: its CHECKER module.
+    family = registry.family(operation, spec.version)  # A superseded v0.7 operation's spec is its v6 family's.
+    checker = registry.checker(operation, spec.version)  # v5: the family itself; v6: its CHECKER module.
     expected = registry.operation_arguments(spec.version)[operation]
     if spec.version == 5:
         from ..functions import UnevaluatedIntegral, UnevaluatedLimit

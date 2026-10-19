@@ -303,9 +303,11 @@ def _v6_result(result: Result[Any]) -> bool:
     """Whether a result takes the v6 path: a v6 step, an Unevaluated deferral or a v6 request.
 
     A v6 request is one that carries its format version, as a decoded request of format 6 does even when this
-    build does not know its operation, or one that the registry holds as v6. The structural tests come first
-    and the registry last; it rules v1-v5 operation names out without building its tables, so the legacy
-    operations, which verify their own results, never build them.
+    build does not know its operation, or one that the registry holds as v6. A request without its version
+    names a v1-v5 operation when the name is older: an older record of an operation that a v6 family now
+    supersedes keeps its own verifier. The structural tests come first and the registry last; it rules v1-v5
+    operation names out without building its tables, so the legacy operations, which verify their own
+    results, never build them.
     """
     if type(result.steps) is tuple and any(type(step) is Step and type(step.rule) is str
                                            and step.rule.startswith("v6.") for step in result.steps):
@@ -318,9 +320,10 @@ def _v6_result(result: Result[Any]) -> bool:
     if type(request) is not OperationRequest or type(request.operation) is not str:
         return False
     from . import registry
-    if request.version is not None:
-        return not registry.is_older_operation(request.operation)
-    return registry.is_v6_operation(request.operation)
+    older = registry.is_older_operation(request.operation)
+    if request.version is not None:  # Format 6: a superseded older name is v6 too.
+        return not older or registry.is_v6_operation(request.operation)
+    return not older and registry.is_v6_operation(request.operation)
 
 
 def verify(result: Result[Any], *, limits: ComputationLimits | None = None) -> VerificationReport:

@@ -9,6 +9,14 @@ Importing this module stays light, because the package imports it during its
 own initialization: the v0.7 table and the producer ("family") modules load
 on the first lookup. The tables are then built once, under a lock, and
 memoized. Family modules must not call into the registry at import time.
+
+The v6 families are the modules that the area packages below mathforge.areas
+list in FAMILIES (v6_families()). A family module stays light: it declares its
+specs and records, and imports its kernels inside produce(). Its checker loads
+on the first checker() call. A family may supersede v0.7 operations
+(SUPERSEDES): its v6 spec then takes the operation's name for new results,
+while the v0.7 view that dispatch_v5 serves keeps the v0.7 family, so that
+older records of the name still decode and verify.
 """
 
 from __future__ import annotations
@@ -86,6 +94,9 @@ WRAPPER_NAMES = ("limits", "dict", "run", "run_v6", "structured")
 # A value wrapper also uses the lean functions, their FALLBACK answer and its local _value (mathforge.lean).
 WRAPPER_NAMES += ("_LEAN", "FALLBACK", "_value")  # type: ignore[assignment]  # The tuple grows by three names.
 
+# The structured wrapper of a v0.7 operation that a v6 family supersedes calls operations_v6.run_dual.
+WRAPPER_NAMES += ("run_dual",)  # type: ignore[assignment]  # The tuple grows by one name.
+
 # v0.7 producer modules. Their ARGUMENTS must match the v0.7 specs; their TYPES are the v5 records.
 V5_FAMILIES = tuple("mathforge." + name for name in (
     "number_theory", "combinatorics", "complex_numbers", "probability", "statistics",
@@ -95,34 +106,77 @@ V5_FAMILIES = tuple("mathforge." + name for name in (
 # function_calculus.TYPES re-exports.
 V5_RECORD_MODULES = V5_FAMILIES + ("mathforge.function_limits",)
 
-# v6 family modules; each defines SPECS, TYPES (record classes that the module itself defines), CHECKER (the
-# import path of its checker below CHECKER_PACKAGE) and produce(), and optionally RENDER: {record class of its
-# TYPES: render(value, renderer, child) -> str}. The build checks all of them.
-V6_FAMILIES: tuple[str, ...] = ("mathforge.areas.ntheory.continued_fraction",)
+# The v6 family modules are listed by the area packages below AREAS_PACKAGE, each in its FAMILIES (v6_families()).
+# A family defines SPECS, TYPES (record classes that the module itself defines), CHECKER (the import path of its
+# checker below CHECKER_PACKAGE) and produce(), and optionally RENDER: {record class of its TYPES: render(value,
+# renderer, child) -> str} and SUPERSEDES: the v0.7 operations whose names its SPECS take over. The build checks
+# all of them.
+AREAS_PACKAGE = "mathforge.areas"
 V6_CONTRACT = ("SPECS", "TYPES", "CHECKER", "produce")
 # tools/check_layering.py keeps every module of this package away from producer code.
 CHECKER_PACKAGE = "mathforge.certify"
-# The V6_FAMILIES entries that _testing_families added: only they may give CHECKER as a module or another path.
-_TESTING_FAMILIES: frozenset[str] = frozenset()
+# The families that _testing_families added, after the declared ones: only they may give CHECKER as a module or
+# another path.
+_TESTING_FAMILIES: tuple[str, ...] = ()
 
 # The generic deferral records (Reason, Unevaluated): their TYPES lead record_types(6).
 DEFERRED_MODULE = "mathforge.deferred"
 
 
 def record_module(module: str) -> bool:
-    """Whether a module may define registry records; a static answer that needs no build.
+    """Whether a module may define registry records; an answer that needs no build.
 
-    contracts relies on it so that v1-v4 values never build the registry; the build checks
-    that every record class lives in such a module, and that a v6 family defines its own.
+    It reads the FAMILIES of the area packages (v6_families()), never a family module. contracts relies
+    on it so that v1-v4 values never build the registry; the build checks that every record class lives
+    in such a module, and that a v6 family defines its own.
     """
-    return module in V5_RECORD_MODULES or module == DEFERRED_MODULE or module in V6_FAMILIES
+    return module in V5_RECORD_MODULES or module == DEFERRED_MODULE or module in v6_families()
+
+
+@functools.cache
+def v6_families() -> tuple[str, ...]:
+    """The v6 family modules: the FAMILIES of every area package below mathforge.areas, in package order, then
+    the families that _testing_families registers. Cached; it imports the small area packages, never a family.
+
+    An area package declares FAMILIES, a tuple of the full module names of its own families
+    (areas/<area>/__init__.py); a package without one has none yet.
+    """
+    import pkgutil
+    package = importlib.import_module(AREAS_PACKAGE)
+    names: list[str] = []
+    for info in pkgutil.iter_modules(package.__path__, package.__name__ + "."):
+        if not info.ispkg:
+            continue
+        declared: object = getattr(importlib.import_module(info.name), "FAMILIES", ())
+        if type(declared) is not tuple or any(type(name) is not str or not name.startswith(info.name + ".")
+                                              for name in declared):
+            raise RuntimeError(f"FAMILIES of {info.name} must be a tuple of the full module names of its families: "
+                               f"{declared!r}")
+        names.extend(declared)
+    return (*names, *_TESTING_FAMILIES)
+
+
+def _supersedes(family: ModuleType) -> frozenset[str]:
+    """A family's SUPERSEDES declaration, frozenset() when it has none."""
+    declared: object = getattr(family, "SUPERSEDES", frozenset())
+    if type(declared) is not frozenset or any(type(name) is not str for name in declared):
+        raise RuntimeError(f"SUPERSEDES of v6 family {family.__name__} must be a frozenset of operation names")
+    return declared
+
+
+@functools.cache
+def _superseded() -> frozenset[str]:
+    """The older operation names that the v6 families supersede, read from the family modules' SUPERSEDES without
+    building the tables; the build checks each declaration."""
+    return frozenset(name for family in v6_families() for name in _supersedes(importlib.import_module(family)))
 
 
 @dataclass(frozen=True)
 class _Tables:
     specs: Mapping[str, OperationSpec]
-    families: Mapping[str, ModuleType]
-    checkers: Mapping[str, ModuleType]
+    families: Mapping[int, Mapping[str, ModuleType]]  # By result format version: operation name -> family.
+    checkers: Mapping[int, Mapping[str, object]]  # By version: a checker module, or the import path of a v6 one.
+    loaded: dict[tuple[int, str], ModuleType]  # The checkers imported so far, by (version, operation name).
     modules: Mapping[int, tuple[ModuleType, ...]]
     arguments: Mapping[int | None, Mapping[str, frozenset[str]]]
     types: Mapping[int, Mapping[str, type]]
@@ -142,51 +196,57 @@ def _tables() -> _Tables:
     # and holding _LOCK across imports could deadlock against it.
     from .registry_v07 import LEGACY_CATALOG, V07_SPECS
     v5 = tuple(importlib.import_module(name) for name in V5_FAMILIES)
-    v6 = tuple(importlib.import_module(name) for name in V6_FAMILIES)
-    checkers = tuple(_checker(module) for module in v6)
+    v6 = tuple(importlib.import_module(name) for name in v6_families())
+    checkers = tuple(_checker_source(module) for module in v6)  # Checked here, imported on first use.
     deferred = importlib.import_module(DEFERRED_MODULE)
     legacy = frozenset(entry.name for entry in LEGACY_CATALOG)
+    signatures = _legacy_signatures(v6, legacy)
     with _LOCK:
         # functools.cache may run this body twice when threads race on the first
         # call; every caller still receives the tables assembled first.
         if not _BUILT:
-            _BUILT.append(_assemble(V07_SPECS, legacy, v5, v6, checkers, deferred))
+            _BUILT.append(_assemble(V07_SPECS, legacy, v5, v6, checkers, deferred, signatures))
         return _BUILT[0]
 
 
 def _clear_caches() -> None:
-    """Forget the built tables, so that the next lookup rebuilds them (for tests)."""
+    """Forget the built tables and the family lists, so that the next lookup rebuilds them (for tests)."""
     with _LOCK:
         _BUILT.clear()
         _tables.cache_clear()
+        for cached in _FAMILY_CACHES:  # The cached functions themselves, also while a test patches their names.
+            cached.cache_clear()
+
+
+_FAMILY_CACHES = (v6_families, _superseded)
 
 
 @contextlib.contextmanager
 def _testing_families(*modules: ModuleType) -> Iterator[None]:
     """Register v6 family modules for the duration of a with block (tests only).
 
-    The modules join V6_FAMILIES, the one list that both record_module() and the table build read, so
-    the two always agree. The build imports families by name, so each module must be its own sys.modules
-    entry. Unlike a production family, a testing family may give CHECKER as a module object or as any import
-    path. The caches are cleared on entry and on exit; V6_FAMILIES is restored even when the block raises.
+    The modules join v6_families(), after the declared families: the one list that record_module(),
+    is_v6_operation() and the table build read, so they always agree. The build imports families by name,
+    so each module must be its own sys.modules entry. Unlike a production family, a testing family may give
+    CHECKER as a module object or as any import path. The caches are cleared on entry and on exit; the
+    family list is restored even when the block raises.
     """
-    global V6_FAMILIES, _TESTING_FAMILIES
+    global _TESTING_FAMILIES
     stray = [module.__name__ for module in modules if sys.modules.get(module.__name__) is not module]
     if stray:
         raise ValueError("A testing family must be an imported module: " + ", ".join(stray))
-    previous, testing = V6_FAMILIES, _TESTING_FAMILIES
-    names = tuple(module.__name__ for module in modules)
-    V6_FAMILIES, _TESTING_FAMILIES = previous + names, testing | frozenset(names)
+    previous = _TESTING_FAMILIES
+    _TESTING_FAMILIES = previous + tuple(module.__name__ for module in modules)
     try:
         _clear_caches()
         yield
     finally:
-        V6_FAMILIES, _TESTING_FAMILIES = previous, testing
+        _TESTING_FAMILIES = previous
         _clear_caches()
 
 
-def _checker(family: ModuleType) -> ModuleType:
-    """The checker module of a v6 family, imported once the family is known to define the whole contract.
+def _checker_source(family: ModuleType) -> object:
+    """The CHECKER of a v6 family, once the family is known to define the whole contract; checker() imports it.
 
     A production family names its checker by an import path below CHECKER_PACKAGE, never its own module, so
     that tools/check_layering.py covers the checker and the checker is not the code it verifies.
@@ -199,7 +259,31 @@ def _checker(family: ModuleType) -> ModuleType:
             type(checker) is not str or not checker.startswith(CHECKER_PACKAGE + ".") or checker == family.__name__):
         raise RuntimeError(f"v6 family {family.__name__} must name its CHECKER by an import path below "
                            f"{CHECKER_PACKAGE}, other than its own module: {checker!r}")
-    return importlib.import_module(checker) if isinstance(checker, str) else checker
+    return checker
+
+
+_REQUIRED = object()  # The default of a required argument, in the argument lists that supersession compares.
+
+
+def _legacy_signatures(v6: tuple[ModuleType, ...],
+                       legacy: frozenset[str]) -> dict[str, tuple[tuple[str, object], ...] | None]:
+    """For each legacy operation that a family supersedes: the (name, default) pairs of its v0.7 public function's
+    parameters, limits excepted, from mathforge.operations; None when that module has no such function.
+
+    Read before the build takes its lock, because it may import mathforge.operations.
+    """
+    wanted = sorted({name for family in v6 for name in _supersedes(family) if name in legacy})
+    if not wanted:
+        return {}
+    import inspect
+    from . import operations
+    signatures: dict[str, tuple[tuple[str, object], ...] | None] = {}
+    for name in wanted:
+        function = getattr(operations, name, None)
+        signatures[name] = None if not callable(function) else tuple(
+            (parameter.name, _REQUIRED if parameter.default is parameter.empty else parameter.default)
+            for parameter in inspect.signature(function).parameters.values() if parameter.name != "limits")
+    return signatures
 
 
 def _record_types(modules: tuple[ModuleType, ...], version: int) -> dict[str, type]:
@@ -281,27 +365,72 @@ def _check_names(spec: OperationSpec) -> None:
                                f"{argument.default!r}")
 
 
+def _literal_default(argument: Argument) -> object:
+    return _REQUIRED if argument.default is None else ast.literal_eval(argument.default)
+
+
+def _same_values(left: tuple[tuple[str, object], ...], right: tuple[tuple[str, object], ...]) -> bool:
+    """Equal (name, default) lists; a default equals another only of the same type (True is not 1)."""
+    return len(left) == len(right) and all(
+        name == other and type(value) is type(default) and value == default
+        for (name, value), (other, default) in zip(left, right))
+
+
+def _check_supersession(family: ModuleType, spec: OperationSpec, older: OperationSpec | None,
+                        signature: tuple[tuple[str, object], ...] | None) -> None:
+    """A superseding spec keeps the v0.7 operation's argument names, order and defaults, and its public name.
+
+    older is the v0.7 spec of a v0.7 v5 operation, None for a legacy one, whose arguments are the parameters
+    (signature) of its public function in mathforge.operations.
+    """
+    owner = family.__name__
+    if older is not None:
+        expected: tuple[tuple[str, object], ...] = tuple((a.name, a.default) for a in older.arguments)
+        public = older.public_name
+        same = tuple((a.name, a.default) for a in spec.arguments) == expected
+    else:
+        if signature is None:
+            raise RuntimeError(f"v6 family {owner} supersedes {spec.name}, which has no structured function in "
+                               "mathforge.operations")
+        expected, public = signature, spec.name
+        same = _same_values(tuple((a.name, _literal_default(a)) for a in spec.arguments), signature)
+    if not same:
+        found = tuple((a.name, a.default) for a in spec.arguments)
+        raise RuntimeError(f"v6 family {owner} supersedes {spec.name} with other arguments than v0.7's: "
+                           f"{found!r} instead of {expected!r}")
+    if spec.public_name != public:
+        raise RuntimeError(f"v6 family {owner} supersedes {spec.name} under another public name than v0.7's: "
+                           f"{spec.public_name} instead of {public}")
+
+
 def _assemble(v07_specs: tuple[OperationSpec, ...], legacy: frozenset[str], v5: tuple[ModuleType, ...],
-              v6: tuple[ModuleType, ...], v6_checkers: tuple[ModuleType, ...], deferred: ModuleType) -> _Tables:
+              v6: tuple[ModuleType, ...], v6_checkers: tuple[object, ...], deferred: ModuleType,
+              signatures: Mapping[str, tuple[tuple[str, object], ...] | None]) -> _Tables:
     specs: dict[str, OperationSpec] = {}
     public: set[str] = set()
-    families: dict[str, ModuleType] = {}
-    checkers: dict[str, ModuleType] = {}
+    families: dict[int, dict[str, ModuleType]] = {5: {}, 6: {}}
+    checkers: dict[int, dict[str, object]] = {5: {}, 6: {}}
+    arguments: dict[int | None, dict[str, frozenset[str]]] = {None: {}, 5: {}, 6: {}}
 
-    def add(spec: OperationSpec, version: int, family: ModuleType, checker: ModuleType) -> None:
-        if spec.name in specs:
+    def add(spec: OperationSpec, version: int, family: ModuleType, checker: object, superseding: bool = False) -> None:
+        """Register spec; a superseding v6 spec takes the place of the v0.7 operation of its name in specs."""
+        if spec.name in families[version] or (spec.name in specs and not superseding):
             raise RuntimeError("Duplicate operation: " + spec.name)
-        if spec.public_name in public:
-            raise RuntimeError("Duplicate public name: " + spec.public_name)
-        if spec.name in legacy:
-            raise RuntimeError("Operation name collides with a legacy catalogue entry: " + spec.name)
-        if spec.public_name in legacy:  # Its generated wrapper would shadow mathforge.operations.<name>.
-            raise RuntimeError("Public name collides with a legacy catalogue entry: " + spec.public_name)
+        if not superseding:
+            if spec.public_name in public:
+                raise RuntimeError("Duplicate public name: " + spec.public_name)
+            if spec.name in legacy:
+                raise RuntimeError("Operation name collides with a legacy catalogue entry: " + spec.name)
+            if spec.public_name in legacy:  # Its generated wrapper would shadow mathforge.operations.<name>.
+                raise RuntimeError("Public name collides with a legacy catalogue entry: " + spec.public_name)
         if (spec.version != version or spec.area not in AREAS
                 or any(argument.kind not in KIND_NAMES for argument in spec.arguments)):
             raise RuntimeError("Malformed operation spec: " + spec.name)
         _check_names(spec)
-        specs[spec.name], families[spec.name], checkers[spec.name] = spec, family, checker
+        specs[spec.name] = spec  # A superseded v0.7 operation keeps its place in the published order.
+        families[version][spec.name], checkers[version][spec.name] = family, checker
+        arguments[None][spec.name] = arguments[version][spec.name] = frozenset(
+            argument.name for argument in spec.arguments)
         public.add(spec.public_name)
 
     producers: dict[str, tuple[ModuleType, frozenset[str]]] = {}
@@ -317,14 +446,21 @@ def _assemble(v07_specs: tuple[OperationSpec, ...], legacy: frozenset[str], v5: 
         add(spec, 5, producer[0], producer[0])
     if producers:
         raise RuntimeError("v0.7 operations without a spec: " + ", ".join(producers))
+    v07 = {spec.name: spec for spec in v07_specs}
     for module, checker in zip(v6, v6_checkers):
+        supersedes = _supersedes(module)
+        defined = {spec.name for spec in module.SPECS}
+        for name in sorted(supersedes):
+            if name not in v07 and name not in legacy:
+                raise RuntimeError(f"v6 family {module.__name__} supersedes {name}, which is not a v0.7 operation")
+            if name not in defined:
+                raise RuntimeError(f"v6 family {module.__name__} supersedes {name}, which none of its SPECS defines")
         for spec in module.SPECS:
-            add(spec, 6, module, checker)
+            superseding = spec.name in supersedes
+            if superseding:
+                _check_supersession(module, spec, v07.get(spec.name), signatures.get(spec.name))
+            add(spec, 6, module, checker, superseding)
 
-    arguments: dict[int | None, dict[str, frozenset[str]]] = {None: {}, 5: {}, 6: {}}
-    for spec in specs.values():
-        arguments[None][spec.name] = arguments[spec.version][spec.name] = frozenset(
-            argument.name for argument in spec.arguments)
     # A family tag equal to a deferral tag ("reason", "unevaluated") is a duplicate v6 type.
     types = {5: _record_types(v5, 5), 6: _record_types((deferred, *v6), 6)}
     named: dict[str, type] = {}  # The generator and the area modules find record classes by their names.
@@ -338,8 +474,10 @@ def _assemble(v07_specs: tuple[OperationSpec, ...], legacy: frozenset[str], v5: 
     tools = {tool: tuple(sorted((spec for spec in specs.values() if spec.mcp and spec.area in served),
                                 key=lambda spec: spec.name)) for tool, served in MCP_TOOLS.items()}
     return _Tables(
-        specs=MappingProxyType(specs), families=MappingProxyType(families),
-        checkers=MappingProxyType(checkers), modules=MappingProxyType({5: v5, 6: v6}),
+        specs=MappingProxyType(specs),
+        families=MappingProxyType({key: MappingProxyType(value) for key, value in families.items()}),
+        checkers=MappingProxyType({key: MappingProxyType(value) for key, value in checkers.items()}), loaded={},
+        modules=MappingProxyType({5: v5, 6: v6}),
         arguments=MappingProxyType({key: MappingProxyType(value) for key, value in arguments.items()}),
         types=MappingProxyType({key: MappingProxyType(value) for key, value in types.items()}),
         all_types=frozenset(cls for table in types.values() for cls in table.values()),
@@ -365,20 +503,41 @@ def spec(name: str) -> OperationSpec:
         raise UnsupportedOperation("Unknown operation") from None
 
 
-def family(name: str) -> ModuleType:
-    """The producer module of an operation."""
+def family(name: str, version: int | None = None) -> ModuleType:
+    """The producer module of an operation, of a result format version (5 or 6), or by default of its v0.7 view.
+
+    By default a v0.7 operation gives its v0.7 family, also once a v6 family supersedes it: dispatch_v5 runs,
+    decodes and verifies the operation's v5 records with that module. version=6 gives the v6 family of a v6
+    operation, superseding or not.
+    """
+    tables = _tables()
+    if version is None:
+        version = 5 if name in tables.families[5] else 6
     try:
-        return _tables().families[name]
+        return _lookup(tables.families, version, "version")[name]
     except KeyError:
         raise UnsupportedOperation("Unknown operation") from None
 
 
-def checker(name: str) -> ModuleType:
-    """The checker module of an operation: the family itself for v5, the family's CHECKER for v6."""
-    try:
-        return _tables().checkers[name]
-    except KeyError:
-        raise UnsupportedOperation("Unknown operation") from None
+def checker(name: str, version: int | None = None) -> ModuleType:
+    """The checker module of an operation: the family itself for v5, the family's CHECKER for v6.
+
+    By default the checker of the operation's spec in specs(), a superseding family's for a superseded v0.7
+    operation; version=5 or 6 picks one. A v6 checker is imported on the first call, then cached.
+    """
+    tables = _tables()
+    if version is None:
+        spec = tables.specs.get(name)
+        version = 5 if spec is None else spec.version
+    key = (version, name)
+    module = tables.loaded.get(key)
+    if module is None:
+        try:
+            source = _lookup(tables.checkers, version, "version")[name]
+        except KeyError:
+            raise UnsupportedOperation("Unknown operation") from None
+        module = tables.loaded.setdefault(key, importlib.import_module(source) if isinstance(source, str) else source)
+    return module
 
 
 def operation_arguments(version: int | None = None) -> Mapping[str, frozenset[str]]:
@@ -402,12 +561,15 @@ def is_older_operation(name: str) -> bool:
 
 
 def is_v6_operation(name: str) -> bool:
-    """Whether an operation is registered with result format version 6.
+    """Whether new results of an operation have format version 6: a v6 family defines or supersedes it.
 
-    The build rejects v6 specs named like a legacy catalogue entry or a v0.7 operation, so such a name
-    is ruled out without building the tables: checking a v1-v5 request loads no family module.
+    An older name, of the legacy catalogue or of a v0.7 operation, is v6 only when a family's SUPERSEDES names
+    it. That is read from the family modules without building the tables, so that checking a v1-v5 request or
+    running a legacy operation builds none.
     """
-    return not is_older_operation(name) and name in operation_arguments(6)
+    if is_older_operation(name):
+        return name in _superseded()
+    return name in operation_arguments(6)
 
 
 def record_types(version: int) -> Mapping[str, type]:

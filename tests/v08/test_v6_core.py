@@ -122,7 +122,7 @@ class V6CoreTests(unittest.TestCase):
         """A request of format 6 names it, so a build that does not know the operation still keeps the format."""
         with registry._testing_families(demo_family):
             r = operations_v6.run("demo_double", {"n": 21})
-            self.assertIsNone(r.request.version)  # run() leaves it to the encoder, which asks the registry.
+            self.assertEqual(r.request.version, 6)  # Every request of run() carries it (plan ruling 3).
             document = m.to_data(r)
             self.assertEqual(document["data"]["request"]["version"], 6)
             self.assertEqual(document["data"]["steps"][0]["inputs"][0]["version"], 6)
@@ -145,7 +145,7 @@ class V6CoreTests(unittest.TestCase):
         Each request carries its format version, so both objects re-encode to the bytes their references hash.
         """
         with registry._testing_families(demo_family):
-            failure = operations_v6.run("demo_double", {"n": True})  # It reaches produce(), which rejects a bool.
+            failure = operations_v6.run("demo_double", {"n": True})  # The int kind check rejects a bool.
             self.assertIs(failure.execution_status, ExecutionStatus.INVALID_INPUT)
             self.assertEqual(failure.steps, ())
             request = m.OperationRequest("demo_double", (("n", 21),))
@@ -225,7 +225,8 @@ class V6CoreTests(unittest.TestCase):
             r = operations_v6.run("demo_defer", {"n": 1})
             restored = m.loads(m.dumps(r))
         self.assertEqual((r.request.version, restored.request.version, restored.deferred.request.version),
-                         (None, 6, 6))
+                         (6, 6, 6))
+        self.assertIsNone(r.deferred.request.version)  # The family's own request names no version; it is equal.
         self.assertEqual(restored, r)
         self.assertEqual(restored.deferred.request, restored.request)
         self.assertEqual(restored.deferred.request, r.request)
@@ -333,7 +334,7 @@ class V6CoreTests(unittest.TestCase):
 
     def test_invalid_arguments_are_invalid_input(self):
         with registry._testing_families(demo_family):
-            # Argument names are checked before the producer runs; the producer rejects a bool itself.
+            # Argument names and the int kind are checked before the producer runs: a bool is no exact integer.
             for arguments in ({"m": 1}, {}, {"n": 1, "m": 1}, {"n": True}):
                 with self.subTest(arguments=arguments):
                     r = operations_v6.run("demo_double", arguments)
@@ -352,7 +353,7 @@ class V6CoreTests(unittest.TestCase):
             self.assertEqual(m.to_data(m.operations.integer_gcd(84, 30))["version"], 5)
 
     def test_testing_families_restore_the_registry(self):
-        before = registry.V6_FAMILIES
+        before = registry.v6_families()
         self.assertNotIn("demo_double", registry.specs())  # The tables exist before the block...
         with self.assertRaises(KeyError), registry._testing_families(demo_family):
             self.assertEqual(registry._tables.cache_info().currsize, 0)  # ...and entering clears them.
@@ -360,7 +361,7 @@ class V6CoreTests(unittest.TestCase):
             self.assertTrue(registry.record_module(DemoPair.__module__))
             self.assertIs(registry.record_types(6)["demo_pair"], DemoPair)
             raise KeyError("leave the block early")
-        self.assertEqual(registry.V6_FAMILIES, before)
+        self.assertEqual(registry.v6_families(), before)
         self.assertNotIn("demo_double", registry.specs())
         self.assertFalse(registry.record_module(DemoPair.__module__))
         self.assertNotIn("demo_pair", registry.record_types(6))
@@ -369,11 +370,11 @@ class V6CoreTests(unittest.TestCase):
 
     def test_testing_families_must_be_imported_modules(self):
         """The build imports families by name, so a module outside sys.modules is refused up front."""
-        before = registry.V6_FAMILIES
+        before = registry.v6_families()
         with self.assertRaisesRegex(ValueError, "^A testing family must be an imported module: v08_stray$"):
             with registry._testing_families(types.ModuleType("v08_stray")):
                 self.fail("the block must not run")
-        self.assertEqual(registry.V6_FAMILIES, before)
+        self.assertEqual(registry.v6_families(), before)
 
 
 if __name__ == "__main__":

@@ -5,7 +5,9 @@ areas, named in the request, with arguments typed by the argument kinds of mcp.k
 
 Only this module and mcp.kinds translate text and ordinary JSON into core objects. They do not implement
 mathematical algorithms or turn persisted operation names into executable code: an operation name selects
-a registry spec, never a Python attribute. Responses preserve the core codec and its integer strings.
+a registry spec, never a Python attribute; the spec's public structured function in mathforge.operations
+runs it, so that an operation which a v6 family supersedes answers as mathforge.operations does. Responses
+preserve the core codec and its integer strings.
 """
 
 from dataclasses import asdict, dataclass
@@ -307,7 +309,7 @@ def _call_tool(name: str, arguments: dict[str, Any]) -> ToolResponse:
             return ToolResponse(dict(capabilities()))
         limits = _limits(arguments.get("limits"))
         if area:
-            from .. import operations_v5, operations_v6, registry
+            from .. import registry
             from .kinds import Context, decode_arguments
             specs = {spec.name: spec for spec in registry.tool_operations(name)}
             if type(arguments["operation"]) is not str or arguments["operation"] not in specs:
@@ -317,8 +319,11 @@ def _call_tool(name: str, arguments: dict[str, Any]) -> ToolResponse:
             stage, symbols = "decoding", context.symbols  # The table fills while the arguments decode.
             decoded = decode_arguments(spec, arguments["arguments"], context)
             stage = "computation"
-            run = operations_v6.run if spec.version == 6 else operations_v5.run
-            return _operation_response(run(spec.name, decoded, limits=limits), symbols)
+            structured = getattr(operations, spec.public_name, None)  # A registry spec's name, never the request's.
+            if structured is None:  # A family registered without regenerated wrappers, as a test may register one.
+                from .. import operations_v6
+                return _operation_response(operations_v6.run(spec.name, decoded, limits=limits), symbols)
+            return _operation_response(structured(**decoded, limits=limits), symbols)
         if operation == "parse_function":
             from ..functions import parse_function
             names = arguments["variables"]
@@ -332,11 +337,14 @@ def _call_tool(name: str, arguments: dict[str, Any]) -> ToolResponse:
             value = parse_function(text, symbols=symbols, variables=tuple(symbols.values()), limits=limits)
             return _response(value, symbols=symbols)
         if operation == "compute":
-            from ..operations_v5 import run
+            from .. import registry
             stage, field = "decoding", "arguments"
             decoded = _compute_arguments(arguments["operation"], arguments["arguments"], limits)
             stage, field = "computation", None
-            result = run(arguments["operation"], decoded, limits=limits)
+            # The operation's public structured function: a v0.7 operation that a v6 family supersedes answers
+            # through it; any other one through operations_v5.run, as in v0.7.
+            structured = getattr(operations, registry.spec(arguments["operation"]).public_name)
+            result = structured(**decoded, limits=limits)
             return _operation_response(result, symbols)
         if operation == "verify":
             stage, field = "decoding", "result"
@@ -537,8 +545,9 @@ def _operation_response(result, symbols):
 def _catalog(arguments: Any) -> ToolResponse:
     """Search the registry operations and the pre-registry ones; errors keep the catalog payload shape.
 
-    A registry operation names the area tool that serves it, even when mathforge.compute also runs it. "total"
-    counts every match, also those beyond the limit; there is no paging.
+    A registry operation names the area tool that serves it, even when mathforge.compute also runs it; a legacy
+    operation that a v6 family supersedes is listed once, as the registry operation it now is. "total" counts
+    every match, also those beyond the limit; there is no paging.
     """
     from .. import registry
     from ..registry_v07 import LEGACY_CATALOG
@@ -554,12 +563,13 @@ def _catalog(arguments: Any) -> ToolResponse:
             raise InputError("area must name one of the registry areas", field="area")
         if type(limit) is not int or not 1 <= limit <= MAX_CATALOG_LIMIT:
             raise InputError(f"limit must be an integer from 1 through {MAX_CATALOG_LIMIT}", field="limit")
+        specs = registry.specs()
         entries = [{"name": spec.name, "area": spec.area, "tool": area_tool(spec) or "", "summary": spec.summary,
                     "arguments": [{"name": argument.name, "kind": argument.kind, "required": argument.default is None,
                                    "default": encoded_default(argument)} for argument in spec.arguments],
-                    "returns": spec.returns} for spec in registry.specs().values()]
+                    "returns": spec.returns} for spec in specs.values()]
         entries += [{"name": entry.name, "area": entry.area, "tool": entry.tool, "summary": entry.summary,
-                     "arguments": [], "returns": ""} for entry in LEGACY_CATALOG]
+                     "arguments": [], "returns": ""} for entry in LEGACY_CATALOG if entry.name not in specs]
         needle = query.casefold()
         found = sorted((entry for entry in entries if area in (None, entry["area"])
                         and any(needle in entry[key].casefold() for key in ("name", "summary", "area"))),

@@ -4,12 +4,15 @@ The registry is the single source of truth for operations. This tool writes stat
 so that type checkers see real signatures:
 
 - mathforge/_generated/structured.py: one Result-returning wrapper per operation. It calls the run
-  function of the operation's result format version: operations_v5.run or operations_v6.run.
+  function of the operation's result format version: operations_v6.run_v07, which runs a v0.7 operation
+  through operations_v5.run, or through run_dual while a v6 family supersedes it; operations_v6.run_dual
+  for a v0.7 operation that a registered family supersedes; operations_v6.run for any other v6 one. A
+  superseded legacy operation gets no wrapper: mathforge.operations and mathforge keep its functions.
 - mathforge/_generated/values.py: the same signatures, returning the value. Without limits, a value wrapper
   first calls the operation's lean function (mathforge.lean.functions), which answers the independently checked
   value or FALLBACK; on FALLBACK, and whenever limits are given, it unwraps the structured wrapper's Result.
 - mathforge/<area>.py for each of the 18 registry.AREAS: the value functions of the area's operations
-  and the record classes of its families.
+  (a superseded legacy operation's from mathforge itself) and the record classes of its families.
 
 ``import mathforge`` loads both _generated modules, so the annotation names that only version-6
 operations use are imported there under TYPE_CHECKING and their family modules stay unloaded; the
@@ -59,9 +62,13 @@ PACKAGE = "mathforge"
 GENERATED = PACKAGE + "._generated"
 IMPORT_LINE_LENGTH = 100  # Longer from-imports are wrapped, one name per line.
 LIMITS = "limits: ComputationLimits | None = None"
-# Result format version -> (module, imported name, local name) of the run function structured.py calls.
-RUNNERS = {5: ("mathforge.operations_v5", "run", "run"),
+# Result format version -> (module, imported name, local name) of the run function structured.py calls. A v0.7
+# operation's wrapper calls operations_v6.run_v07 as run: it takes run_dual while a v6 family supersedes the
+# operation, also one that a test registers, and operations_v5.run otherwise.
+RUNNERS = {5: ("mathforge.operations_v6", "run_v07 as run", "run"),
            6: ("mathforge.operations_v6", "run as run_v6", "run_v6")}
+# The run function of a v0.7 v5 operation that a registered v6 family supersedes.
+DUAL_RUNNER = ("mathforge.operations_v6", "run_dual", "run_dual")
 # values.py imports the lean functions and their FALLBACK answer under these names (registry.WRAPPER_NAMES reserves
 # them, with the wrappers' local _value).
 LEAN_IMPORT = "from ..lean import FALLBACK, functions as _LEAN"
@@ -191,6 +198,15 @@ def _check_spec(spec: OperationSpec) -> None:
         raise ValueError(f"Operation {spec.name!r}: no run function for result format version {spec.version}")
 
 
+def _runner(spec: OperationSpec) -> tuple[str, str, str] | None:
+    """The run function of a spec's structured wrapper: run_dual for a v0.7 v5 operation that a v6 family
+    supersedes, and None for a superseded legacy operation, whose public functions mathforge.operations and
+    mathforge keep."""
+    if spec.version == 6 and registry.is_older_operation(spec.name):
+        return DUAL_RUNNER if spec.name in registry.operation_arguments(5) else None
+    return RUNNERS[spec.version]
+
+
 def _check_wrapper_names(label: str, text: str) -> None:
     """Fail when a generated wrapper uses a name, besides its own arguments, that registry.WRAPPER_NAMES lacks.
 
@@ -241,16 +257,19 @@ def _import_blocks(names: _Names, specs: Sequence[OperationSpec], always: Iterab
 
 
 def _structured(specs: Sequence[OperationSpec], names: _Names) -> str:
-    versions = sorted({spec.version for spec in specs})
-    runners = [_from_import(_relative(RUNNERS[version][0], GENERATED), [RUNNERS[version][1]]) for version in versions]
-    blocks, bound = _import_blocks(names, specs, ("Result", "ComputationLimits"), runners)
-    _check_unique("structured.py", [*bound, *(RUNNERS[version][2] for version in versions),
-                                    *(spec.public_name for spec in specs)])
+    """One wrapper per spec; specs holds the wrapped ones (superseded legacy operations left out)."""
+    order = [*(RUNNERS[version] for version in sorted(RUNNERS)), DUAL_RUNNER]
+    used = {_runner(spec) for spec in specs}
+    runners = [runner for runner in order if runner in used]
+    imports = [_from_import(_relative(module, GENERATED), [imported]) for module, imported, _ in runners]
+    blocks, bound = _import_blocks(names, specs, ("Result", "ComputationLimits"), imports)
+    _check_unique("structured.py", [*bound, *(local for _, _, local in runners), *(spec.public_name for spec in specs)])
     functions = []
     for spec in specs:
+        local = _runner(spec)[2]  # type: ignore[index]  # Every wrapped spec has a runner.
         arguments = ", ".join(f"{argument.name}={argument.name}" for argument in spec.arguments)
         functions.append(f"def {spec.public_name}({_parameters(spec)}) -> Result[{spec.returns}]:\n"
-                         f'    return {RUNNERS[spec.version][2]}("{spec.name}", dict({arguments}), limits=limits)\n')
+                         f'    return {local}("{spec.name}", dict({arguments}), limits=limits)\n')
     return _module([_all([spec.public_name for spec in specs]), *blocks], functions)
 
 
@@ -285,13 +304,19 @@ def _area(area: str, specs: Sequence[OperationSpec]) -> str:
         add(name, NAME_SOURCES[name])
     for spec in specs:
         if spec.version == 6:
-            for cls in getattr(registry.family(spec.name), "TYPES", {}).values():
+            for cls in getattr(registry.family(spec.name, 6), "TYPES", {}).values():
                 add(cls.__name__, cls.__module__)
-    functions = [spec.public_name for spec in specs]
-    _check_unique(f"{area}.py", [*functions, *records])
+    functions = [spec.public_name for spec in specs if _runner(spec) is not None]
+    # A superseded legacy operation has no generated value function: the area re-exports mathforge's own.
+    kept = [spec.public_name for spec in specs if _runner(spec) is None]
+    missing = [name for name in kept if not callable(getattr(sys.modules[PACKAGE], name, None))]
+    if missing:
+        raise ValueError(f"Area {area!r}: mathforge has no value function {', '.join(missing)} to re-export")
+    _check_unique(f"{area}.py", [*functions, *kept, *records])
     imports = [_from_import(_relative(GENERATED + ".values", PACKAGE), functions)] if functions else []
+    imports += [_from_import(_relative(PACKAGE, PACKAGE), kept)] if kept else []
     imports += _import_lines(records, records, PACKAGE)
-    return _module([_all(sorted([*functions, *records])), "\n".join(imports)])
+    return _module([_all(sorted([*functions, *kept, *records])), "\n".join(imports)])
 
 
 def _package_init() -> str:
@@ -305,12 +330,13 @@ def render_files(src_root: Path) -> dict[Path, str]:
     specs = tuple(registry.specs().values())
     for spec in specs:
         _check_spec(spec)
+    wrapped = tuple(spec for spec in specs if _runner(spec) is not None)  # Superseded legacy operations have none.
     names = _Names()
     package = src_root / PACKAGE
     files = {
         package / "_generated" / "__init__.py": _package_init(),
-        package / "_generated" / "structured.py": _structured(specs, names),
-        package / "_generated" / "values.py": _values(specs, names),
+        package / "_generated" / "structured.py": _structured(wrapped, names),
+        package / "_generated" / "values.py": _values(wrapped, names),
     }
     for area in registry.AREAS:
         files[package / f"{area}.py"] = _area(area, registry.area_operations(area))

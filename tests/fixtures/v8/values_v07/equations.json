@@ -1,0 +1,2109 @@
+{
+ "solve/edge/equation_without_real_solution": {
+  "error": null,
+  "value": {
+   "data": {
+    "domain": "reals",
+    "type": "empty_set"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "solve/edge/first_argument_float": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "solve/edge/first_argument_none": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "solve/edge/first_argument_string": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "solve/edge/first_argument_true": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "solve/edge/identity_equation": {
+  "error": null,
+  "value": {
+   "data": {
+    "domain": "reals",
+    "type": "universal_set"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "solve/edge/integer_domain_symbol": {
+  "error": [
+   "OperationError",
+   "unsupported_operation"
+  ],
+  "value": null
+ },
+ "solve/edge/irrational_coefficient": {
+  "error": [
+   "OperationError",
+   "unsupported_operation"
+  ],
+  "value": null
+ },
+ "solve/edge/not_an_equation": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "solve/edge/over_limit_integer": {
+  "error": [
+   "OperationError",
+   "resource_limit_exceeded"
+  ],
+  "value": null
+ },
+ "solve/edge/two_variables": {
+  "error": [
+   "OperationError",
+   "unsupported_operation"
+  ],
+  "value": null
+ },
+ "solve/edge/variable_not_a_symbol": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "solve/micro/quadratic_with_integer_roots#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "domain": "reals",
+    "type": "finite_set",
+    "values": [
+     {
+      "denominator": "1",
+      "numerator": "-9",
+      "type": "rational"
+     },
+     {
+      "denominator": "1",
+      "numerator": "-8",
+      "type": "rational"
+     }
+    ]
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "solve/micro/quadratic_with_integer_roots#1": {
+  "error": null,
+  "value": {
+   "data": {
+    "domain": "reals",
+    "type": "finite_set",
+    "values": [
+     {
+      "denominator": "1",
+      "numerator": "-1",
+      "type": "rational"
+     },
+     {
+      "denominator": "1",
+      "numerator": "0",
+      "type": "rational"
+     }
+    ]
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "solve/micro/quadratic_with_integer_roots#2": {
+  "error": null,
+  "value": {
+   "data": {
+    "domain": "reals",
+    "type": "finite_set",
+    "values": [
+     {
+      "denominator": "1",
+      "numerator": "7",
+      "type": "rational"
+     },
+     {
+      "denominator": "1",
+      "numerator": "8",
+      "type": "rational"
+     }
+    ]
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "solve/realistic/cubic_with_integer_roots#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "domain": "reals",
+    "type": "finite_set",
+    "values": [
+     {
+      "denominator": "1",
+      "numerator": "1",
+      "type": "rational"
+     },
+     {
+      "denominator": "1",
+      "numerator": "2",
+      "type": "rational"
+     },
+     {
+      "denominator": "1",
+      "numerator": "3",
+      "type": "rational"
+     }
+    ]
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "solve/realistic/cubic_with_integer_roots#1": {
+  "error": null,
+  "value": {
+   "data": {
+    "domain": "reals",
+    "type": "finite_set",
+    "values": [
+     {
+      "denominator": "1",
+      "numerator": "-2",
+      "type": "rational"
+     },
+     {
+      "denominator": "1",
+      "numerator": "1",
+      "type": "rational"
+     },
+     {
+      "denominator": "1",
+      "numerator": "4",
+      "type": "rational"
+     }
+    ]
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "solve/realistic/cubic_with_integer_roots#2": {
+  "error": null,
+  "value": {
+   "data": {
+    "domain": "reals",
+    "type": "finite_set",
+    "values": [
+     {
+      "denominator": "1",
+      "numerator": "-3",
+      "type": "rational"
+     },
+     {
+      "denominator": "1",
+      "numerator": "0",
+      "type": "rational"
+     },
+     {
+      "denominator": "1",
+      "numerator": "5",
+      "type": "rational"
+     }
+    ]
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "solve/realistic/quintic_with_irrational_roots#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "domain": "reals",
+    "type": "finite_set",
+    "values": [
+     {
+      "integer_coefficients": [
+       "-1",
+       "-1",
+       "0",
+       "0",
+       "0",
+       "1"
+      ],
+      "real_index": "0",
+      "type": "real_algebraic_root"
+     }
+    ]
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 2
+  }
+ },
+ "solve/realistic/quintic_with_irrational_roots#1": {
+  "error": null,
+  "value": {
+   "data": {
+    "domain": "reals",
+    "type": "finite_set",
+    "values": [
+     {
+      "integer_coefficients": [
+       "1",
+       "-3",
+       "0",
+       "0",
+       "0",
+       "1"
+      ],
+      "real_index": "0",
+      "type": "real_algebraic_root"
+     },
+     {
+      "integer_coefficients": [
+       "1",
+       "-3",
+       "0",
+       "0",
+       "0",
+       "1"
+      ],
+      "real_index": "1",
+      "type": "real_algebraic_root"
+     },
+     {
+      "integer_coefficients": [
+       "1",
+       "-3",
+       "0",
+       "0",
+       "0",
+       "1"
+      ],
+      "real_index": "2",
+      "type": "real_algebraic_root"
+     }
+    ]
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 2
+  }
+ },
+ "solve/realistic/quintic_with_irrational_roots#2": {
+  "error": null,
+  "value": {
+   "data": {
+    "domain": "reals",
+    "type": "finite_set",
+    "values": [
+     {
+      "integer_coefficients": [
+       "-5",
+       "2",
+       "0",
+       "0",
+       "0",
+       "1"
+      ],
+      "real_index": "0",
+      "type": "real_algebraic_root"
+     }
+    ]
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 2
+  }
+ },
+ "solve/realistic/rational_inequality_with_three_poles#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "intervals": [
+     {
+      "left_closed": false,
+      "lower": null,
+      "right_closed": true,
+      "type": "interval",
+      "upper": {
+       "denominator": "1",
+       "numerator": "-1",
+       "type": "rational"
+      }
+     },
+     {
+      "left_closed": false,
+      "lower": {
+       "denominator": "1",
+       "numerator": "1",
+       "type": "rational"
+      },
+      "right_closed": false,
+      "type": "interval",
+      "upper": {
+       "denominator": "1",
+       "numerator": "2",
+       "type": "rational"
+      }
+     },
+     {
+      "left_closed": false,
+      "lower": {
+       "denominator": "1",
+       "numerator": "3",
+       "type": "rational"
+      },
+      "right_closed": false,
+      "type": "interval",
+      "upper": null
+     }
+    ],
+    "type": "interval_set"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 2
+  }
+ },
+ "solve/realistic/rational_inequality_with_three_poles#1": {
+  "error": null,
+  "value": {
+   "data": {
+    "intervals": [
+     {
+      "left_closed": false,
+      "lower": null,
+      "right_closed": true,
+      "type": "interval",
+      "upper": {
+       "denominator": "1",
+       "numerator": "-2",
+       "type": "rational"
+      }
+     },
+     {
+      "left_closed": false,
+      "lower": {
+       "denominator": "1",
+       "numerator": "-1",
+       "type": "rational"
+      },
+      "right_closed": false,
+      "type": "interval",
+      "upper": {
+       "denominator": "1",
+       "numerator": "1",
+       "type": "rational"
+      }
+     },
+     {
+      "left_closed": false,
+      "lower": {
+       "denominator": "1",
+       "numerator": "4",
+       "type": "rational"
+      },
+      "right_closed": false,
+      "type": "interval",
+      "upper": null
+     }
+    ],
+    "type": "interval_set"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 2
+  }
+ },
+ "solve/realistic/rational_inequality_with_three_poles#2": {
+  "error": null,
+  "value": {
+   "data": {
+    "intervals": [
+     {
+      "left_closed": false,
+      "lower": null,
+      "right_closed": false,
+      "type": "interval",
+      "upper": {
+       "denominator": "1",
+       "numerator": "0",
+       "type": "rational"
+      }
+     },
+     {
+      "left_closed": false,
+      "lower": {
+       "denominator": "1",
+       "numerator": "2",
+       "type": "rational"
+      },
+      "right_closed": true,
+      "type": "interval",
+      "upper": {
+       "denominator": "1",
+       "numerator": "3",
+       "type": "rational"
+      }
+     },
+     {
+      "left_closed": false,
+      "lower": {
+       "denominator": "1",
+       "numerator": "5",
+       "type": "rational"
+      },
+      "right_closed": false,
+      "type": "interval",
+      "upper": null
+     }
+    ],
+    "type": "interval_set"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 2
+  }
+ },
+ "solve/realistic/scaled_degree_ten_equation#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "domain": "reals",
+    "type": "finite_set",
+    "values": [
+     {
+      "integer_coefficients": [
+       "-2",
+       "1",
+       "0",
+       "0",
+       "0",
+       "-3",
+       "0",
+       "0",
+       "0",
+       "0",
+       "1"
+      ],
+      "real_index": "0",
+      "type": "real_algebraic_root"
+     },
+     {
+      "integer_coefficients": [
+       "-2",
+       "1",
+       "0",
+       "0",
+       "0",
+       "-3",
+       "0",
+       "0",
+       "0",
+       "0",
+       "1"
+      ],
+      "real_index": "1",
+      "type": "real_algebraic_root"
+     }
+    ]
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 2
+  }
+ },
+ "solve/realistic/scaled_degree_ten_equation#1": {
+  "error": null,
+  "value": {
+   "data": {
+    "domain": "reals",
+    "type": "finite_set",
+    "values": [
+     {
+      "integer_coefficients": [
+       "-1",
+       "1",
+       "0",
+       "0",
+       "0",
+       "-4",
+       "0",
+       "0",
+       "0",
+       "0",
+       "1"
+      ],
+      "real_index": "0",
+      "type": "real_algebraic_root"
+     },
+     {
+      "integer_coefficients": [
+       "-1",
+       "1",
+       "0",
+       "0",
+       "0",
+       "-4",
+       "0",
+       "0",
+       "0",
+       "0",
+       "1"
+      ],
+      "real_index": "1",
+      "type": "real_algebraic_root"
+     }
+    ]
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 2
+  }
+ },
+ "solve/realistic/scaled_degree_ten_equation#2": {
+  "error": null,
+  "value": {
+   "data": {
+    "domain": "reals",
+    "type": "finite_set",
+    "values": [
+     {
+      "integer_coefficients": [
+       "-3",
+       "1",
+       "0",
+       "0",
+       "0",
+       "-2",
+       "0",
+       "0",
+       "0",
+       "0",
+       "1"
+      ],
+      "real_index": "0",
+      "type": "real_algebraic_root"
+     },
+     {
+      "integer_coefficients": [
+       "-3",
+       "1",
+       "0",
+       "0",
+       "0",
+       "-2",
+       "0",
+       "0",
+       "0",
+       "0",
+       "1"
+      ],
+      "real_index": "1",
+      "type": "real_algebraic_root"
+     }
+    ]
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 2
+  }
+ },
+ "solve_system/edge/duplicate_variables": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "solve_system/edge/equations_without_variables": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "solve_system/edge/first_argument_float": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "solve_system/edge/first_argument_none": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "solve_system/edge/first_argument_string": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "solve_system/edge/first_argument_true": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "solve_system/edge/inconsistent_equations": {
+  "error": null,
+  "value": {
+   "data": {
+    "domain": "reals",
+    "type": "empty_set"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "solve_system/edge/matrix_instead_of_a_system": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "solve_system/edge/nonlinear_equation": {
+  "error": [
+   "OperationError",
+   "unsupported_operation"
+  ],
+  "value": null
+ },
+ "solve_system/edge/over_limit_integer": {
+  "error": [
+   "OperationError",
+   "resource_limit_exceeded"
+  ],
+  "value": null
+ },
+ "solve_system/edge/over_limit_matrix_entries": {
+  "error": [
+   "OperationError",
+   "resource_limit_exceeded"
+  ],
+  "value": null
+ },
+ "solve_system/edge/underdetermined_equations": {
+  "error": null,
+  "value": {
+   "data": {
+    "basis": [
+     [
+      {
+       "denominator": "1",
+       "numerator": "-1",
+       "type": "rational"
+      },
+      {
+       "denominator": "1",
+       "numerator": "1",
+       "type": "rational"
+      }
+     ]
+    ],
+    "particular": [
+     {
+      "denominator": "1",
+      "numerator": "1",
+      "type": "rational"
+     },
+     {
+      "denominator": "1",
+      "numerator": "0",
+      "type": "rational"
+     }
+    ],
+    "type": "affine_solution_set",
+    "variables": [
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000001"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "y",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000002"
+     }
+    ]
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 2
+  }
+ },
+ "solve_system/micro/two_by_two#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "basis": [],
+    "particular": [
+     {
+      "denominator": "17",
+      "numerator": "9",
+      "type": "rational"
+     },
+     {
+      "denominator": "17",
+      "numerator": "9",
+      "type": "rational"
+     }
+    ],
+    "type": "affine_solution_set",
+    "variables": [
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x1",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000064"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x2",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000065"
+     }
+    ]
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 2
+  }
+ },
+ "solve_system/micro/two_by_two#1": {
+  "error": null,
+  "value": {
+   "data": {
+    "basis": [],
+    "particular": [
+     {
+      "denominator": "16",
+      "numerator": "27",
+      "type": "rational"
+     },
+     {
+      "denominator": "32",
+      "numerator": "-99",
+      "type": "rational"
+     }
+    ],
+    "type": "affine_solution_set",
+    "variables": [
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x1",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000064"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x2",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000065"
+     }
+    ]
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 2
+  }
+ },
+ "solve_system/micro/two_by_two#2": {
+  "error": null,
+  "value": {
+   "data": {
+    "basis": [],
+    "particular": [
+     {
+      "denominator": "19",
+      "numerator": "27",
+      "type": "rational"
+     },
+     {
+      "denominator": "19",
+      "numerator": "9",
+      "type": "rational"
+     }
+    ],
+    "type": "affine_solution_set",
+    "variables": [
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x1",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000064"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x2",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000065"
+     }
+    ]
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 2
+  }
+ },
+ "solve_system/realistic/dense_6_by_6#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "basis": [],
+    "particular": [
+     {
+      "denominator": "9326021361",
+      "numerator": "-272652661",
+      "type": "rational"
+     },
+     {
+      "denominator": "9326021361",
+      "numerator": "1295178590",
+      "type": "rational"
+     },
+     {
+      "denominator": "9326021361",
+      "numerator": "-3391374065",
+      "type": "rational"
+     },
+     {
+      "denominator": "9326021361",
+      "numerator": "-960616297",
+      "type": "rational"
+     },
+     {
+      "denominator": "9326021361",
+      "numerator": "-101396890",
+      "type": "rational"
+     },
+     {
+      "denominator": "3108673787",
+      "numerator": "-926836718",
+      "type": "rational"
+     }
+    ],
+    "type": "affine_solution_set",
+    "variables": [
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x1",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000064"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x2",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000065"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x3",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000066"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x4",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000067"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x5",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000068"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x6",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000069"
+     }
+    ]
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 2
+  }
+ },
+ "solve_system/realistic/dense_6_by_6#1": {
+  "error": null,
+  "value": {
+   "data": {
+    "basis": [],
+    "particular": [
+     {
+      "denominator": "67466477672",
+      "numerator": "8116582269",
+      "type": "rational"
+     },
+     {
+      "denominator": "67466477672",
+      "numerator": "-18976557099",
+      "type": "rational"
+     },
+     {
+      "denominator": "16866619418",
+      "numerator": "3925874747",
+      "type": "rational"
+     },
+     {
+      "denominator": "8433309709",
+      "numerator": "841113688",
+      "type": "rational"
+     },
+     {
+      "denominator": "6133316152",
+      "numerator": "1607479163",
+      "type": "rational"
+     },
+     {
+      "denominator": "33733238836",
+      "numerator": "7109034461",
+      "type": "rational"
+     }
+    ],
+    "type": "affine_solution_set",
+    "variables": [
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x1",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000064"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x2",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000065"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x3",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000066"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x4",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000067"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x5",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000068"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x6",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000069"
+     }
+    ]
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 2
+  }
+ },
+ "solve_system/realistic/dense_6_by_6#2": {
+  "error": null,
+  "value": {
+   "data": {
+    "basis": [],
+    "particular": [
+     {
+      "denominator": "20258849613",
+      "numerator": "-3220155781",
+      "type": "rational"
+     },
+     {
+      "denominator": "60776548839",
+      "numerator": "9915933814",
+      "type": "rational"
+     },
+     {
+      "denominator": "60776548839",
+      "numerator": "-11481716311",
+      "type": "rational"
+     },
+     {
+      "denominator": "6752949871",
+      "numerator": "2167547272",
+      "type": "rational"
+     },
+     {
+      "denominator": "20258849613",
+      "numerator": "-5330031937",
+      "type": "rational"
+     },
+     {
+      "denominator": "60776548839",
+      "numerator": "-1692836851",
+      "type": "rational"
+     }
+    ],
+    "type": "affine_solution_set",
+    "variables": [
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x1",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000064"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x2",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000065"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x3",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000066"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x4",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000067"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x5",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000068"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x6",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000069"
+     }
+    ]
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 2
+  }
+ },
+ "solve_system/realistic/scaled_dense_12_by_12#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "basis": [],
+    "particular": [
+     {
+      "denominator": "3681327763105516550177779",
+      "numerator": "72675035625604391456875",
+      "type": "rational"
+     },
+     {
+      "denominator": "3681327763105516550177779",
+      "numerator": "-317849376619219322726930",
+      "type": "rational"
+     },
+     {
+      "denominator": "3681327763105516550177779",
+      "numerator": "60683767418730937416060",
+      "type": "rational"
+     },
+     {
+      "denominator": "3681327763105516550177779",
+      "numerator": "-450187374804036446587410",
+      "type": "rational"
+     },
+     {
+      "denominator": "3681327763105516550177779",
+      "numerator": "-507783068208181461748477",
+      "type": "rational"
+     },
+     {
+      "denominator": "3681327763105516550177779",
+      "numerator": "-442931360908065474217499",
+      "type": "rational"
+     },
+     {
+      "denominator": "3681327763105516550177779",
+      "numerator": "-421842731196433036557186",
+      "type": "rational"
+     },
+     {
+      "denominator": "3681327763105516550177779",
+      "numerator": "579520786324180076143700",
+      "type": "rational"
+     },
+     {
+      "denominator": "3681327763105516550177779",
+      "numerator": "-72272934228689691614864",
+      "type": "rational"
+     },
+     {
+      "denominator": "3681327763105516550177779",
+      "numerator": "-626147725889702812912631",
+      "type": "rational"
+     },
+     {
+      "denominator": "3681327763105516550177779",
+      "numerator": "-161119327529862647209848",
+      "type": "rational"
+     },
+     {
+      "denominator": "3681327763105516550177779",
+      "numerator": "-44711674158446187990652",
+      "type": "rational"
+     }
+    ],
+    "type": "affine_solution_set",
+    "variables": [
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x1",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000064"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x2",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000065"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x3",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000066"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x4",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000067"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x5",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000068"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x6",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000069"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x7",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-00000000006a"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x8",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-00000000006b"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x9",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-00000000006c"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x10",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-00000000006d"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x11",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-00000000006e"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x12",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-00000000006f"
+     }
+    ]
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 2
+  }
+ },
+ "solve_system/realistic/scaled_dense_12_by_12#1": {
+  "error": null,
+  "value": {
+   "data": {
+    "basis": [],
+    "particular": [
+     {
+      "denominator": "6190752283535803217655538",
+      "numerator": "262247592593681985862291",
+      "type": "rational"
+     },
+     {
+      "denominator": "3095376141767901608827769",
+      "numerator": "205538796829469117317924",
+      "type": "rational"
+     },
+     {
+      "denominator": "6190752283535803217655538",
+      "numerator": "-83591514831884521088727",
+      "type": "rational"
+     },
+     {
+      "denominator": "238105857059069354525213",
+      "numerator": "36778819210659638344675",
+      "type": "rational"
+     },
+     {
+      "denominator": "6190752283535803217655538",
+      "numerator": "680494202731328776687393",
+      "type": "rational"
+     },
+     {
+      "denominator": "6190752283535803217655538",
+      "numerator": "-1011322432420021412094003",
+      "type": "rational"
+     },
+     {
+      "denominator": "476211714118138709050426",
+      "numerator": "-67078260066444852499581",
+      "type": "rational"
+     },
+     {
+      "denominator": "6190752283535803217655538",
+      "numerator": "731441222545387140348663",
+      "type": "rational"
+     },
+     {
+      "denominator": "6190752283535803217655538",
+      "numerator": "-73478076391648146079993",
+      "type": "rational"
+     },
+     {
+      "denominator": "3095376141767901608827769",
+      "numerator": "-294955186781187735408781",
+      "type": "rational"
+     },
+     {
+      "denominator": "6190752283535803217655538",
+      "numerator": "188526471819128572681707",
+      "type": "rational"
+     },
+     {
+      "denominator": "6190752283535803217655538",
+      "numerator": "1018739893554355015175783",
+      "type": "rational"
+     }
+    ],
+    "type": "affine_solution_set",
+    "variables": [
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x1",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000064"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x2",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000065"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x3",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000066"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x4",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000067"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x5",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000068"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x6",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000069"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x7",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-00000000006a"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x8",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-00000000006b"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x9",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-00000000006c"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x10",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-00000000006d"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x11",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-00000000006e"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x12",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-00000000006f"
+     }
+    ]
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 2
+  }
+ },
+ "solve_system/realistic/scaled_dense_12_by_12#2": {
+  "error": null,
+  "value": {
+   "data": {
+    "basis": [],
+    "particular": [
+     {
+      "denominator": "609152837576284084869930",
+      "numerator": "76115346943428802502483",
+      "type": "rational"
+     },
+     {
+      "denominator": "1827458512728852254609790",
+      "numerator": "201574201364612453368661",
+      "type": "rational"
+     },
+     {
+      "denominator": "913729256364426127304895",
+      "numerator": "102001487471616042576056",
+      "type": "rational"
+     },
+     {
+      "denominator": "2436611350305136339479720",
+      "numerator": "359124900055247504415509",
+      "type": "rational"
+     },
+     {
+      "denominator": "243661135030513633947972",
+      "numerator": "3153079785313725013027",
+      "type": "rational"
+     },
+     {
+      "denominator": "2436611350305136339479720",
+      "numerator": "-106128505825129796922157",
+      "type": "rational"
+     },
+     {
+      "denominator": "913729256364426127304895",
+      "numerator": "-16129957718688382426802",
+      "type": "rational"
+     },
+     {
+      "denominator": "913729256364426127304895",
+      "numerator": "143007011806816260313202",
+      "type": "rational"
+     },
+     {
+      "denominator": "730983405091540901843916",
+      "numerator": "87020702026433547943091",
+      "type": "rational"
+     },
+     {
+      "denominator": "730983405091540901843916",
+      "numerator": "18195516519213655897945",
+      "type": "rational"
+     },
+     {
+      "denominator": "812203783435045446493240",
+      "numerator": "78777740891973647296371",
+      "type": "rational"
+     },
+     {
+      "denominator": "913729256364426127304895",
+      "numerator": "-163143244419985568586512",
+      "type": "rational"
+     }
+    ],
+    "type": "affine_solution_set",
+    "variables": [
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x1",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000064"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x2",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000065"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x3",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000066"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x4",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000067"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x5",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000068"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x6",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000069"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x7",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-00000000006a"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x8",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-00000000006b"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x9",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-00000000006c"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x10",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-00000000006d"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x11",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-00000000006e"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x12",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-00000000006f"
+     }
+    ]
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 2
+  }
+ },
+ "solve_system/realistic/underdetermined_4_by_6#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "basis": [
+     [
+      {
+       "denominator": "4851577",
+       "numerator": "-571011",
+       "type": "rational"
+      },
+      {
+       "denominator": "4851577",
+       "numerator": "-819802",
+       "type": "rational"
+      },
+      {
+       "denominator": "4851577",
+       "numerator": "-448874",
+       "type": "rational"
+      },
+      {
+       "denominator": "4851577",
+       "numerator": "-415886",
+       "type": "rational"
+      },
+      {
+       "denominator": "1",
+       "numerator": "1",
+       "type": "rational"
+      },
+      {
+       "denominator": "1",
+       "numerator": "0",
+       "type": "rational"
+      }
+     ],
+     [
+      {
+       "denominator": "4851577",
+       "numerator": "-224918",
+       "type": "rational"
+      },
+      {
+       "denominator": "4851577",
+       "numerator": "-192673",
+       "type": "rational"
+      },
+      {
+       "denominator": "4851577",
+       "numerator": "468158",
+       "type": "rational"
+      },
+      {
+       "denominator": "4851577",
+       "numerator": "160648",
+       "type": "rational"
+      },
+      {
+       "denominator": "1",
+       "numerator": "0",
+       "type": "rational"
+      },
+      {
+       "denominator": "1",
+       "numerator": "1",
+       "type": "rational"
+      }
+     ]
+    ],
+    "particular": [
+     {
+      "denominator": "4851577",
+      "numerator": "-1375402",
+      "type": "rational"
+     },
+     {
+      "denominator": "4851577",
+      "numerator": "295860",
+      "type": "rational"
+     },
+     {
+      "denominator": "4851577",
+      "numerator": "1158868",
+      "type": "rational"
+     },
+     {
+      "denominator": "4851577",
+      "numerator": "-828023",
+      "type": "rational"
+     },
+     {
+      "denominator": "1",
+      "numerator": "0",
+      "type": "rational"
+     },
+     {
+      "denominator": "1",
+      "numerator": "0",
+      "type": "rational"
+     }
+    ],
+    "type": "affine_solution_set",
+    "variables": [
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x1",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000064"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x2",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000065"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x3",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000066"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x4",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000067"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x5",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000068"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x6",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000069"
+     }
+    ]
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 2
+  }
+ },
+ "solve_system/realistic/underdetermined_4_by_6#1": {
+  "error": null,
+  "value": {
+   "data": {
+    "basis": [
+     [
+      {
+       "denominator": "4720222",
+       "numerator": "-593457",
+       "type": "rational"
+      },
+      {
+       "denominator": "2360111",
+       "numerator": "165207",
+       "type": "rational"
+      },
+      {
+       "denominator": "2360111",
+       "numerator": "390996",
+       "type": "rational"
+      },
+      {
+       "denominator": "2360111",
+       "numerator": "496282",
+       "type": "rational"
+      },
+      {
+       "denominator": "1",
+       "numerator": "1",
+       "type": "rational"
+      },
+      {
+       "denominator": "1",
+       "numerator": "0",
+       "type": "rational"
+      }
+     ],
+     [
+      {
+       "denominator": "2360111",
+       "numerator": "-203733",
+       "type": "rational"
+      },
+      {
+       "denominator": "2360111",
+       "numerator": "311587",
+       "type": "rational"
+      },
+      {
+       "denominator": "2360111",
+       "numerator": "-289385",
+       "type": "rational"
+      },
+      {
+       "denominator": "2360111",
+       "numerator": "-127783",
+       "type": "rational"
+      },
+      {
+       "denominator": "1",
+       "numerator": "0",
+       "type": "rational"
+      },
+      {
+       "denominator": "1",
+       "numerator": "1",
+       "type": "rational"
+      }
+     ]
+    ],
+    "particular": [
+     {
+      "denominator": "4720222",
+      "numerator": "-2120501",
+      "type": "rational"
+     },
+     {
+      "denominator": "2360111",
+      "numerator": "479268",
+      "type": "rational"
+     },
+     {
+      "denominator": "2360111",
+      "numerator": "-308550",
+      "type": "rational"
+     },
+     {
+      "denominator": "2360111",
+      "numerator": "550946",
+      "type": "rational"
+     },
+     {
+      "denominator": "1",
+      "numerator": "0",
+      "type": "rational"
+     },
+     {
+      "denominator": "1",
+      "numerator": "0",
+      "type": "rational"
+     }
+    ],
+    "type": "affine_solution_set",
+    "variables": [
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x1",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000064"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x2",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000065"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x3",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000066"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x4",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000067"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x5",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000068"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x6",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000069"
+     }
+    ]
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 2
+  }
+ },
+ "solve_system/realistic/underdetermined_4_by_6#2": {
+  "error": null,
+  "value": {
+   "data": {
+    "basis": [
+     [
+      {
+       "denominator": "2102664",
+       "numerator": "-65939",
+       "type": "rational"
+      },
+      {
+       "denominator": "262833",
+       "numerator": "10727",
+       "type": "rational"
+      },
+      {
+       "denominator": "87611",
+       "numerator": "6212",
+       "type": "rational"
+      },
+      {
+       "denominator": "4205328",
+       "numerator": "-673801",
+       "type": "rational"
+      },
+      {
+       "denominator": "1",
+       "numerator": "1",
+       "type": "rational"
+      },
+      {
+       "denominator": "1",
+       "numerator": "0",
+       "type": "rational"
+      }
+     ],
+     [
+      {
+       "denominator": "2102664",
+       "numerator": "27293",
+       "type": "rational"
+      },
+      {
+       "denominator": "262833",
+       "numerator": "-23816",
+       "type": "rational"
+      },
+      {
+       "denominator": "87611",
+       "numerator": "10653",
+       "type": "rational"
+      },
+      {
+       "denominator": "4205328",
+       "numerator": "-229145",
+       "type": "rational"
+      },
+      {
+       "denominator": "1",
+       "numerator": "0",
+       "type": "rational"
+      },
+      {
+       "denominator": "1",
+       "numerator": "1",
+       "type": "rational"
+      }
+     ]
+    ],
+    "particular": [
+     {
+      "denominator": "700888",
+      "numerator": "-109995",
+      "type": "rational"
+     },
+     {
+      "denominator": "87611",
+      "numerator": "-16545",
+      "type": "rational"
+     },
+     {
+      "denominator": "87611",
+      "numerator": "-35645",
+      "type": "rational"
+     },
+     {
+      "denominator": "1401776",
+      "numerator": "-190489",
+      "type": "rational"
+     },
+     {
+      "denominator": "1",
+      "numerator": "0",
+      "type": "rational"
+     },
+     {
+      "denominator": "1",
+      "numerator": "0",
+      "type": "rational"
+     }
+    ],
+    "type": "affine_solution_set",
+    "variables": [
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x1",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000064"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x2",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000065"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x3",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000066"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x4",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000067"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x5",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000068"
+     },
+     {
+      "assumptions": [],
+      "domain": "reals",
+      "name": "x6",
+      "type": "symbol",
+      "uid": "00000000-0000-0000-0000-000000000069"
+     }
+    ]
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 2
+  }
+ }
+}

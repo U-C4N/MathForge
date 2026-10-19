@@ -251,23 +251,54 @@ def check_square_free(f, factors) -> bool:
     if not forms:
         return False
     target = integer_form(f)
-    scale = 1
-    product_bits = target[-1].bit_length()
     distinct = (1,)
-    for form, multiplicity in forms:
-        scale *= form[-1] ** multiplicity
-        product_bits += multiplicity * tp.norm1_bits(form)
+    for form, _ in forms:
         distinct = tp.mul(distinct, form)
     if sum((len(form) - 1) * multiplicity for form, multiplicity in forms) != len(target) - 1:
         return False
     if not coprime(distinct, tp.derivative(distinct)):
         return False
+    return _monic_product_identity(target, forms)
+
+
+def _monic_product_identity(target: tuple[int, ...], forms) -> bool:
+    """monic(target) = prod (Q / lc Q)**e over (Q, e) in forms, as target * prod lc(Q)**e = lc(target) * prod Q**e
+    by one Kronecker evaluation (the coefficients of a product are bounded by the product of the 1-norms)."""
+    scale = 1
+    product_bits = target[-1].bit_length()
+    for form, multiplicity in forms:
+        scale *= form[-1] ** multiplicity
+        product_bits += multiplicity * tp.norm1_bits(form)
     bits = tp.kronecker_bits(tp.max_bits(target) + scale.bit_length(), product_bits)
     tp.charge(sum(len(form) * multiplicity for form, multiplicity in forms))
     product = target[-1]
     for form, multiplicity in forms:
         product *= tp.kronecker(form, bits) ** multiplicity
     return tp.kronecker(target, bits) * scale == product
+
+
+def check_factorization(f, entries) -> bool:
+    """v0.7's check_factor criterion for a nonconstant rational polynomial f and entries (monic factor,
+    multiplicity, irreducibility evidence): canonical monic nonconstant factors in strictly increasing order of
+    (degree, coefficients), positive multiplicities, each factor irreducible (check_irreducible on its primitive
+    integer form), and f = lc(f) prod q**e."""
+    previous = None
+    forms = []
+    for values, multiplicity, evidence in entries:
+        if type(multiplicity) is not int or multiplicity < 1 or not monic_tuple(values) or len(values) < 2:
+            return False
+        key = (len(values) - 1, tuple((value.numerator, value.denominator) for value in values))
+        if previous is not None and key <= previous:
+            return False
+        previous = key
+        form = integer_form(values)
+        if not check_irreducible(form, evidence):
+            return False
+        forms.append((form, multiplicity))
+    target = integer_form(f)
+    if sum((len(form) - 1) * multiplicity for form, multiplicity in forms) != len(target) - 1:
+        return False
+    return _monic_product_identity(target, forms)
 
 
 def check_rational_resultant(f, g, value) -> bool:
@@ -819,6 +850,118 @@ def check_root_records(p: tuple[int, ...], records) -> bool:
                     vanishing += 1
         if vanishing + 1 != multiplicity:
             return False
+    return True
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Irreducibility over Q: polynomial_exact._check_irreducible and _rabin on integer tuples
+
+def _prime(n) -> bool:
+    if type(n) is not int or n < 2:
+        return False
+    if n % 2 == 0:
+        return n == 2
+    divisor = 3
+    while divisor * divisor <= n:
+        if n % divisor == 0:
+            return False
+        divisor += 2
+    return True
+
+
+def rabin(f: tuple[int, ...], p: int) -> bool:
+    """Rabin's criterion: the monic f (reduced mod p) is irreducible over GF(p) when x**(p**n) = x mod f and
+    gcd(f, x**(p**(n/q)) - x) = 1 for every prime q dividing n = deg f (independent of Berlekamp)."""
+    degree = len(f) - 1
+    if degree <= 0 or f[-1] != 1:
+        return False
+    prime_divisors, remaining, divisor = [], degree, 2
+    while divisor * divisor <= remaining:
+        if remaining % divisor == 0:
+            prime_divisors.append(divisor)
+            while remaining % divisor == 0:
+                remaining //= divisor
+        divisor += 1
+    if remaining > 1:
+        prime_divisors.append(remaining)
+    checkpoints = {degree // divisor for divisor in prime_divisors}
+    x = tp.divmod_mod((0, 1), f, p)[1]
+    power = x
+    for i in range(1, degree + 1):
+        power = tp.pow_mod(power, p, f, p)
+        if i in checkpoints and tp.gcd_mod(f, tp.mod(tp.sub(power, x), p), p) != (1,):
+            return False
+    return power == x
+
+
+def _coefficient_bound(f: tuple[int, ...]) -> int:
+    from math import isqrt
+    total = sum(value * value for value in f)
+    norm = isqrt(total)
+    if norm * norm < total:
+        norm += 1
+    return abs(f[-1]) * (1 << (len(f) - 1)) * norm
+
+
+def check_irreducible(p: tuple[int, ...], evidence) -> bool:
+    """The integer polynomial p (any nonzero multiple of the factor) is irreducible over Q, given the evidence that
+    polynomial_exact._irreducibility_evidence produces: ("linear",) for degree one, or ("modular", prime,
+    exponent, lifted) with the monic factors of p modulo prime**exponent. As v0.7's _check_irreducible: the prime
+    divides no leading coefficient and the modulus exceeds twice the coefficient bound; the factors are monic,
+    irreducible mod the prime (Rabin), pairwise coprime there, and multiply to p; and no product of a subset of at
+    most half the degree, read symmetrically and made primitive, divides p over Q."""
+    from itertools import combinations
+    if type(p) is not tuple or len(p) < 2 or any(type(value) is not int for value in p) or not p[-1]:
+        return False
+    degree = len(p) - 1
+    if degree == 1:
+        return evidence == ("linear",)
+    if type(evidence) is not tuple or len(evidence) != 4 or evidence[0] != "modular":
+        return False
+    _, prime, exponent, factors = evidence
+    if (type(prime) is not int or type(exponent) is not int or exponent <= 0
+            or type(factors) is not tuple or not factors or not _prime(prime)):
+        return False
+    budget = tp._active()
+    if exponent > (65_536 if budget is None else budget.limits.max_integer_bits):
+        return False
+    modulus = prime ** exponent
+    source = tp.primitive(p)
+    if source[-1] % prime == 0 or modulus <= 2 * _coefficient_bound(source):
+        return False
+    for factor in factors:
+        if (type(factor) is not tuple or len(factor) <= 1 or factor[-1] != 1
+                or any(type(c) is not int or c < 0 or c >= modulus for c in factor)):
+            return False
+    if sum(len(factor) - 1 for factor in factors) != degree:
+        return False
+    modular = [tp.mod(factor, prime) for factor in factors]
+    for i, factor in enumerate(modular):
+        if not rabin(factor, prime):
+            return False
+        if any(tp.gcd_mod(factor, prior, prime) != (1,) for prior in modular[:i]):
+            return False
+    product: tuple[int, ...] = (source[-1] % modulus,)
+    for factor in factors:
+        product = tp.mul_mod(product, factor, modulus)
+    if product != tp.mod(source, modulus):
+        return False
+    half = degree // 2
+    for size in range(1, len(factors) + 1):
+        for chosen in combinations(range(len(factors)), size):
+            subset_degree = sum(len(factors[index]) - 1 for index in chosen)
+            if subset_degree > half:
+                continue
+            tp.charge(degree)
+            coefficients: tuple[int, ...] = (source[-1] % modulus,)
+            for index in chosen:
+                coefficients = tp.mul_mod(coefficients, factors[index], modulus)
+            signed = tp.trim(c if 2 * c <= modulus else c - modulus for c in coefficients)
+            if len(signed) - 1 != subset_degree:
+                return False
+            division = tp.divmod_exact(source, tp.primitive(signed))
+            if division is not None and not division[1]:
+                return False
     return True
 
 

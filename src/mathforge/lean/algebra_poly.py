@@ -205,6 +205,43 @@ def _discriminant(f: object) -> object:
         return FALLBACK
 
 
+def _factor(f: object) -> object:
+    """polynomial_exact.factor_with_evidence's value: the square-free decomposition, then v0.7's Berlekamp, Hensel
+    and Zassenhaus producer on integer tuples for each part, with v0.7's irreducibility evidence per factor; checked
+    by v0.7's criterion (certify.upoly.check_factorization: Rabin, subset enumeration, product identity)."""
+    if current_budget() is not None:
+        return FALLBACK
+    values = coefficients(f)
+    if values is None or len(values) < 2:
+        return FALLBACK  # Zero and constants: v0.7's conventions, left to the generic path.
+    try:
+        with computation(fresh=True):
+            integer = kernels.rational_primitive(values)
+            entries = []
+            for part, multiplicity in kernels.square_free_integer(integer):
+                for factor, evidence in kernels.factor_square_free(part):
+                    entries.append((tp.monic_rationals(factor), multiplicity, evidence))
+            entries.sort(key=lambda entry: (len(entry[0]) - 1, tuple((v.numerator, v.denominator) for v in entry[0])))
+            if certify.check_factorization(values, entries) is not True:
+                return FALLBACK
+    except Exception:
+        return FALLBACK
+    from ..polynomial_exact import PolynomialFactor, PolynomialFactorization
+    variable = f.variable
+    factors = []
+    for monic, multiplicity, _ in entries:
+        entry = object.__new__(PolynomialFactor)
+        fields = entry.__dict__
+        fields["polynomial"] = trusted_polynomial(monic, variable)
+        fields["multiplicity"] = multiplicity
+        factors.append(entry)
+    value = object.__new__(PolynomialFactorization)
+    fields = value.__dict__
+    fields["coefficient"] = values[-1]
+    fields["factors"] = tuple(factors)
+    return value
+
+
 def _routed(name, fast, exact=False):
     """The lean function of an operation: the fast path above, else the generic lean path of its legacy entry, for
     the inputs (expressions, zero or constant operands) that the fast path leaves to it."""
@@ -229,6 +266,8 @@ square_free = _routed("square_free", _square_free)
 rational_function = _routed("rational_function", _rational_function)
 resultant = _routed("resultant", _resultant, exact=True)
 discriminant = _routed("discriminant", _discriminant, exact=True)
+factor = _routed("factor", _factor, exact=True)
 
 LEAN = {"poly_divmod": poly_divmod, "poly_gcd": poly_gcd, "poly_xgcd": poly_xgcd, "square_free": square_free,
-        "rational_function": rational_function, "resultant": resultant, "discriminant": discriminant}
+        "rational_function": rational_function, "resultant": resultant, "discriminant": discriminant,
+        "factor": factor}

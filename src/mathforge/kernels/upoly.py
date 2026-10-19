@@ -534,6 +534,228 @@ def refine(chain, lower, upper):
 
 
 # ---------------------------------------------------------------------------------------------------------------
+# Factorization over Z: v0.7's producer (polynomial_exact) on integer tuples
+
+def _is_prime(n: int) -> bool:
+    if n < 2:
+        return False
+    if n % 2 == 0:
+        return n == 2
+    divisor = 3
+    while divisor * divisor <= n:
+        if n % divisor == 0:
+            return False
+        divisor += 2
+    return True
+
+
+def good_prime(f: tuple[int, ...]) -> tuple[int, tuple[int, ...]]:
+    """The least prime p not dividing lc(f) with f mod p square-free, and f mod p made monic."""
+    p = 2
+    limit = _max_bits()
+    while True:
+        tp.charge(len(f))
+        if p.bit_length() > limit:
+            raise _too_long()
+        if _is_prime(p) and f[-1] % p:
+            reduced = tp.mod(f, p)
+            derivative = tp.mod(tp.derivative(reduced), p)
+            if derivative and tp.gcd_mod(reduced, derivative, p) == (1,):
+                return p, tp.monic_mod(reduced, p)
+        p += 1
+
+
+def _nullspace_mod(matrix: list[list[int]], p: int) -> list[tuple[int, ...]]:
+    """A basis of the nullspace of a square matrix mod p (polynomial_exact._nullspace_mod)."""
+    n = len(matrix)
+    rows, pivots, row = [list(r) for r in matrix], [], 0
+    tp.charge(n * n * n)
+    for column in range(n):
+        pivot = next((j for j in range(row, n) if rows[j][column] % p), None)
+        if pivot is None:
+            continue
+        rows[row], rows[pivot] = rows[pivot], rows[row]
+        inverse = pow(rows[row][column], -1, p)
+        rows[row] = [value * inverse % p for value in rows[row]]
+        for j in range(n):
+            if j != row and rows[j][column]:
+                scale = rows[j][column]
+                rows[j] = [(a - scale * b) % p for a, b in zip(rows[j], rows[row])]
+        pivots.append(column)
+        row += 1
+    basis = []
+    for column in range(n):
+        if column not in pivots:
+            vector = [0] * n
+            vector[column] = 1
+            for j, pivot in enumerate(pivots):
+                vector[pivot] = -rows[j][column] % p
+            basis.append(tp.trim(vector))
+    return basis
+
+
+def berlekamp(f: tuple[int, ...], p: int) -> tuple[tuple[int, ...], ...]:
+    """The monic irreducible factors of a monic square-free f mod p, by Berlekamp's algorithm, sorted by (length,
+    coefficients) as polynomial_exact._berlekamp sorts them."""
+    n = len(f) - 1
+    xp = tp.pow_mod((0, 1), p, f, p)
+    power: tuple[int, ...] = (1,)
+    matrix = [[0] * n for _ in range(n)]
+    for column in range(n):
+        for row, coefficient in enumerate(power):
+            matrix[row][column] = coefficient
+        matrix[column][column] = (matrix[column][column] - 1) % p
+        power = tp.divmod_mod(tp.mul_mod(power, xp, p), f, p)[1]
+    basis = _nullspace_mod(matrix, p)
+    factors = [f]
+    for vector in basis:
+        if len(factors) == len(basis):
+            break
+        for a in range(p):
+            split = []
+            shifted = tp.mod(tp.sub(vector, (a,)), p)
+            for h in factors:
+                g = tp.gcd_mod(h, shifted, p)
+                if 1 < len(g) < len(h):
+                    split.extend((g, tp.divmod_mod(h, g, p)[0]))
+                else:
+                    split.append(h)
+            factors = split
+            if len(factors) == len(basis):
+                break
+    if len(factors) != len(basis):
+        raise ArithmeticError("Modular factorization failed its dimension invariant")
+    return tuple(sorted(factors, key=lambda h: (len(h), h)))
+
+
+def coefficient_bound(f: tuple[int, ...]) -> int:
+    """polynomial_exact._coefficient_bound: |lc(f)| 2**deg ceil(||f||_2), a bound for lc(f) times the
+    coefficients of every primitive divisor of f."""
+    total = sum(value * value for value in f)
+    norm = isqrt(total)
+    if norm * norm < total:
+        norm += 1
+    return abs(f[-1]) * (1 << (len(f) - 1)) * norm
+
+
+def _inverse_mod(a: tuple[int, ...], f: tuple[int, ...], p: int) -> tuple[int, ...]:
+    """The inverse of a modulo (f, p) by the extended Euclidean algorithm."""
+    old_r, r, old_s, s = f, tp.mod(a, p), (), (1,)
+    while r:
+        q, remainder = tp.divmod_mod(old_r, r, p)
+        old_r, r = r, remainder
+        old_s, s = s, tp.mod(tp.sub(old_s, tp.mul(q, s)), p)
+    if len(old_r) != 1:
+        raise ArithmeticError("Modular inverse does not exist")
+    inverse = pow(old_r[0], -1, p)
+    return tp.divmod_mod(tp.mod(tp.scale(old_s, inverse), p), f, p)[1]
+
+
+def hensel(f: tuple[int, ...], p: int, factors, bound: int):
+    """polynomial_exact._hensel: lift the monic modular factors of f one base-p digit at a time until the modulus
+    exceeds 2 bound; returns (modulus, exponent, lifted factors)."""
+    inverses = []
+    for i, factor in enumerate(factors):
+        cofactor: tuple[int, ...] = (1,)
+        for j, other in enumerate(factors):
+            if i != j:
+                cofactor = tp.mul_mod(cofactor, other, p)
+        inverses.append(_inverse_mod(cofactor, factor, p))
+    lifted, modulus, exponent = tuple(factors), p, 1
+    limit = _max_bits()
+    while modulus <= 2 * bound:
+        next_modulus = modulus * p
+        if next_modulus.bit_length() > limit:
+            raise _too_long()
+        inverse_lead = pow(f[-1], -1, next_modulus)
+        target = tp.mod(tuple([value * inverse_lead for value in f]), next_modulus)
+        product: tuple[int, ...] = (1,)
+        for factor in lifted:
+            product = tp.mul_mod(product, factor, next_modulus)
+        error = []
+        for index in range(len(f)):
+            a = target[index] if index < len(target) else 0
+            b = product[index] if index < len(product) else 0
+            difference = (a - b) % next_modulus
+            if difference % modulus:
+                raise ArithmeticError("Hensel factor congruence failed")
+            error.append((difference // modulus) % p)
+        error_poly = tp.trim(error)
+        updated = []
+        for old, factor, inverse in zip(lifted, factors, inverses):
+            correction = tp.divmod_mod(tp.mul_mod(error_poly, inverse, p), factor, p)[1]
+            updated.append(tp.mod(tp.add(old, tuple([modulus * value for value in correction])), next_modulus))
+        lifted, modulus, exponent = tuple(updated), next_modulus, exponent + 1
+    return modulus, exponent, lifted
+
+
+def lift_data(f: tuple[int, ...]):
+    """polynomial_exact._lift_data of a primitive square-free f of degree >= 2: (p, exponent, modulus, lifted)."""
+    p, modular = good_prime(f)
+    factors = berlekamp(modular, p)
+    modulus, exponent, lifted = hensel(f, p, factors, coefficient_bound(f))
+    return p, exponent, modulus, lifted
+
+
+def _candidate(f: tuple[int, ...], factors, subset, modulus: int) -> tuple[int, ...]:
+    """polynomial_exact._candidate: the primitive integer polynomial (positive leading coefficient) of
+    lc(f) times the product of the chosen lifted factors, read symmetrically mod modulus; () when it vanishes."""
+    product: tuple[int, ...] = (1,)
+    for index in subset:
+        product = tp.mul_mod(product, factors[index], modulus)
+    half = modulus // 2
+    values = []
+    for coefficient in product:
+        value = f[-1] * coefficient % modulus
+        values.append(value - modulus if value > half else value)
+    values = tp.trim(values)
+    return tp.primitive(values)
+
+
+def factor_square_free(f: tuple[int, ...]):
+    """The irreducible factors over Z of a primitive square-free f (positive leading coefficient, degree >= 1),
+    each as (primitive factor, evidence) with v0.7's irreducibility evidence: ("linear",), or ("modular", p,
+    exponent, lifted factors of that factor) — the Zassenhaus recombination of polynomial_exact._factor_square_free,
+    keeping the lifted factors of each found factor."""
+    from itertools import combinations
+    if len(f) == 2:
+        return [(f, ("linear",))]
+    p, exponent, modulus, lifted = lift_data(f)
+    stack, result = [(f, lifted)], []
+    while stack:
+        coefficients, factors = stack.pop()
+        found = False
+        half = (len(coefficients) - 1) // 2
+        for size in range(1, len(factors)):
+            for subset in combinations(range(len(factors)), size):
+                tp.charge(len(coefficients))
+                degree = sum(len(factors[i]) - 1 for i in subset)
+                if degree > half:
+                    continue
+                candidate = _candidate(coefficients, factors, subset, modulus)
+                if len(candidate) - 1 != degree:
+                    continue
+                division = tp.divmod_exact(coefficients, candidate)
+                if division is not None and not division[1]:
+                    chosen = set(subset)
+                    stack.append((candidate, tuple(factors[i] for i in subset)))
+                    stack.append((tp.primitive(division[0]), tuple(v for i, v in enumerate(factors) if i not in chosen)))
+                    found = True
+                    break
+            if found:
+                break
+        if not found:
+            if len(coefficients) == 2:
+                result.append((coefficients, ("linear",)))
+            elif modulus > 2 * coefficient_bound(coefficients):
+                result.append((coefficients, ("modular", p, exponent, tuple(factors))))
+            else:
+                own_p, own_exponent, _, own_lifted = lift_data(coefficients)
+                result.append((coefficients, ("modular", own_p, own_exponent, tuple(own_lifted))))
+    return result
+
+
+# ---------------------------------------------------------------------------------------------------------------
 # Signs of closed real algebraic expressions by fixed-point interval arithmetic
 
 class OutOfScope(Exception):

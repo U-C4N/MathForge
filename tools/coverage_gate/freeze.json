@@ -1,7 +1,15 @@
 {
- "digest": "aa89a2fcda93dcc6146b5a3e81b0864ed01502266b047d6f18e4bd6cefae2e2b",
+ "digest": "3c66724a616d931c457fc8878a814275574ca2d7878a949795b274d275f5bc3b",
  "rows": 505,
- "examples": 5984,
+ "examples": 5870,
  "frozen": "2026-10-19",
- "history": []
+ "history": [
+  {
+   "digest": "aa89a2fcda93dcc6146b5a3e81b0864ed01502266b047d6f18e4bd6cefae2e2b",
+   "rows": 505,
+   "examples": 5984,
+   "date": "2026-10-19",
+   "reason": "Final-review fix wave (2026-10-19): completes the plan's Task 6/7 step 3 curation that speed mode deferred — 188 rows curated (941 not-the-subject or sympy-incorrect drops with evidence, 846 genuine SymPy docstring/guide/test/probe additions), and inherited-docstring examples removed by the harvester fix abaf3e5; nothing dropped for difficulty"
+  }
+ ]
 }

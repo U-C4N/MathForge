@@ -178,14 +178,11 @@ def _resultant(f: object, g: object) -> object:
         return FALLBACK
     first, second = operands
     if _is_zero(first) or _is_zero(second):
-        return FALLBACK  # v0.7 answers 0 after its own validation; left to the structured path.
+        return FALLBACK  # v0.7 answers 0 after its own validation; left to the generic path.
     try:
         with computation(fresh=True):
-            value, integer_first, integer_second, integer_value = kernels.resultant_rational(first, second)
-            if certify.check_resultant(integer_first, integer_second, integer_value) is not True:
-                return FALLBACK
-            if certify.check_rational_resultant(first, second, integer_first, integer_second, integer_value,
-                                                value) is not True:
+            value = kernels.resultant_rational(first, second)[0]
+            if certify.check_rational_resultant(first, second, value) is not True:
                 return FALLBACK
             return value
     except Exception:
@@ -197,23 +194,13 @@ def _discriminant(f: object) -> object:
         return FALLBACK
     values = coefficients(f)
     if values is None or len(values) < 2:
-        return FALLBACK  # A constant: v0.7 answers 0; left to the structured path.
+        return FALLBACK  # A constant: v0.7 answers 0; left to the generic path.
     try:
         with computation(fresh=True):
-            derivative = kernels.derivative(values, 1)
-            value, integer_first, integer_second, integer_value = kernels.resultant_rational(values, derivative)
-            if certify.check_resultant(integer_first, integer_second, integer_value) is not True:
+            value = kernels.discriminant_rational(values)
+            if certify.check_discriminant(values, value) is not True:
                 return FALLBACK
-            if certify.check_rational_resultant(values, derivative, integer_first, integer_second, integer_value,
-                                                value) is not True:
-                return FALLBACK
-            degree = len(values) - 1
-            result = value / values[-1]
-            if degree * (degree - 1) // 2 % 2:
-                result = -result
-            if certify.check_discriminant(values, value, result) is not True:
-                return FALLBACK
-            return result
+            return value
     except Exception:
         return FALLBACK
 

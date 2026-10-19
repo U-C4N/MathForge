@@ -294,8 +294,12 @@ def subresultant(f: tuple[int, ...], g: tuple[int, ...]) -> int:
         next_degree = len(remainder) - 1
         f, g, m, drop = g, remainder, next_degree, m - next_degree
         divisor = -leading * previous ** drop
-        remainder = tp.exact_quotient(tp.pseudo_remainder(f, g), (divisor,)) if divisor != 1 else \
-            tp.pseudo_remainder(f, g)
+        remainder = tp.pseudo_remainder(f, g)
+        if divisor != 1:
+            quotient = tuple([value // divisor for value in remainder])
+            if any(value % divisor for value in remainder):
+                raise ArithmeticError("Nonexact subresultant scaling division")
+            remainder = quotient
         leading = g[-1]
         if leading.bit_length() > limit:
             raise _too_long()
@@ -315,10 +319,37 @@ def resultant_rational(f, g):
     primitive integer polynomials, times (lc f / lc F)**deg g (lc g / lc G)**deg f. Returns (value, F, G, Res(F, G))."""
     integer_f, integer_g = rational_primitive(f), rational_primitive(g)
     value = subresultant(integer_f, integer_g)
-    scale_f = f[-1] / integer_f[-1]
-    scale_g = g[-1] / integer_g[-1]
-    result = trusted_rational(value, 1) * scale_f ** (len(g) - 1) * scale_g ** (len(f) - 1)
-    return result, integer_f, integer_g, value
+    numerator, denominator = resultant_scale(f, g, integer_f, integer_g)
+    return tp.scaled_rational(value, numerator, denominator), integer_f, integer_g, value
+
+
+def discriminant_rational(f):
+    """disc(f) of a rational polynomial of degree n >= 1 as v0.7 defines it, (-1)**(n(n-1)/2) Res(f, f') / lc(f),
+    computed on the primitive integer form F with f = c F: Res(f, f') = c**(2n-1) Res(F, F'), so
+    disc(f) = (-1)**(n(n-1)/2) c**(2n-2) Res(F, F') / lc(F)."""
+    integer = rational_primitive(f)
+    value = subresultant(integer, tp.derivative(integer))
+    degree = len(f) - 1
+    lead = f[-1]
+    numerator, denominator = lead.numerator, lead.denominator * integer[-1]  # c = lc(f) / lc(F)
+    if max(numerator.bit_length(), denominator.bit_length()) * (2 * degree - 2) > _max_bits():
+        raise _too_long()
+    if degree * (degree - 1) // 2 % 2:
+        value = -value
+    return tp.scaled_rational(value, numerator ** (2 * degree - 2), denominator ** (2 * degree - 2) * integer[-1])
+
+
+def resultant_scale(f, g, integer_f, integer_g) -> tuple[int, int]:
+    """(numerator, denominator) of (lc f / lc F)**deg g (lc g / lc G)**deg f, refused (as v0.7's rational powers
+    are) when a power would outgrow the integer limit."""
+    lead_f, lead_g = f[-1], g[-1]
+    degree_f, degree_g = len(f) - 1, len(g) - 1
+    limit = _max_bits()
+    for lead, integer, exponent in ((lead_f, integer_f[-1], degree_g), (lead_g, integer_g[-1], degree_f)):
+        if exponent > 1 and max(lead.numerator.bit_length(), (lead.denominator * integer).bit_length()) * exponent > limit:
+            raise _too_long()
+    return (lead_f.numerator ** degree_g * lead_g.numerator ** degree_f,
+            (lead_f.denominator * integer_f[-1]) ** degree_g * (lead_g.denominator * integer_g[-1]) ** degree_f)
 
 
 # ---------------------------------------------------------------------------------------------------------------

@@ -21,8 +21,10 @@ from __future__ import annotations
 from math import gcd
 
 from ..errors import InvalidInput
-from ..limits import ResourceLimitError, current_budget
+from ..limits import _ACTIVE, ResourceLimitError, current_budget
 from ..model import Add, Mul, Pow, Rational, trusted_rational
+
+_active = _ACTIVE.get  # The active Budget or None.
 
 __all__ = [
     "trim", "add", "sub", "mul", "scale", "neg", "derivative", "pseudo_remainder", "divmod_exact", "exact_quotient",
@@ -42,9 +44,18 @@ RATIONAL_SLOTS = (_new, Rational.__dict__["numerator"].__set__, Rational.__dict_
 
 def charge(n: int) -> None:
     """Charge the active budget, if any, n units of work (one batched tick)."""
-    budget = current_budget()
+    budget = _active()
     if budget is not None and n:
         budget.tick(n)
+
+
+def scaled_rational(integer: int, numerator: int, denominator: int) -> Rational:
+    """integer * numerator / denominator in lowest terms (denominator nonzero), as one Rational."""
+    numerator *= integer
+    if denominator < 0:
+        numerator, denominator = -numerator, -denominator
+    divisor = gcd(numerator, denominator)
+    return trusted_rational(numerator // divisor, denominator // divisor)
 
 
 def check_bits(value: int) -> None:
@@ -142,10 +153,11 @@ def pseudo_remainder(p: tuple[int, ...], q: tuple[int, ...]) -> tuple[int, ...]:
     while len(remainder) >= m:
         top = remainder.pop()  # lead * top - top * lead cancels the leading term
         shift = len(remainder) - m + 1
-        if lead != 1:
-            remainder = [lead * value for value in remainder]
-        for index, value in enumerate(lower, shift):
-            remainder[index] -= top * value
+        if lead == 1:
+            remainder[shift:] = [value - top * other for value, other in zip(remainder[shift:], lower)]
+        else:
+            remainder = ([lead * value for value in remainder[:shift]]
+                         + [lead * value - top * other for value, other in zip(remainder[shift:], lower)])
         exponent -= 1
         while remainder and not remainder[-1]:
             remainder.pop()

@@ -106,12 +106,12 @@ def check_definite_integral(coefficients, lower, upper, value) -> bool:
 # ---------------------------------------------------------------------------------------------------------------
 # Coprimality and gcds over Z
 
-# Mersenne primes 2**k - 1 (Lucas-Lehmer): moduli of the coprimality tests, and of the resultant check, which needs
-# one larger than twice the Hadamard bound. Only units are ever inverted, so a wrong entry could only make a check
-# fail (pow raises ValueError), never pass.
-_MERSENNE_EXPONENTS = (61, 89, 107, 127, 521, 607, 1279, 2203, 2281, 3217, 4253, 4423, 9689, 9941, 11213, 19937,
-                       21701, 23209, 44497, 86243)
+# Mersenne primes 2**k - 1 (Lucas-Lehmer), the moduli of the coprimality tests. The resultant check works modulo a
+# power of the first, P**j larger than twice the Hadamard bound: Euclid's identities for resultants hold over any
+# commutative ring as long as every leading coefficient divided by is a unit, and a unit's inverse modulo P**j
+# lifts by Newton's iteration from its inverse modulo P. Agreement modulo m decides an integer bounded by m / 2.
 _SMALL_PRIMES = ((1 << 61) - 1, (1 << 31) - 1, (1 << 89) - 1, (1 << 107) - 1, (1 << 127) - 1)
+_P = (1 << 61) - 1
 
 
 def coprime(u: tuple[int, ...], v: tuple[int, ...]) -> bool:
@@ -269,23 +269,49 @@ def check_square_free(f, factors) -> bool:
     return tp.kronecker(target, bits) * scale == product
 
 
-def check_rational_resultant(f, g, integer_f, integer_g, integer_value, value) -> bool:
-    """value = Res(F, G) (lc f / lc F)**deg g (lc g / lc G)**deg f with F and G the primitive integer forms of f and
-    g, as v0.7's polynomial_exact.resultant scales the integer resultant."""
-    if integer_form(f) != integer_f or integer_form(g) != integer_g or not canonical(value):
+def check_rational_resultant(f, g, value) -> bool:
+    """value = Res(f, g) for nonzero rational polynomials: with F and G their primitive integer forms,
+    Res(f, g) = Res(F, G) (lc f / lc F)**deg g (lc g / lc G)**deg f, so value divided by those scales must be the
+    integer Res(F, G), which check_resultant decides."""
+    if not canonical(value):
         return False
-    expected = (Rational(integer_value) * (f[-1] / integer_f[-1]) ** (len(g) - 1)
-                * (g[-1] / integer_g[-1]) ** (len(f) - 1))
-    return expected == value
+    integer_f, integer_g = integer_form(f), integer_form(g)
+    degree_f, degree_g = len(f) - 1, len(g) - 1
+    lead_f, lead_g = f[-1], g[-1]
+    if (max(lead_f.numerator.bit_length(), (lead_f.denominator * integer_f[-1]).bit_length()) * degree_g
+            + max(lead_g.numerator.bit_length(), (lead_g.denominator * integer_g[-1]).bit_length()) * degree_f
+            > 4 * 65_536):
+        return False
+    # value = Res(F, G) * n / d, so Res(F, G) = value d / n must be an integer.
+    n = lead_f.numerator ** degree_g * lead_g.numerator ** degree_f
+    d = (lead_f.denominator * integer_f[-1]) ** degree_g * (lead_g.denominator * integer_g[-1]) ** degree_f
+    top, bottom = value.numerator * d, value.denominator * n
+    if top % bottom:
+        return False
+    return check_resultant(integer_f, integer_g, top // bottom)
 
 
-def check_discriminant(f, resultant_value, value) -> bool:
-    """v0.7's criterion: value * lc(f) = (-1)**(n(n-1)/2) Res(f, f') for f of degree n >= 1."""
-    if not canonical(value) or not canonical(resultant_value):
+def check_discriminant(f, value) -> bool:
+    """v0.7's criterion, value * lc(f) = (-1)**(n(n-1)/2) Res(f, f') for f of degree n >= 1, decided on the
+    primitive integer form: with f = c F, Res(f, f') = c**(2n-1) Res(F, F'), so value * lc(f) / (sign c**(2n-1))
+    must be the integer Res(F, F'), which check_resultant decides."""
+    if not canonical(value):
         return False
+    integer = integer_form(f)
     degree = len(f) - 1
-    sign = -1 if degree * (degree - 1) // 2 % 2 else 1
-    return value * f[-1] == resultant_value * sign
+    lead = f[-1]
+    c_numerator, c_denominator = lead.numerator, lead.denominator * integer[-1]
+    if max(c_numerator.bit_length(), c_denominator.bit_length()) * (2 * degree - 1) > 4 * 65_536:
+        return False
+    # value * lc(f) = sign * c**(2n-1) * R  =>  R = sign * value * lc(f) * c_den**(2n-1) / c_num**(2n-1)
+    top = value.numerator * lead.numerator * c_denominator ** (2 * degree - 1)
+    bottom = value.denominator * lead.denominator * c_numerator ** (2 * degree - 1)
+    if top % bottom:
+        return False
+    integer_value = top // bottom
+    if degree * (degree - 1) // 2 % 2:
+        integer_value = -integer_value
+    return check_resultant(integer, tp.derivative(integer), integer_value)
 
 
 def check_square_free_part(f: tuple[int, ...], part: tuple[int, ...], common: tuple[int, ...],
@@ -305,13 +331,25 @@ def _hadamard_bits(f: tuple[int, ...], g: tuple[int, ...]) -> int:
     return (len(g) - 1) * norm_f + (len(f) - 1) * norm_g
 
 
+def _inverse(value: int, m: int) -> int:
+    """The inverse of value modulo m = P**j: from the inverse modulo P (ValueError when P divides value), by
+    Newton's iteration x <- x (2 - value x), which doubles the power of P that a value x - 1/value is divisible by."""
+    inverse = pow(value % _P, -1, _P)
+    modulus = _P
+    while modulus < m:
+        modulus = min(modulus * modulus, m)
+        inverse = inverse * (2 - value * inverse) % modulus
+    return inverse
+
+
 def _resultant_mod(f: tuple[int, ...], g: tuple[int, ...], m: int) -> int:
     """Res(f, g) mod m by the Euclidean algorithm in Z/m: Res(a, b) = (-1)**(deg a deg b) lc(b)**(deg a - deg r)
     Res(b, r) with r = a mod b, Res(a, c) = c**deg a for a constant c, and 0 when a remainder vanishes. Every leading
-    coefficient divided by must be a unit mod m (pow raises ValueError otherwise)."""
-    a, b = tp.mod(f, m), tp.mod(g, m)
-    if len(a) != len(f) or len(b) != len(g):
+    coefficient divided by must be a unit mod m = P**j (ValueError otherwise)."""
+    a, b = [value % m for value in f], [value % m for value in g]
+    if not a[-1] or not b[-1]:
         raise ValueError("A leading coefficient vanishes modulo m")
+    tp.charge(len(f) * len(g))
     result = 1
     while True:
         degree_a, degree_b = len(a) - 1, len(b) - 1
@@ -324,7 +362,20 @@ def _resultant_mod(f: tuple[int, ...], g: tuple[int, ...], m: int) -> int:
             if degree_a * degree_b % 2:
                 result = -result
             continue
-        remainder = tp.divmod_mod(a, b, m)[1]
+        # a mod b in (Z/m)[x]: lc(b) must be a unit; entries below the current top are reduced once, at the end.
+        n = degree_b
+        inverse = _inverse(b[-1], m)
+        remainder = a[:]
+        lower = b[:-1]
+        for end in range(degree_a, n - 1, -1):
+            top = remainder[end] % m
+            if top:
+                digit = top * inverse % m
+                shift = end - n
+                remainder[shift:end] = [value - digit * other for value, other in zip(remainder[shift:end], lower)]
+        remainder = [value % m for value in remainder[:n]]
+        while remainder and not remainder[-1]:
+            remainder.pop()
         if not remainder:
             return 0
         if degree_a * degree_b % 2:
@@ -343,12 +394,7 @@ def check_resultant(f: tuple[int, ...], g: tuple[int, ...], value: int) -> bool:
     bits = _hadamard_bits(f, g)
     if value.bit_length() > bits:
         return False
-    for exponent in _MERSENNE_EXPONENTS:
-        if exponent >= bits + 2:
-            modulus = (1 << exponent) - 1
-            break
-    else:
-        return False
+    modulus = _P ** ((bits + 2) // 60 + 1)  # P**j > 2**(60 j) >= 2**(bits + 2)
     tp.charge(len(f) * len(g))
     try:
         return _resultant_mod(f, g, modulus) == value % modulus

@@ -66,6 +66,16 @@ class LUDecomposition:
                 raise InvalidInput("PLU factors must have matching square dimensions")
 
 
+def trusted_lu(P, L, U):
+    """An LUDecomposition from three canonical square Matrices of one size, with no validation: equal to
+    ``LUDecomposition(P, L, U)``, for the lean value path, whose factors certify.linalg.lu has checked."""
+    value = object.__new__(LUDecomposition)
+    object.__setattr__(value, "P", P)
+    object.__setattr__(value, "L", L)
+    object.__setattr__(value, "U", U)
+    return value
+
+
 @dataclass(frozen=True)
 class LeastSquaresResult:
     """All minimizers x=particular+sum(t_i*basis_i); residual is b-Ax."""

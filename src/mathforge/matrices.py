@@ -7,7 +7,6 @@ helpers share exact scalar values, but checking never calls a production solver.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import gcd
 from typing import Iterable
 
 from .errors import InvalidInput, UnsupportedOperation
@@ -192,6 +191,21 @@ def _matrix(value) -> Matrix:
     return value
 
 
+_new_object = object.__new__
+_set_field = object.__setattr__
+
+
+def trusted_matrix(rows: tuple[tuple[Rational, ...], ...], ncols: int) -> Matrix:
+    """A Matrix from rows already in its canonical form, with no validation and no budget charge.
+
+    The caller guarantees a tuple of ``ncols``-long tuples of canonical Rationals; the result is then equal to
+    ``Matrix(rows, ncols=ncols)``, as the lean value path needs for the matrices it builds from certified integers."""
+    matrix = _new_object(Matrix)
+    _set_field(matrix, "rows", rows)
+    _set_field(matrix, "ncols", ncols)
+    return matrix
+
+
 def _dot(left, right) -> Rational:
     result = _ZERO
     for a, b in zip(left, right):
@@ -218,6 +232,15 @@ class RREFResult:
             if len(pivots) > self.matrix.nrows:
                 raise InvalidInput("There cannot be more pivots than rows")
             object.__setattr__(self, "pivot_columns", tuple(pivots))
+
+
+def trusted_rref(matrix: Matrix, pivot_columns: tuple[int, ...]) -> RREFResult:
+    """An RREFResult from a canonical Matrix and its strictly increasing pivot columns, with no validation: equal to
+    ``RREFResult(matrix, pivot_columns)``."""
+    result = _new_object(RREFResult)
+    _set_field(result, "matrix", matrix)
+    _set_field(result, "pivot_columns", pivot_columns)
+    return result
 
 
 @dataclass(frozen=True, init=False)
@@ -355,59 +378,38 @@ def _int_product(a: int, b: int) -> int:
 
 
 def det(A: Matrix, *, limits=None) -> Rational:
-    """Determinant by integer Bareiss elimination after row denominator clearing."""
+    """Determinant by Bareiss's fraction-free elimination (mathforge.kernels.linalg) on the integer rows
+    diag(s) A, divided by the product of the row scales s."""
+    from .kernels.linalg import determinant
+    from .trusted.intmatrix import clear_row_denominators
+
     with computation(limits):
         A = _matrix(A)
         if A.nrows != A.ncols:
             raise InvalidInput("Determinant requires a square matrix")
-        n = A.nrows
-        if n == 0:
+        if A.nrows == 0:
             return _ONE
-        integers = []
+        integers, scales = clear_row_denominators(A.rows)
         scale_product = 1
-        for row in A.rows:
-            scale = 1
-            for value in row:
-                scale = _int_product(scale // gcd(scale, value.denominator), value.denominator)
+        for scale in scales:
             scale_product = _int_product(scale_product, scale)
-            integers.append([_int_product(value.numerator, scale // value.denominator) for value in row])
-        sign = 1
-        previous = 1
-        for k in range(n - 1):
-            candidate = next((i for i in range(k, n) if integers[i][k]), None)
-            if candidate is None:
-                return _ZERO
-            if candidate != k:
-                integers[candidate], integers[k] = integers[k], integers[candidate]
-                sign = -sign
-            pivot = integers[k][k]
-            for i in range(k + 1, n):
-                for j in range(k + 1, n):
-                    numerator = (_int_product(pivot, integers[i][j])
-                                 - _int_product(integers[i][k], integers[k][j]))
-                    current_budget().check_int(numerator)
-                    value, remainder = divmod(numerator, previous)
-                    if remainder:
-                        raise ArithmeticError("Bareiss elimination encountered a nonexact division")
-                    integers[i][j] = value
-                integers[i][k] = 0
-            previous = pivot
-        return Rational(sign * integers[-1][-1], scale_product)
+        return Rational(determinant(integers), scale_product)
 
 
 def inverse(A: Matrix, *, limits=None) -> Matrix:
+    """Inverse by fraction-free Gauss-Jordan elimination of [diag(s) A | I] (mathforge.kernels.linalg)."""
+    from .kernels.linalg import inverse as integer_inverse
+
     with computation(limits):
         A = _matrix(A)
         if A.nrows != A.ncols:
             raise InvalidInput("Inverse requires a square matrix")
         n = A.nrows
         current_budget().matrix(n, 2 * n)
-        augmented = Matrix((row + tuple(_ONE if i == j else _ZERO for j in range(n))
-                            for i, row in enumerate(A.rows)), ncols=2 * n)
-        reduction, _ = reduce_with_trace(augmented)
-        if reduction.pivot_columns[:n] != tuple(range(n)):
+        rows = integer_inverse(A.rows)
+        if rows is None:
             raise InvalidInput("Matrix is singular", code="singular_matrix")
-        return Matrix((row[n:] for row in reduction.matrix.rows), ncols=n)
+        return Matrix(rows, ncols=n)
 
 
 def _augmented(system: LinearSystem) -> Matrix:
@@ -664,29 +666,27 @@ def check_nullspace(A: Matrix, basis, *, limits=None) -> bool:
 
 
 def check_determinant(A: Matrix, value, *, limits=None) -> bool:
-    """Check a determinant with rational Gaussian elimination, never Bareiss."""
+    """Check a determinant through mathforge.certify.linalg.determinant (a Hadamard bound and residues modulo
+    primes), never Bareiss."""
+    from .certify.linalg.determinant import check_determinant as certified
+
     with computation(limits):
         A = _matrix(A)
         if type(value) is not Rational or A.nrows != A.ncols:
             return False
-        rows = [list(row) for row in A.rows]
-        product = _ONE
-        for column in range(A.ncols):
-            current_budget().tick()
-            pivot_index = next((i for i in range(column, A.nrows)
-                                if rows[i][column].numerator), None)
-            if pivot_index is None:
-                return value == _ZERO
-            if pivot_index != column:
-                rows[column], rows[pivot_index] = rows[pivot_index], rows[column]
-                product = -product
-            pivot = rows[column][column]
-            product = product * pivot
-            for i in range(column + 1, A.nrows):
-                factor = rows[i][column] / pivot
-                for j in range(column + 1, A.ncols):
-                    rows[i][j] = rows[i][j] - factor * rows[column][j]
-        return product == value
+        return certified(A.rows, value)
+
+
+def check_inverse(A: Matrix, value, *, limits=None) -> bool:
+    """Check an inverse through mathforge.certify.linalg.inverse (one integer product), never an elimination."""
+    from .certify.linalg.inverse import check_inverse as certified
+
+    with computation(limits):
+        A = _matrix(A)
+        if type(value) is not Matrix or A.shape != value.shape or A.nrows != A.ncols:
+            return False
+        _matrix(value)
+        return certified(A.rows, value.rows)
 
 
 def verify_linear_solution(system: LinearSystem, solution, evidence, *, limits=None) -> bool:

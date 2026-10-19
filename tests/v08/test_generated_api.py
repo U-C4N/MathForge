@@ -105,7 +105,7 @@ class GeneratedApiTests(unittest.TestCase):
         for module in (family, checker):
             sys.modules[module.__name__] = module
             self.addCleanup(sys.modules.pop, module.__name__, None)
-        patcher = patch.object(registry, "V6_FAMILIES", (FAMILY,))
+        patcher = patch.object(registry, "v6_families", lambda: (FAMILY,))
         patcher.start()
         self.addCleanup(patcher.stop)
         self.addCleanup(registry._clear_caches)
@@ -166,8 +166,8 @@ class GeneratedApiTests(unittest.TestCase):
                 self.assertEqual(len(exported), len(module.__all__))
                 functions = {spec.public_name for spec in registry.area_operations(area)}
                 self.assertLessEqual(functions, exported)
-                for name in functions:
-                    self.assertIs(getattr(module, name), getattr(generated, name))
+                for name in functions:  # A superseded legacy operation's value function is mathforge's own.
+                    self.assertIs(getattr(module, name), getattr(generated, name, None) or getattr(mathforge, name))
                 for name in exported - functions:
                     self.assertTrue(inspect.isclass(getattr(module, name)), name)
                 self.assertLessEqual(V5_RECORDS.get(area, set()), exported - functions)
@@ -202,10 +202,12 @@ class GeneratedApiTests(unittest.TestCase):
                 self.assertIs(getattr(api_v7, name), getattr(structured, name))
 
     def test_v6_operations_stay_out_of_the_flat_namespace(self):
-        """Every v6 operation is reached through mathforge.operations and its area module, never as mf.<name>."""
+        """Every v6 operation is reached through mathforge.operations and its area module, never as mf.<name>; one
+        that supersedes a v0.7 operation keeps that operation's v0.7 functions."""
         structured = importlib.import_module("mathforge._generated.structured")
         values = importlib.import_module("mathforge._generated.values")
-        specs = [spec for spec in registry.specs().values() if spec.version == 6]
+        specs = [spec for spec in registry.specs().values()
+                 if spec.version == 6 and not registry.is_older_operation(spec.name)]
         self.assertTrue(specs)  # The pilot at least, so that the loop cannot pass vacuously.
         for spec in specs:
             name, area = spec.public_name, importlib.import_module("mathforge." + spec.area)
@@ -216,7 +218,7 @@ class GeneratedApiTests(unittest.TestCase):
                 self.assertIs(getattr(mathforge.operations, name), getattr(structured, name))
                 self.assertIs(getattr(area, name), getattr(values, name))
                 self.assertIn(name, area.__all__)
-                for cls in registry.family(spec.name).TYPES.values():  # Its records come with it.
+                for cls in registry.family(spec.name, 6).TYPES.values():  # Its records come with it.
                     self.assertIs(getattr(area, cls.__name__), cls)
 
     def test_rendering_is_deterministic(self):
@@ -241,10 +243,16 @@ class GeneratedApiTests(unittest.TestCase):
             self.tool.render_files(SRC)
 
     def test_wrappers_use_exactly_the_reserved_names(self):
-        """Besides their arguments, the wrappers use registry.WRAPPER_NAMES, which the registry build reserves."""
+        """Besides their arguments, the wrappers use registry.WRAPPER_NAMES, which the registry build reserves.
+
+        A family that supersedes integer_gcd makes its wrapper call run_dual, which no production family does yet.
+        """
+        from . import demo_dual_family
+        with registry._testing_families(demo_dual_family):
+            rendered = [self.rendered(relative) for relative in ("_generated/structured.py", "_generated/values.py")]
         used = set()
-        for relative in ("_generated/structured.py", "_generated/values.py"):
-            for function in ast.parse(self.rendered(relative)).body:
+        for text in rendered:
+            for function in ast.parse(text).body:
                 if isinstance(function, ast.FunctionDef):
                     own = {argument.arg for argument in function.args.args}
                     used.update(argument.arg for argument in function.args.kwonlyargs)

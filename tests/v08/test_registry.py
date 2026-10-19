@@ -120,13 +120,13 @@ class RegistryTests(unittest.TestCase):
     def install_family(self, *specs, records=None, name=FAMILY):
         """Register a throwaway production v6 family for the rest of this test; the cache starts cold.
 
-        It replaces the production families, as an entry of V6_FAMILIES, and names its checker by a path below
-        mathforge.certify, as a production family must.
+        It replaces the production families, as the one entry of v6_families(), and names its checker by a path
+        below mathforge.certify, as a production family must.
         """
         family, checker = self.modules(name, CHECKER)
         family.SPECS, family.TYPES, family.CHECKER = specs, dict(records or {}), CHECKER
         family.produce = lambda operation, args: (3 * args["n"], ())
-        patcher = patch.object(registry, "V6_FAMILIES", (name,))
+        patcher = patch.object(registry, "v6_families", lambda: (name,))
         patcher.start()
         self.addCleanup(patcher.stop)
         self.addCleanup(registry._clear_caches)
@@ -431,7 +431,7 @@ class RegistryTests(unittest.TestCase):
 
     def test_build_rejects_names_the_generated_wrappers_use(self):
         self.assertEqual(registry.WRAPPER_NAMES,
-                         ("limits", "dict", "run", "run_v6", "structured", "_LEAN", "FALLBACK", "_value"))
+                         ("limits", "dict", "run", "run_v6", "structured", "_LEAN", "FALLBACK", "_value", "run_dual"))
         for name in registry.WRAPPER_NAMES:
             with self.subTest(argument=name):
                 self.install_family(demo_spec(arguments=(registry.Argument(name, "int", None, "int"),)))

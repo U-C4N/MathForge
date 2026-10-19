@@ -144,17 +144,26 @@ def _area_tool(tool: str) -> ToolCapability:
                             "lists the operations.")
 
 
+def _entry(spec: "OperationSpec", tool: str | None) -> OperationCapability:
+    parameters = ", ".join(sorted(argument.name for argument in spec.arguments))
+    return dict(name=spec.name, sdk=spec.public_name, mcp_tool=tool, scope=spec.scope + "; arguments: " + parameters)
+
+
 def capabilities() -> Capabilities:
-    """Return fresh metadata; representability is not a promise of solver support."""
+    """Return fresh metadata; representability is not a promise of solver support.
+
+    Each operation name has one entry. The v0.7 entries stay as published, also for an operation that a v6
+    family supersedes; the entries of the later operations follow them.
+    """
     from . import __version__, registry
+    from .registry_v07 import V07_SPECS
     exposed = {name for name, _, _ in _TOOLS}
-    registered: dict[int, list[OperationCapability]] = {5: [], 6: []}
-    for spec in registry.specs().values():  # The v0.7 operations first, in their published order.
-        parameters = ", ".join(sorted(argument.name for argument in spec.arguments))
-        # mathforge.compute keeps the v0.7 operations; a later operation runs only through its area tool.
-        tool = "mathforge.compute" if spec.version == 5 else area_tool(spec)
-        registered[spec.version].append(dict(name=spec.name, sdk=spec.public_name, mcp_tool=tool,
-                                             scope=spec.scope + "; arguments: " + parameters))
+    registered: dict[int, list[OperationCapability]] = {
+        # mathforge.compute keeps the v0.7 operations, in their published order.
+        5: [_entry(spec, "mathforge.compute") for spec in V07_SPECS],
+        # A later operation runs only through its area tool; one that supersedes an older one adds no entry.
+        6: [_entry(spec, area_tool(spec)) for spec in registry.specs().values()
+            if spec.version == 6 and not registry.is_older_operation(spec.name)]}
 
     return {
         "api_version": 1,

@@ -78,7 +78,7 @@ from ..functions import RealExpr, RealFunction
 from ..algebraic import RealAlgebraicRoot
 from ..function_calculus import TaylorPolynomial, FunctionLimitValue
 from ..rational_integration import RationalPrimitive
-from ..operations_v5 import run
+from ..operations_v6 import run_v07 as run
 from ..operations_v6 import run as run_v6
 
 if TYPE_CHECKING:

@@ -109,10 +109,12 @@ class AreaToolTests(unittest.TestCase):
             return {key: value for key, value in document.items() if key not in ("tools", "operations")}
 
         self.assertEqual(descriptive(current), descriptive(frozen))
-        # v6 operations follow the frozen entries, each naming the area tool that runs it.
+        # v6 operations follow the frozen entries, each naming the area tool that runs it; one that supersedes a
+        # v0.7 operation keeps that operation's frozen entry.
         later = current["operations"][len(frozen["operations"]):]
         self.assertEqual([entry["name"] for entry in later],
-                         [spec.name for spec in registry.specs().values() if spec.version == 6])
+                         [spec.name for spec in registry.specs().values()
+                          if spec.version == 6 and not registry.is_older_operation(spec.name)])
         self.assertIn({"name": "continued_fraction", "sdk": "continued_fraction", "mcp_tool": "mathforge.ntheory",
                        "scope": "exact rationals; canonical finite simple continued fraction; arguments: value"}, later)
 

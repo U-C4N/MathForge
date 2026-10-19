@@ -1,5 +1,5 @@
-"""Integer kernel: factorization by trial division and Pollard-Brent rho, a Miller-Rabin splitting test, and v0.7's
-prime certificates built with the builtin ``pow``.
+"""Integer kernel: factorization by trial division and Pollard-Brent rho, a Miller-Rabin splitting test, v0.7's
+prime certificates built with the builtin ``pow``, and modular inverses of large numbers by Lehmer's algorithm.
 
 This is producer code: nothing here is a proof. ``factor`` returns what ``is_probable_prime`` calls primes; every
 caller certifies each prime (``number_theory._prime_certificate`` and its checker on the structured path,
@@ -20,7 +20,8 @@ from math import gcd, isqrt, prod
 from ..limits import ComputationLimits, ResourceLimitError, current_budget
 from ..trusted.integers import powers_by_prime
 
-__all__ = ["SMALL_PRIMES", "SPF_LIMIT", "factor", "is_probable_prime", "prime_certificate", "smallest_factor_table"]
+__all__ = ["SMALL_PRIMES", "SPF_LIMIT", "factor", "inverse", "is_probable_prime", "prime_certificate",
+           "smallest_factor_table"]
 
 _DEFAULT_WORK = ComputationLimits().max_work
 
@@ -274,6 +275,53 @@ def _factor(n: int, work: _Work) -> tuple[tuple[int, int], ...]:
 
 
 # ---------------------------------------------------------------------------------------------------------------
+# Modular inverses of large numbers
+
+_LEHMER_BITS = 6_000  # Below this modulus size the builtin pow(a, -1, m) is as fast.
+_WINDOW = 120  # Leading bits that one Lehmer step simulates with small integers.
+
+
+def inverse(a: int, m: int) -> int:
+    """pow(a, -1, m) for m >= 1: the inverse of a modulo m in [0, m), ValueError when gcd(a, m) != 1.
+
+    From 6,000 bits on, Lehmer's extended Euclidean algorithm (Knuth's Algorithm L): the quotients that the leading
+    bits determine are applied to the full numbers as one matrix, where the builtin divides once per quotient."""
+    if m.bit_length() < _LEHMER_BITS:
+        return pow(a, -1, m)
+    g, s = _lehmer(a % m, m)
+    if g != 1:
+        raise ValueError("base is not invertible for the given modulus")
+    return s % m
+
+
+def _lehmer(a: int, b: int) -> tuple[int, int]:
+    """(g, s) with g = gcd(a, b) and s*a = g modulo b, for 0 <= a < b: the extended Euclidean algorithm on (b, a),
+    carrying the coefficients of a only, with Lehmer's steps while the numbers exceed the window."""
+    r0, r1, s0, s1 = b, a, 0, 1  # r_i = s_i * a (mod b)
+    while r1.bit_length() > _WINDOW:
+        shift = r0.bit_length() - _WINDOW
+        x, y = r0 >> shift, r1 >> shift
+        A, B, C, D = 1, 0, 0, 1
+        while y + C and y + D:
+            q = (x + A) // (y + C)
+            if q != (x + B) // (y + D):
+                break
+            A, C = C, A - q * C
+            B, D = D, B - q * D
+            x, y = y, x - q * y
+        if B == 0:  # No quotient was certain: one full division.
+            q, r = divmod(r0, r1)
+            r0, r1, s0, s1 = r1, r, s1, s0 - q * s1
+        else:
+            r0, r1 = A * r0 + B * r1, C * r0 + D * r1
+            s0, s1 = A * s0 + B * s1, C * s0 + D * s1
+    while r1:
+        q, r = divmod(r0, r1)
+        r0, r1, s0, s1 = r1, r, s1, s0 - q * s1
+    return r0, s0
+
+
+# ---------------------------------------------------------------------------------------------------------------
 # Prime certificates in v0.7's format (number_theory._prime_certificate), built for speed: the builtin pow, the
 # kernel's factor, a strong probable-prime test to base 2 before any factoring, and prime witnesses tried in a cheap
 # order. A certificate proves its claim only once a checker has accepted it (mathforge.certify.ntheory.primes).
@@ -333,7 +381,8 @@ def _certificate(n: int, depth: int, work: _Work) -> tuple[bool, tuple]:
         work.charge(len(remaining).bit_length() * _power_work(n) + len(remaining) * weight)
         powers = powers_by_prime(witness, m, n, remaining)
         first = remaining[0]
-        if pow(powers[first], first, n) != 1:  # witness**(n - 1), from witness**((n - 1)/first)
+        # witness**(n - 1), from witness**((n - 1)/first); 2 passed the strong test above.
+        if witness != 2 and pow(powers[first], first, n) != 1:
             return False, ("fermat", n, witness)
         still = []
         for prime in remaining:
@@ -353,10 +402,15 @@ def _certificate(n: int, depth: int, work: _Work) -> tuple[bool, tuple]:
     return True, ("pocklington", n, tuple(certified), witnesses)
 
 
+# The Pocklington witnesses to try: the primes below 2**10 (a power of a witness that failed for a prime fails as
+# well), 3 before 2 (2 has a small order modulo the numbers 2**k - 1 and 2**k + 1, which are common inputs), then
+# every integer from 1025 up.
+_WITNESSES = (3, 2, *SMALL_PRIMES[2:])
+
+
 def _witness_candidates(n: int):
-    """The Pocklington witnesses to try: the primes below 2**10 (a power of a witness that failed for a prime fails
-    as well), then every integer from 1025 up, all below n."""
-    for witness in SMALL_PRIMES:
+    """The Pocklington witnesses to try for n, all below n."""
+    for witness in _WITNESSES:
         if witness >= n:
             return
         yield witness

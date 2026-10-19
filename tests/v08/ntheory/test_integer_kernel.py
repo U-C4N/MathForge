@@ -222,6 +222,32 @@ class IntegerKernelTest(unittest.TestCase):
             mutated = tuple(mutated)
             self.assertEqual(check_prime(number, claim, mutated), v07_check(number, claim, mutated), mutated)
 
+    def test_inverse(self):
+        rng = random.Random(9)
+        for bits in (8, 64, 1000, 5999, 6000, 6001, 9000, 20000):
+            for _ in range(30 if bits < 9000 else 4):
+                m = rng.getrandbits(bits) | (1 << (bits - 1)) | 1
+                a = rng.getrandbits(bits + rng.randrange(-5, 6)) * rng.choice((1, -1))
+                try:
+                    expected = pow(a, -1, m)
+                except ValueError:
+                    with self.assertRaises(ValueError):
+                        kernel.inverse(a, m)
+                    continue
+                self.assertEqual(kernel.inverse(a, m), expected, (bits, a, m))
+        m = (1 << 7000) + 1
+        for a in (0, m, 3 * ((1 << 7000) + 1), 2 * m + 1, -1, 1):
+            try:
+                expected = pow(a, -1, m)
+            except ValueError:
+                expected = ValueError
+            if expected is ValueError:
+                with self.assertRaises(ValueError):
+                    kernel.inverse(a, m)
+            else:
+                self.assertEqual(kernel.inverse(a, m), expected)
+        self.assertEqual(kernel.inverse(5, 1), 0)
+
     def test_powers_by_prime(self):
         rng = random.Random(5)
         primes = (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43)

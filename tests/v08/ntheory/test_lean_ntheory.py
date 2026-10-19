@@ -167,8 +167,12 @@ class LeanNtheoryTest(unittest.TestCase):
                 self.assertIs(getattr(lean.functions, operation)(84, 30), FALLBACK, operation)
         with patch.object(module, "pow", lambda *args: 2, create=True):
             for operation, arguments in (("integer_gcd", (35, 18)), ("integer_xgcd", (35, 18)),
-                                         ("integer_lcm", (35, 18)), ("mod_inverse", (3, 7))):
+                                         ("integer_lcm", (35, 18))):
                 self.assertIs(getattr(lean.functions, operation)(*arguments), FALLBACK, operation)
+        with patch.object(module, "_inverse", lambda *args: 2):
+            self.assertIs(lean.functions.mod_inverse(3, 7), FALLBACK)
+            big = (1 << 7000) + 1
+            self.assertIs(lean.functions.integer_xgcd(big, 3 ** 4000), FALLBACK)
         with patch.object(module, "_euclid", lambda x, y: (1, 0, 0)):
             self.assertIs(lean.functions.crt(((2, 3), (3, 5))), FALLBACK)
         self.assertEqual(lean.functions.integer_gcd(84, 30), 6)

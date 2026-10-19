@@ -29,6 +29,8 @@ _MAX_BITS = ComputationLimits().max_integer_bits
 _new = object.__new__
 _set = object.__setattr__
 _SPF = kernel.smallest_factor_table()
+_inverse = kernel.inverse
+_LEHMER_BITS = kernel._LEHMER_BITS
 _TRIAL_BOUND = 10_000
 # The lean paths of factor_integer, divisors, totient and is_prime take numbers up to this size; larger ones go to the
 # structured path, whose records hold every certificate (and whose budget stops what the kernel cannot factor).
@@ -64,7 +66,7 @@ def _euclid(x: int, y: int) -> tuple[int, int, int]:
     if g == x:  # x divides y, x < y: the first step swaps them.
         return g, 1, 0
     x1, y1 = x // g, y // g
-    u = pow(x1, -1, y1)
+    u = pow(x1, -1, y1) if y1.bit_length() < _LEHMER_BITS else _inverse(x1, y1)
     s = u if 2 * u <= y1 else u - y1
     return g, s, (1 - s * x1) // y1
 
@@ -86,7 +88,7 @@ def _xgcd(a: int, b: int) -> tuple[int, int, int] | None:
             s, t = 1, 0
         else:
             x1, y1 = x // g, y // g
-            u = pow(x1, -1, y1)
+            u = pow(x1, -1, y1) if y1.bit_length() < _LEHMER_BITS else _inverse(x1, y1)
             s = u if 2 * u <= y1 else u - y1
             t = (1 - s * x1) // y1
     if a < 0:
@@ -152,7 +154,7 @@ def integer_lcm(a: object, b: object) -> object:
             s, t = 1, 0
         else:
             x1, y1 = x // g, y // g
-            u = pow(x1, -1, y1)
+            u = pow(x1, -1, y1) if y1.bit_length() < _LEHMER_BITS else _inverse(x1, y1)
             s = u if 2 * u <= y1 else u - y1
             t = (1 - s * x1) // y1
         if a < 0:
@@ -175,7 +177,7 @@ def mod_inverse(a: object, modulus: object) -> object:
     try:
         if a.bit_length() > _MAX_BITS or modulus.bit_length() > _MAX_BITS or modulus <= 0:
             return FALLBACK
-        value = pow(a, -1, modulus)  # ValueError when a has no inverse: v0.7 raises invalid_input.
+        value = _inverse(a, modulus)  # ValueError when a has no inverse: v0.7 raises invalid_input.
         # v0.7 multiplies a by the inverse, then the modulus by (1 - a*value)/modulus, under the integer bound.
         if a.bit_length() + value.bit_length() >= _MAX_BITS:
             return FALLBACK

@@ -4,6 +4,12 @@ LogRootSum(q,h) means sum_{q(t)=0} t log(h(t,x)), modulo locally
 constant choices of logarithm. It is a formal primitive, never a pointwise
 principal-complex-log evaluator. A separate real elementary conversion covers
 linear/quadratic denominator factors and proper finite integrals.
+
+The field arithmetic of the LRT step and of the trace checker (Q[t]/q and Q(x))
+runs on plain coefficient tuples, constant first, with no trailing zeros and ()
+for zero: no Polynomial record per operation, and no gcd per Q(x) operation.
+A Q(x) element keeps its numerator and denominator unreduced and is reduced
+only when its denominator grows past a few terms; comparisons cross-multiply.
 """
 from __future__ import annotations
 
@@ -12,7 +18,7 @@ from dataclasses import dataclass
 from .errors import InvalidInput, UnsupportedOperation
 from .limits import computation, current_budget
 from .model import Rational, Symbol
-from .polynomial import Polynomial
+from .polynomial import MAX_POLYNOMIAL_DEGREE, Polynomial
 from .rational_function import RationalFunction, as_rational_function, validate_variable
 from .functions import DomainPredicate
 
@@ -22,9 +28,134 @@ def _tick(n=1):
 
 
 def _zero(value):
-    if isinstance(value, _K): return value.p.is_zero
-    if isinstance(value, _F): return value.n.is_zero
+    if isinstance(value, _K): return not value.p
+    if isinstance(value, _F): return not value.n
     return value == Rational(0) if type(value) is Rational else value == 0
+
+
+# --- Dense coefficient tuples over Q: constant first, trimmed, () for zero -------------------------------------
+
+_Q0 = Rational(0)
+_Q1 = Rational(1)
+_UNIT = (_Q1,)
+
+
+def _tuple(polynomial):
+    """A Polynomial's coefficients as a trimmed tuple: () for the zero polynomial."""
+    coefficients = polynomial.coefficients
+    return () if len(coefficients) == 1 and not coefficients[0].numerator else coefficients
+
+
+def _record(coefficients):
+    """A trimmed tuple as Polynomial.coefficients spell it: (Rational(0),) for zero."""
+    return coefficients if coefficients else (_Q0,)
+
+
+def _scalar(value):
+    """An int or a Rational as a trimmed tuple."""
+    if type(value) is not Rational:
+        value = Rational(value)
+    return (value,) if value.numerator else ()
+
+
+def _norm(values):
+    end = len(values)
+    while end and not values[end - 1].numerator:
+        end -= 1
+    return tuple(values[:end])
+
+
+def _padd(a, b):
+    if len(a) < len(b):
+        a, b = b, a
+    if not b:
+        return a
+    out = list(a)
+    for i, y in enumerate(b):
+        out[i] = out[i] + y
+    return _norm(out) if len(a) == len(b) else tuple(out)
+
+
+def _psub(a, b):
+    if not b:
+        return a
+    size = max(len(a), len(b))
+    out = [(a[i] if i < len(a) else _Q0) - (b[i] if i < len(b) else _Q0) for i in range(size)]
+    return _norm(out) if len(a) == len(b) else tuple(out)
+
+
+def _pneg(a):
+    return tuple([-y for y in a])
+
+
+def _pmul(a, b):
+    if not a or not b:
+        return ()
+    _tick(len(a) * len(b))
+    out = [_Q0] * (len(a) + len(b) - 1)
+    for i, u in enumerate(a):
+        if u.numerator:
+            for j, v in enumerate(b):
+                if v.numerator:
+                    out[i + j] = out[i + j] + u * v
+    return tuple(out)  # Over a field the leading product is nonzero.
+
+
+def _pdivmod(a, b):
+    """Quotient and remainder by a nonzero trimmed b."""
+    shift = len(a) - len(b)
+    if shift < 0:
+        return (), a
+    _tick(shift + 1)
+    lead = b[-1]
+    top = len(b) - 1
+    remainder = list(a)
+    quotient = [_Q0] * (shift + 1)
+    for k in range(shift, -1, -1):
+        c = remainder[k + top]
+        if c.numerator:
+            if lead != _Q1:
+                c = c / lead
+            quotient[k] = c
+            for j in range(top):
+                if b[j].numerator:
+                    remainder[k + j] = remainder[k + j] - c * b[j]
+    return _norm(quotient), _norm(remainder[:top])
+
+
+def _pmod(a, b):
+    return a if len(a) < len(b) else _pdivmod(a, b)[1]
+
+
+def _pmonic(a):
+    lead = a[-1]
+    return a if lead == _Q1 else tuple([y / lead for y in a])
+
+
+def _pgcd(a, b):
+    """The monic gcd; () when both are zero."""
+    while b:
+        _tick()
+        a, b = b, _pmod(a, b)
+    return _pmonic(a) if a else ()
+
+
+def _pinverse(a, modulus):
+    """The inverse of a modulo a monic modulus of degree >= 1, or None when gcd(a, modulus) is not 1."""
+    old_r, r, old_s, s = a, modulus, _UNIT, ()
+    while r:
+        _tick()
+        quotient, remainder = _pdivmod(old_r, r)
+        old_r, r = r, remainder
+        old_s, s = s, _psub(old_s, _pmul(quotient, s))
+    if len(old_r) != 1:
+        return None
+    lead = old_r[0]
+    return old_s if lead == _Q1 else tuple([y / lead for y in old_s])
+
+
+def _pderivative(a):
+    return tuple([a[i] * i for i in range(1, len(a))])
 
 
 def _trim(values):
@@ -78,50 +209,83 @@ def _xgcd(a, b, one):
 
 
 class _K:
-    """A coefficient in Q[t]/q for the producer's polynomial Euclidean step."""
+    """A coefficient in Q[t]/q for the producer's polynomial Euclidean step: a coefficient tuple reduced modulo
+    the monic coefficient tuple q."""
+    __slots__ = ("p", "q")
+
     def __init__(self, p, q):
         self.q = q
-        self.p = (p if type(p) is Polynomial else Polynomial((p,),q.variable)) % q
-    def _coerce(self, value): return value if isinstance(value,_K) else _K(value,self.q)
-    def __add__(self, other): return _K(self.p+self._coerce(other).p,self.q)
+        self.p = p if len(p) < len(q) else _pdivmod(p, q)[1]
+
+    def _of(self, value): return value.p if type(value) is _K else _scalar(value)
+    def __add__(self, other): return _K(_padd(self.p, self._of(other)), self.q)
     __radd__ = __add__
-    def __neg__(self): return _K(-self.p,self.q)
-    def __sub__(self, other): return self+-self._coerce(other)
-    def __mul__(self, other): return _K(self.p*self._coerce(other).p,self.q)
+    def __neg__(self): return _K(_pneg(self.p), self.q)
+    def __sub__(self, other): return _K(_psub(self.p, self._of(other)), self.q)
+    def __mul__(self, other): return _K(_pmul(self.p, self._of(other)), self.q)
     __rmul__ = __mul__
+
     def __truediv__(self, other):
-        other = self._coerce(other)
-        g,s,_ = other.p.xgcd(self.q)
-        if g.degree != 0 or g.is_zero: raise InvalidInput("Noninvertible residue coefficient")
-        return _K(self.p*s,self.q)
+        other = self._of(other)
+        if other == _UNIT:
+            return self
+        inverse = _pinverse(other, self.q)
+        if inverse is None: raise InvalidInput("Noninvertible residue coefficient")
+        return _K(_pmul(self.p, inverse), self.q)
+
+
+# A Q(x) fraction is reduced by its gcd only once its denominator has more coefficients than this: constant and
+# linear denominators stay unreduced (no gcd), while the remainder sequences over Q(x) of high-degree residue
+# polynomials, where unreduced fractions swell, keep their fractions reduced.
+_REDUCE_ABOVE = 2
 
 
 class _F:
-    """Q(x) coefficients used only by the independent trace checker.
+    """Q(x) coefficients used only by the independent trace checker: a numerator and a nonzero denominator,
+    coefficient tuples, kept unreduced (see _REDUCE_ABOVE). Zero tests read the numerator, and equalities
+    cross-multiply, so no comparison depends on the reduction.
 
     These are formal field elements: no evaluation domain is silently inferred
     from intermediate denominators. The public source keeps its own exclusions.
     """
-    def __init__(self, n, d=None):
-        self.n=n
-        self.d=Polynomial((1,),n.variable) if d is None else d
-        if self.d.is_zero: raise ZeroDivisionError("Zero formal denominator")
-        g=self.n.gcd(self.d)
-        self.n,self.d=self.n.exact_div(g),self.d.exact_div(g)
-        scale=self.d.leading_coefficient
-        self.n,self.d=self.n/scale,self.d/scale
-    def _coerce(self, x):
-        return x if isinstance(x,_F) else _F(Polynomial((x,),self.n.variable))
+    __slots__ = ("n", "d")
+
+    def __init__(self, n, d=_UNIT):
+        if not d: raise ZeroDivisionError("Zero formal denominator")
+        if not n:
+            d = _UNIT
+        elif len(d) > _REDUCE_ABOVE:
+            common = _pgcd(n, d)
+            if len(common) > 1:
+                n, d = _pdivmod(n, common)[0], _pdivmod(d, common)[0]
+            lead = d[-1]
+            if lead != _Q1:
+                n, d = tuple([y / lead for y in n]), tuple([y / lead for y in d])
+        self.n = n
+        self.d = d
+
+    @staticmethod
+    def _of(x): return x if type(x) is _F else _F(_scalar(x))
+
     def __add__(self, x):
-        x=self._coerce(x); return _F(self.n*x.d+x.n*self.d,self.d*x.d)
-    __radd__=__add__
-    def __neg__(self): return _F(-self.n,self.d)
-    def __sub__(self,x): return self+-self._coerce(x)
-    def __mul__(self,x):
-        x=self._coerce(x); return _F(self.n*x.n,self.d*x.d)
-    __rmul__=__mul__
-    def __truediv__(self,x):
-        x=self._coerce(x); return _F(self.n*x.d,self.d*x.n)
+        x = _F._of(x)
+        if not x.n: return self
+        if not self.n: return x
+        if self.d == x.d: return _F(_padd(self.n, x.n), self.d)
+        return _F(_padd(_pmul(self.n, x.d), _pmul(x.n, self.d)), _pmul(self.d, x.d))
+    __radd__ = __add__
+    def __neg__(self): return _F(_pneg(self.n), self.d)
+    def __sub__(self, x): return self + -_F._of(x)
+
+    def __mul__(self, x):
+        x = _F._of(x)
+        if not self.n or not x.n: return _F(())
+        return _F(_pmul(self.n, x.n), _pmul(self.d, x.d))
+    __rmul__ = __mul__
+
+    def __truediv__(self, x):
+        x = _F._of(x)
+        return _F(_pmul(self.n, x.d), _pmul(self.d, x.n))
 
 
 @dataclass(frozen=True)
@@ -225,27 +389,30 @@ def _lrt(b,d):
     Lazard--Rioboo--Trager without requiring explicit complex root isolation.
     """
     from .polynomial_exact import resultant, factor_with_evidence
-    x=d.variable; one=Polynomial((1,),x); t=Polynomial((0,1),x)
-    samples=[resultant(d,b-d.derivative()*k) for k in range(d.degree+1)]
-    q=Polynomial((0,),x)
+    x=d.variable; derivative=d.derivative()
+    samples=[resultant(d,b-derivative*k) for k in range(d.degree+1)]
+    q=()
     for k,y in enumerate(samples):
-        basis=one; divisor=1
+        basis=_UNIT; divisor=1
         for j in range(d.degree+1):
             if j!=k:
-                basis=basis*(t-j); divisor*=k-j; _tick()
-        q=q+basis*(y/divisor)
-    factors,_=factor_with_evidence(q)
+                basis=_pmul(basis,(Rational(-j),_Q1)); divisor*=k-j; _tick()
+        weight=y/divisor
+        if weight.numerator:
+            q=_padd(q,tuple([c*weight for c in basis]))
+    factors,_=factor_with_evidence(Polynomial(_record(q),x))
+    b_coefficients,d_coefficients,slope=_tuple(b),d.coefficients,_tuple(derivative)
     terms=[]
     for factor in factors.factors:
-        modulus=factor.polynomial
-        d_k=tuple(_K(c,modulus) for c in d.coefficients)
-        residue=_K(t,modulus)
-        bd=tuple(_K(b.coefficients[i] if i<len(b.coefficients) else 0,modulus)
-                 - residue*(d.derivative().coefficients[i] if i<len(d.derivative().coefficients) else 0)
-                 for i in range(max(len(b.coefficients),len(d.derivative().coefficients))))
-        g,_,_=_xgcd(_trim(d_k),_trim(bd),_K(1,modulus))
+        modulus=factor.polynomial.coefficients
+        d_k=tuple(_K(_scalar(c),modulus) for c in d_coefficients)
+        residue=_K((_Q0,_Q1),modulus)
+        bd=tuple(_K(_scalar(b_coefficients[i]) if i<len(b_coefficients) else (),modulus)
+                 - residue*(slope[i] if i<len(slope) else 0)
+                 for i in range(max(len(b_coefficients),len(slope))))
+        g,_,_=_xgcd(_trim(d_k),_trim(bd),_K(_UNIT,modulus))
         if len(g)<2: raise ArithmeticError("Residue resultant did not select a logarithmic factor")
-        terms.append(LogRootSum(modulus.coefficients,tuple(v.p.coefficients for v in g)))
+        terms.append(LogRootSum(modulus,tuple(_record(v.p) for v in g)))
     return tuple(terms)
 
 
@@ -272,25 +439,40 @@ def _primitive(source,domain=None):
     return RationalPrimitive(source,rational,logs,terms,domain)
 
 
+def _dense(values):
+    """A coefficient sequence as Polynomial(values, x) would hold it, as a trimmed tuple: exact rationals only and
+    the dense degree bound, as that constructor demands."""
+    if any(type(value) is not Rational for value in values):
+        if any(type(value) not in (Rational, int) for value in values):
+            raise UnsupportedOperation("Polynomial coefficients must be rational")
+        values = tuple(Rational(value) for value in values)
+    values = _norm(values)
+    if len(values) - 1 > MAX_POLYNOMIAL_DEGREE:
+        raise UnsupportedOperation(f"Dense polynomial degree exceeds {MAX_POLYNOMIAL_DEGREE}")
+    return values
+
+
 def _trace_derivative(term,variable):
     """Independent Q(x)[t]/q trace of t*h_x/h; no LRT or Hermite calls."""
-    q=Polynomial(term.residue_polynomial,variable)
-    if q.gcd(q.derivative()).degree!=0:
+    q=_dense(term.residue_polynomial)
+    if _pgcd(q,_pderivative(q))!=_UNIT:
         raise InvalidInput("Residue polynomial must be square-free")
-    coeff=lambda c:_F(Polynomial((c,),variable))
-    mod=tuple(coeff(c) for c in q.coefficients)
-    width=max(len(row) for row in term.logarithm_coefficients)
-    h=tuple(_F(Polynomial(tuple(row[j] if j<len(row) else Rational(0)
-                     for row in term.logarithm_coefficients),variable)) for j in range(width))
-    hx=tuple(_F(c.n.derivative()) for c in h)
-    g,inv,_=_xgcd(_trim(h),mod,coeff(1))
+    zero=_F(())
+    mod=tuple(_F(_scalar(c)) for c in q)
+    rows=term.logarithm_coefficients
+    width=max(len(row) for row in rows)
+    columns=[_dense(tuple(row[j] if j<len(row) else _Q0 for row in rows)) for j in range(width)]
+    h=tuple(_F(c) for c in columns)
+    hx=tuple(_F(_pderivative(c)) for c in columns)
+    g,inv,_=_xgcd(_trim(h),mod,_F(_UNIT))
     if len(g)!=1 or g[0].n!=g[0].d:
         raise InvalidInput("Logarithmic polynomial is not invertible in Q(x)[t]/q")
-    z=_divmod((coeff(0),)+_mul(hx,inv),mod)[1]
-    trace=coeff(0)
-    for i in range(q.degree):
-        column=_divmod((coeff(0),)*i+z,mod)[1]
+    column=_divmod((zero,)+_mul(hx,inv),mod)[1]
+    trace=zero
+    for i in range(len(q)-1):
+        # column = t^i * z mod q, from the previous one with a single reduction step.
         if i<len(column): trace=trace+column[i]
+        column=_divmod((zero,)+column,mod)[1]
     return trace
 
 
@@ -303,24 +485,26 @@ def _check_primitive(source,value,domain=None):
     if value.domain!=expected_domain: return False
     if value.rational_part.excluded!=source.excluded: return False
     derivative=value.rational_part.derivative()
-    actual=_F(derivative.numerator,derivative.denominator)
-    trace=_F(Polynomial((0,),source.variable))
+    actual=_F(_tuple(derivative.numerator),_tuple(derivative.denominator))
+    trace=_F(())
+    numerator,denominator=_tuple(source.numerator),_tuple(source.denominator)
     for term in value.log_terms:
         # Each logarithm factor must divide the source denominator in Q[t]/q.
         # A cancelling trace alone cannot justify adding logarithmic holes.
-        q=Polynomial(term.residue_polynomial,source.variable)
-        h=tuple(_K(Polynomial(row,source.variable),q) for row in term.logarithm_coefficients)
-        denominator=tuple(_K(c,q) for c in source.denominator.coefficients)
-        if _divmod(denominator,h)[1]: return False
+        q=_dense(term.residue_polynomial)
+        h=tuple(_K(_dense(row),q) for row in term.logarithm_coefficients)
+        denominator_k=tuple(_K(_scalar(c),q) for c in denominator)
+        if _divmod(denominator_k,h)[1]: return False
         trace=trace+_trace_derivative(term,source.variable)
     total=actual+trace
-    if total.n*source.denominator != source.numerator*total.d: return False
-    residual=_F(Polynomial((0,),source.variable))
+    if _pmul(total.n,denominator)!=_pmul(numerator,total.d): return False
+    residual=_F(())
     for b,d in value.elementary_terms:
-        if d.leading_coefficient!=Rational(1) or d.gcd(d.derivative()).degree!=0: return False
-        if not (source.denominator % d).is_zero: return False
-        residual=residual+_F(b,d)
-    return residual.n*trace.d==trace.n*residual.d
+        d_coefficients=_tuple(d)
+        if d.leading_coefficient!=Rational(1) or _pgcd(d_coefficients,_pderivative(d_coefficients))!=_UNIT: return False
+        if _pmod(denominator,d_coefficients): return False
+        residual=residual+_F(_tuple(b),d_coefficients)
+    return _pmul(residual.n,trace.d)==_pmul(trace.n,residual.d)
 
 
 def produce(operation,args):

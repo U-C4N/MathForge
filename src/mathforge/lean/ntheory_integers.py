@@ -112,11 +112,8 @@ def integer_gcd(a: object, b: object) -> object:
     try:
         if a.bit_length() > _MAX_BITS or b.bit_length() > _MAX_BITS:
             return FALLBACK
-        g = gcd(a, b)  # The producer; the Bezout triple below is its certificate.
-        triple = _xgcd(a, b)
-        if triple is None or triple[0] != g:
-            return FALLBACK
-        return g
+        triple = _xgcd(a, b)  # math.gcd, then its certificate: v0.7's Bezout triple, checked.
+        return FALLBACK if triple is None else triple[0]
     except Exception:
         return FALLBACK
 

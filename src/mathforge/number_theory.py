@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from math import gcd, isqrt
 
 from .errors import InvalidInput
-from .kernels.integers import factor
 from .limits import computation, current_budget, ResourceLimitError
 
 
@@ -104,6 +103,7 @@ def _trial_factors(n):
     prime is still certified by _prime_certificate."""
     if n < 2:
         return ()
+    from .kernels.integers import factor  # On first use: importing mathforge loads no kernel.
     pairs = factor(n)
     current_budget().nodes(len(pairs))
     return pairs

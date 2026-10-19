@@ -528,8 +528,11 @@ def _prepare() -> None:
 
 def _immutable(value: Any) -> Any:
     """contracts._immutable_value, which a record applies to its request, its value and its evidence."""
-    if type(value) in _SAME:
+    kind = type(value)
+    if kind in _SAME:
         return value
+    if kind is tuple or kind is list:  # No record class is a plain tuple or list: the items, normalized, as a tuple.
+        return tuple([_immutable(item) for item in value])
     return _types["immutable"](value)
 
 

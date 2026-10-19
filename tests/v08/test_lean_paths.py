@@ -77,6 +77,35 @@ def data(value):
         return ("not serializable", type(error).__name__)
 
 
+def first_refused(call, hint):
+    """The smallest size at which call(size), a structured call, fails, when every smaller size succeeds.
+
+    hint - 1 and hint are tried first; otherwise the size is found by doubling from the hint (sizes grow when the
+    arithmetic gets cheaper) or by bisection below it."""
+    def refused(size):
+        return outcome(lambda: call(size))[0] == "error"
+
+    if refused(hint):
+        if not refused(hint - 1):
+            return hint
+        low, high = 1, hint - 1
+        if refused(low):
+            raise AssertionError("the smallest size fails too")
+    else:
+        low, high = hint, 2 * hint
+        while not refused(high):
+            if high > 16 * hint:
+                raise AssertionError(f"no failing size up to {high}")
+            low, high = high, 2 * high
+    while high - low > 1:
+        middle = (low + high) // 2
+        if refused(middle):
+            high = middle
+        else:
+            low = middle
+    return high
+
+
 def positional(operation, arguments):
     return [arguments[name] for name in argument_names(operation)]
 
@@ -423,28 +452,25 @@ class LeanPathTest(unittest.TestCase):
                     self.assertSameOutcome(outcome(lambda: public_function(operation)(**arguments)), expected,
                                            (operation, depth))
         self.assertGreater(failures, 0)
-        # At the evidence limit, exactly: _run's records of a sum of 1,665 terms fit, those of 1,666 do not.
-        for terms, fits in ((1665, True), (1666, False)):
-            expression = Add(tuple(mf.Rational(i, 7) * _x for i in range(1, terms)))
-            expected = outcome(lambda: mf.operations.simplify(expression))
-            with self.subTest(terms=terms):
-                self.assertEqual(expected[0], "value" if fits else "error")
-                value = lean.functions.simplify(expression)
-                if fits:
-                    self.assertSameValue(value, expected[1])
-                else:
-                    self.assertIs(value, lean.FALLBACK)
-        # The checker's own budget: the median of 815 values verifies, that of 816 exhausts the verifier.
-        for count, fits in ((815, True), (816, False)):
-            data = tuple(mf.Rational(i, 7) for i in range(1, count + 1))
-            expected = outcome(lambda: mf.operations.median(data))
-            with self.subTest(count=count):
-                self.assertEqual(expected[0], "value" if fits else "error")
-                value = lean.functions.median(data)
-                if fits:
-                    self.assertSameValue(value, expected[1])
-                else:
-                    self.assertIs(value, lean.FALLBACK)
+        # Where a budget runs out, the lean path answers exactly as long as the structured path does: just below the
+        # first refused size it gives the structured value, at that size FALLBACK. The sizes are located on the
+        # structured path, because they move when the arithmetic gets cheaper; the hints are the last ones measured.
+        sum_of = lambda terms: Add(tuple(mf.Rational(i, 7) * _x for i in range(1, terms)))  # noqa: E731
+        sample = lambda count: tuple(mf.Rational(i, 7) for i in range(1, count + 1))  # noqa: E731
+        cases = (("simplify", sum_of, lambda e: dict(expression=e), 1666),  # _run's records reach max_evidence_items.
+                 ("median", sample, lambda d: dict(data=d), 1000))  # The quadratic median checker reaches max_work.
+        for operation, build, arguments_of, hint in cases:
+            refused = first_refused(lambda size: structured_function(operation)(**arguments_of(build(size))), hint)
+            for size, fits in ((refused - 1, True), (refused, False)):
+                arguments = arguments_of(build(size))
+                expected = outcome(lambda: structured_function(operation)(**arguments))
+                with self.subTest(operation=operation, size=size):
+                    self.assertEqual(expected[0], "value" if fits else "error")
+                    value = getattr(lean.functions, operation)(*positional(operation, arguments))
+                    if fits:
+                        self.assertSameValue(value, expected[1])
+                    else:
+                        self.assertIs(value, lean.FALLBACK)
 
     def test_record_checks_fall_back(self):
         """Inputs that the producer accepts and the verifier's record checks reject: one Symbol uid under two names,
@@ -472,6 +498,28 @@ class LeanPathTest(unittest.TestCase):
                 self.assertIs(lean.run_value(operation, arguments), lean.FALLBACK)
                 self.assertIs(getattr(lean.functions, operation)(*positional(operation, arguments)), lean.FALLBACK)
                 self.assertSameOutcome(outcome(lambda: public_function(operation)(**arguments)), expected, operation)
+
+    def test_record_normalization_matches_contracts(self):
+        """The runner normalizes a request, a value and evidence as contracts._immutable_value does for records."""
+        from mathforge.contracts import _immutable_value
+        lean._prepare()
+        samples = [value for arguments in SMALL_INPUTS.values() for value in arguments.values()]
+        for operation in all_operations():
+            if operation != "parse_function":
+                result = structured_function(operation)(**SMALL_INPUTS[operation])
+                samples.extend((result.value, result.steps[0].outputs[1]))
+        samples += [[1, [2, (3, mf.Rational(1, 2))]], (), [], (None, True, "s"), {1: 2}, 1.5, range(3), {1, 2},
+                    [_x, (mf.sqrt(2), [1.5])]]
+        for sample in samples:
+            expected = outcome(lambda: _immutable_value(sample))
+            got = outcome(lambda: lean._immutable(sample))
+            with self.subTest(sample=sample):
+                self.assertEqual(got[0], expected[0])
+                if got[0] == "value":
+                    self.assertIs(type(got[1]), type(expected[1]))
+                    self.assertEqual(got[1], expected[1])
+                else:
+                    self.assertEqual(got, expected)
 
     def test_record_sizes_match_the_structured_records(self):
         """The runner charges what the structured path's records inspect: their sizes are those of real records."""
@@ -538,11 +586,12 @@ class LeanPathTest(unittest.TestCase):
                 self.assertEqual(counters[1][1], counters[0][1])
             with computation():
                 self.assertIs(lean.run_value(operation, dict(arguments)), lean.FALLBACK)
-        with computation(ComputationLimits(max_work=3)):
+        # The enclosing budget's limits apply: one unit of work does not compute a determinant.
+        with computation(ComputationLimits(max_work=1)):
             expected = outcome(lambda: mf.operations.det(SMALL_INPUTS["det"]["A"]))
-        with computation(ComputationLimits(max_work=3)):
+        with computation(ComputationLimits(max_work=1)):
             self.assertSameOutcome(outcome(lambda: mf.det(SMALL_INPUTS["det"]["A"])), expected)
-        self.assertEqual(expected[0], "error")
+        self.assertEqual(expected, ("error", mf.OperationError, "resource_limit_exceeded"))
 
     def test_one_shot_iterables_are_not_consumed(self):
         cases = [("gradient", lambda: dict(expression=_x**2 * _y, variables=iter((_x, _y)))),

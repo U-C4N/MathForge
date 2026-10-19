@@ -1,5 +1,5 @@
 """The checker's irreducibility test (certify.upoly.check_irreducible) agrees with v0.7's
-polynomial_exact._check_irreducible, and the lean factor equals the structured one."""
+polynomial_exact._check_irreducible_v07 (v0.7's check), and the lean factor equals the structured one."""
 
 import random
 import unittest
@@ -62,12 +62,12 @@ class IrreducibilityCheckTest(unittest.TestCase):
         for polynomial, proof in evidences():
             integer = tp.primitive(tp.from_rationals(polynomial.coefficients)[0])
             with computation():
-                expected = polynomial_exact._check_irreducible(polynomial, proof)
+                expected = polynomial_exact._check_irreducible_v07(polynomial, proof)
             self.assertIs(expected, True)
             self.assertIs(certify.check_irreducible(integer, proof), True, (polynomial, proof))
             for wrong in tampered(proof, rng):
                 with computation():
-                    v07 = polynomial_exact._check_irreducible(polynomial, wrong)
+                    v07 = polynomial_exact._check_irreducible_v07(polynomial, wrong)
                 self.assertEqual(certify.check_irreducible(integer, wrong), v07, (polynomial, wrong))
                 refused += v07 is False
         self.assertGreater(refused, 900)  # A lower exponent can still be enough; everything else is refused.

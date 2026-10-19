@@ -363,11 +363,18 @@ def _factor_square_free(f, variable):
 def _irreducibility_evidence(poly):
     if poly.degree == 1:
         return ("linear",)
-    p, exponent, _, lifted = _lift_data(_primitive(poly))
+    # v0.7's _lift_data (good prime, Berlekamp, digit Hensel lifting), run on integer tuples by the kernel port.
+    from .kernels import upoly as kernels
+    p, exponent, _, lifted = kernels.lift_data(_primitive(poly))
     return "modular", p, exponent, lifted
 
 
 def factor_with_evidence(f, *, limits=None):
+    """The factorization over Q with v0.7's evidence. The producer runs on integer tuples
+    (mathforge.kernels.upoly: square-free decomposition, then v0.7's Berlekamp, Hensel and Zassenhaus port), which
+    gives v0.7's factors; the evidence of each factor is v0.7's _lift_data of that factor, ported likewise."""
+    from .kernels import upoly as kernels
+    from .trusted import upoly as tp
     with computation(limits) as budget:
         _validate(f)
         budget.inspect(f)
@@ -377,9 +384,9 @@ def factor_with_evidence(f, *, limits=None):
             value = PolynomialFactorization(f.coefficients[0], ())
         else:
             entries = []
-            for group in f.square_free().factors:
-                for factor in _factor_square_free(_primitive(group.polynomial), f.variable):
-                    entries.append(PolynomialFactor(factor, group.multiplicity))
+            for part, multiplicity in kernels.square_free_integer(kernels.rational_primitive(f.coefficients)):
+                for factor, _ in kernels.factor_square_free(part):
+                    entries.append(PolynomialFactor(Polynomial(tp.monic_rationals(factor), f.variable), multiplicity))
             value = PolynomialFactorization(f.leading_coefficient,
                                              tuple(sorted(entries, key=lambda v: _key(v.polynomial))))
         evidence = ("qq-factorization-v1", tuple(_irreducibility_evidence(v.polynomial) for v in value.factors))
@@ -414,6 +421,14 @@ def _rabin(f, p):
 
 
 def _check_irreducible(poly, evidence):
+    """Irreducibility of a factor given its evidence, decided by mathforge.certify.upoly.check_irreducible, which
+    reimplements v0.7's check (kept as _check_irreducible_v07; tests/v08/algebra/test_irreducibility_check.py
+    compares the verdicts) on integer tuples."""
+    from .certify.upoly import check_irreducible
+    return check_irreducible(_primitive(poly), evidence)
+
+
+def _check_irreducible_v07(poly, evidence):
     if poly.degree == 1:
         return evidence == ("linear",)
     if type(evidence) is not tuple or len(evidence) != 4 or evidence[0] != "modular":
@@ -641,12 +656,10 @@ def resultant(f, g, *, limits=None):
         budget.inspect((f, g))
         if f.is_zero or g.is_zero:
             return Rational(0)
-        # Clear denominators and content once. Res(cF,dG)=c^deg(G)d^deg(F)Res(F,G).
-        integer_f, integer_g = _primitive(f), _primitive(g)
-        scale_f = f.leading_coefficient / Rational(integer_f[-1])
-        scale_g = g.leading_coefficient / Rational(integer_g[-1])
-        value = Rational(_subresultant_integer(integer_f, integer_g))
-        return value * scale_f ** g.degree * scale_g ** f.degree
+        # Clear denominators and content once. Res(cF,dG)=c^deg(G)d^deg(F)Res(F,G); the subresultant PRS of
+        # _subresultant_integer runs on integer tuples (mathforge.kernels.upoly.subresultant), with the same value.
+        from .kernels import upoly as kernels
+        return kernels.resultant_rational(f.coefficients, g.coefficients)[0]
 
 
 def _sylvester_resultant(f, g):

@@ -598,6 +598,9 @@ def berlekamp(f: tuple[int, ...], p: int) -> tuple[tuple[int, ...], ...]:
     """The monic irreducible factors of a monic square-free f mod p, by Berlekamp's algorithm, sorted by (length,
     coefficients) as polynomial_exact._berlekamp sorts them."""
     n = len(f) - 1
+    budget = current_budget()
+    if budget is not None:
+        budget.matrix(n, n)  # The Berlekamp matrix, charged as v0.7 charges it.
     xp = tp.pow_mod((0, 1), p, f, p)
     power: tuple[int, ...] = (1,)
     matrix = [[0] * n for _ in range(n)]

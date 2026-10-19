@@ -1,0 +1,7193 @@
+{
+ "crt/edge/bool_residue": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "crt/edge/consistent_not_coprime": {
+  "error": null,
+  "value": {
+   "data": {
+    "modulus": {
+     "type": "integer",
+     "value": "12"
+    },
+    "residue": {
+     "type": "integer",
+     "value": "9"
+    },
+    "type": "v5_crt_result"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 5
+  }
+ },
+ "crt/edge/empty": {
+  "error": null,
+  "value": {
+   "data": {
+    "modulus": {
+     "type": "integer",
+     "value": "1"
+    },
+    "residue": {
+     "type": "integer",
+     "value": "0"
+    },
+    "type": "v5_crt_result"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 5
+  }
+ },
+ "crt/edge/explicit_limits": {
+  "error": [
+   "OperationError",
+   "resource_limit_exceeded"
+  ],
+  "value": null
+ },
+ "crt/edge/float_modulus": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "crt/edge/inconsistent": {
+  "error": null,
+  "value": {
+   "data": {
+    "modulus": {
+     "type": "none"
+    },
+    "residue": {
+     "type": "none"
+    },
+    "type": "v5_crt_result"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 5
+  }
+ },
+ "crt/edge/list_of_pairs": {
+  "error": null,
+  "value": {
+   "data": {
+    "modulus": {
+     "type": "integer",
+     "value": "15"
+    },
+    "residue": {
+     "type": "integer",
+     "value": "8"
+    },
+    "type": "v5_crt_result"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 5
+  }
+ },
+ "crt/edge/modulus_negative": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "crt/edge/modulus_zero": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "crt/edge/not_a_pair": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "crt/edge/over_limit": {
+  "error": [
+   "OperationError",
+   "resource_limit_exceeded"
+  ],
+  "value": null
+ },
+ "crt/edge/over_limit_modulus": {
+  "error": [
+   "OperationError",
+   "resource_limit_exceeded"
+  ],
+  "value": null
+ },
+ "crt/edge/pair_as_list": {
+  "error": null,
+  "value": {
+   "data": {
+    "modulus": {
+     "type": "integer",
+     "value": "15"
+    },
+    "residue": {
+     "type": "integer",
+     "value": "8"
+    },
+    "type": "v5_crt_result"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 5
+  }
+ },
+ "crt/edge/residue_out_of_range": {
+  "error": null,
+  "value": {
+   "data": {
+    "modulus": {
+     "type": "integer",
+     "value": "35"
+    },
+    "residue": {
+     "type": "integer",
+     "value": "17"
+    },
+    "type": "v5_crt_result"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 5
+  }
+ },
+ "crt/edge/single": {
+  "error": null,
+  "value": {
+   "data": {
+    "modulus": {
+     "type": "integer",
+     "value": "5"
+    },
+    "residue": {
+     "type": "integer",
+     "value": "2"
+    },
+    "type": "v5_crt_result"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 5
+  }
+ },
+ "crt/edge/triple": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "crt/edge/type_float": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "crt/edge/type_limits_int": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "crt/edge/type_none": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "crt/edge/type_str": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "crt/edge/type_true": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "crt/micro/three_moduli#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "modulus": {
+     "type": "integer",
+     "value": "47027"
+    },
+    "residue": {
+     "type": "integer",
+     "value": "0"
+    },
+    "type": "v5_crt_result"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 5
+  }
+ },
+ "crt/micro/three_moduli#1": {
+  "error": null,
+  "value": {
+   "data": {
+    "modulus": {
+     "type": "integer",
+     "value": "47027"
+    },
+    "residue": {
+     "type": "integer",
+     "value": "1"
+    },
+    "type": "v5_crt_result"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 5
+  }
+ },
+ "crt/micro/three_moduli#2": {
+  "error": null,
+  "value": {
+   "data": {
+    "modulus": {
+     "type": "integer",
+     "value": "47027"
+    },
+    "residue": {
+     "type": "integer",
+     "value": "2"
+    },
+    "type": "v5_crt_result"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 5
+  }
+ },
+ "crt/realistic/primes128#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "modulus": {
+     "type": "integer",
+     "value": "9924106145725786023631372170109887991715323868829308786539119122200536936867758105993993158248693643601604928609447280859006275202556580844819910546254193525787110200140425852184294378209762748922036200375381502397619094168173925680272852113977043974462787326018446956329904251794928088824298784530"
+    },
+    "residue": {
+     "type": "integer",
+     "value": "7340041090832534216942465313600001813019420421409737376485445894788180370372249087688463810337140430854900040931220206104059317237857280346697177744192162021212000735729841082840958427168267166622735857728293581354955171654664900966004652018344128947518617714982592792307"
+    },
+    "type": "v5_crt_result"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 5
+  }
+ },
+ "crt/realistic/primes512#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "modulus": {
+     "type": "integer",
+     "value": "283680618671132732274795069189964188435343185310001127334929961498064059787367369929351824804537297731576013346409858334277145538700170745862433915646135521871303264687586276872651923354977200103476390342254470013133075178982818729056330447963392932349741969837500781932436511649946952768296763198953048896050781325146511484648755984304702509253164182084748276200340903460989575821594991428241096807674064327833314078241255534169673148404948021266159151066454103367513824878511798282541384104080741286962934785321531363768590901863208427249336672104445509039124932643867626128211914747340399215040737057532651351939115022897815338290025657820869331862060302989415310546422423068810794762067449328901529138315445375751056981515917454035347622209078780633268822276685702102748875222959990172572471635540045649522149788538086448760038328219973087902911390739298326698525085017426099952771468344842932943014358544795012682615278489185673100344941338317323180423414291600264870738428913636793612172851266971841575618771487713936573281642386395606072018478471396571121507460054328987573000743045711540247641821997614624937754626839154011419387388187334025707860017841898884332861023763456853613975842793714516343368637568262148153797753381577386362322238411623374653157823444968665427409885888984047754445957602707549549119106757789781952359142041351491622662041744936140540161889134375702856878940868472087506548479086742358870792746579607139608850601751068358837294648519973423043865346041500116966663958473714250424302021236711460072336811666829970085797272773017790"
+    },
+    "residue": {
+     "type": "integer",
+     "value": "102096889486332608958070280433945706828743380765778947698752130530941129684707310259479061134370146102368159162450774718323211321393511143026808957726238381077759384758452323137422302390767481398240690026015063064095605736777491427724202905982267788959415585910195350581063974216061839615978731816745358209443061813659676567898819016530405397277736537573755027281886054074759817908429940123436175961249747890094651575121612098612960047230627035608999608167330785864666198144049437601707417123844848758632795053917878847762677120793533641736476464870741279530637174836548123812091458626697497278908021041093896169129728486006285325039411964644586542854555874764344817587365968671364396548424055738138818240543203752894283541614980332238679008156528467000938109268361822564645164762735997328536264359582980899166766761342527740489603963749436105379481726259260302495008120474391595229282337965214495666822917041663047781073336229909169819884420795543439854770224320014955732146021866363657477958159365139378726030198183677877273313501902187548978888780944298259963181750494012486710435241077083350150891208321222030683720153320648490231904170200728606820944199777684523341851328574134926188223703099679118536421197857290592269221268636170132728862802721910643166112008561903000723106448046572368290098072021141492596884434613116179432791922936839515768051576727857233645617077985855877156886941857446702979064798347452717665660088456401936933987462305425093471887873871304869862712793612473333862330241146663"
+    },
+    "type": "v5_crt_result"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 5
+  }
+ },
+ "divisors/edge/explicit_limits": {
+  "error": [
+   "OperationError",
+   "resource_limit_exceeded"
+  ],
+  "value": null
+ },
+ "divisors/edge/highly_composite": {
+  "error": null,
+  "value": {
+   "data": {
+    "items": [
+     {
+      "type": "integer",
+      "value": "1"
+     },
+     {
+      "type": "integer",
+      "value": "2"
+     },
+     {
+      "type": "integer",
+      "value": "3"
+     },
+     {
+      "type": "integer",
+      "value": "4"
+     },
+     {
+      "type": "integer",
+      "value": "5"
+     },
+     {
+      "type": "integer",
+      "value": "6"
+     },
+     {
+      "type": "integer",
+      "value": "7"
+     },
+     {
+      "type": "integer",
+      "value": "8"
+     },
+     {
+      "type": "integer",
+      "value": "9"
+     },
+     {
+      "type": "integer",
+      "value": "10"
+     },
+     {
+      "type": "integer",
+      "value": "12"
+     },
+     {
+      "type": "integer",
+      "value": "14"
+     },
+     {
+      "type": "integer",
+      "value": "15"
+     },
+     {
+      "type": "integer",
+      "value": "16"
+     },
+     {
+      "type": "integer",
+      "value": "18"
+     },
+     {
+      "type": "integer",
+      "value": "20"
+     },
+     {
+      "type": "integer",
+      "value": "21"
+     },
+     {
+      "type": "integer",
+      "value": "24"
+     },
+     {
+      "type": "integer",
+      "value": "28"
+     },
+     {
+      "type": "integer",
+      "value": "30"
+     },
+     {
+      "type": "integer",
+      "value": "35"
+     },
+     {
+      "type": "integer",
+      "value": "36"
+     },
+     {
+      "type": "integer",
+      "value": "40"
+     },
+     {
+      "type": "integer",
+      "value": "42"
+     },
+     {
+      "type": "integer",
+      "value": "45"
+     },
+     {
+      "type": "integer",
+      "value": "48"
+     },
+     {
+      "type": "integer",
+      "value": "56"
+     },
+     {
+      "type": "integer",
+      "value": "60"
+     },
+     {
+      "type": "integer",
+      "value": "63"
+     },
+     {
+      "type": "integer",
+      "value": "70"
+     },
+     {
+      "type": "integer",
+      "value": "72"
+     },
+     {
+      "type": "integer",
+      "value": "80"
+     },
+     {
+      "type": "integer",
+      "value": "84"
+     },
+     {
+      "type": "integer",
+      "value": "90"
+     },
+     {
+      "type": "integer",
+      "value": "105"
+     },
+     {
+      "type": "integer",
+      "value": "112"
+     },
+     {
+      "type": "integer",
+      "value": "120"
+     },
+     {
+      "type": "integer",
+      "value": "126"
+     },
+     {
+      "type": "integer",
+      "value": "140"
+     },
+     {
+      "type": "integer",
+      "value": "144"
+     },
+     {
+      "type": "integer",
+      "value": "168"
+     },
+     {
+      "type": "integer",
+      "value": "180"
+     },
+     {
+      "type": "integer",
+      "value": "210"
+     },
+     {
+      "type": "integer",
+      "value": "240"
+     },
+     {
+      "type": "integer",
+      "value": "252"
+     },
+     {
+      "type": "integer",
+      "value": "280"
+     },
+     {
+      "type": "integer",
+      "value": "315"
+     },
+     {
+      "type": "integer",
+      "value": "336"
+     },
+     {
+      "type": "integer",
+      "value": "360"
+     },
+     {
+      "type": "integer",
+      "value": "420"
+     },
+     {
+      "type": "integer",
+      "value": "504"
+     },
+     {
+      "type": "integer",
+      "value": "560"
+     },
+     {
+      "type": "integer",
+      "value": "630"
+     },
+     {
+      "type": "integer",
+      "value": "720"
+     },
+     {
+      "type": "integer",
+      "value": "840"
+     },
+     {
+      "type": "integer",
+      "value": "1008"
+     },
+     {
+      "type": "integer",
+      "value": "1260"
+     },
+     {
+      "type": "integer",
+      "value": "1680"
+     },
+     {
+      "type": "integer",
+      "value": "2520"
+     },
+     {
+      "type": "integer",
+      "value": "5040"
+     }
+    ],
+    "type": "tuple"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "divisors/edge/minus_one": {
+  "error": null,
+  "value": {
+   "data": {
+    "items": [
+     {
+      "type": "integer",
+      "value": "1"
+     }
+    ],
+    "type": "tuple"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "divisors/edge/negative": {
+  "error": null,
+  "value": {
+   "data": {
+    "items": [
+     {
+      "type": "integer",
+      "value": "1"
+     },
+     {
+      "type": "integer",
+      "value": "2"
+     },
+     {
+      "type": "integer",
+      "value": "3"
+     },
+     {
+      "type": "integer",
+      "value": "4"
+     },
+     {
+      "type": "integer",
+      "value": "6"
+     },
+     {
+      "type": "integer",
+      "value": "12"
+     }
+    ],
+    "type": "tuple"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "divisors/edge/one": {
+  "error": null,
+  "value": {
+   "data": {
+    "items": [
+     {
+      "type": "integer",
+      "value": "1"
+     }
+    ],
+    "type": "tuple"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "divisors/edge/over_limit": {
+  "error": [
+   "OperationError",
+   "resource_limit_exceeded"
+  ],
+  "value": null
+ },
+ "divisors/edge/prime": {
+  "error": null,
+  "value": {
+   "data": {
+    "items": [
+     {
+      "type": "integer",
+      "value": "1"
+     },
+     {
+      "type": "integer",
+      "value": "97"
+     }
+    ],
+    "type": "tuple"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "divisors/edge/prime_power": {
+  "error": null,
+  "value": {
+   "data": {
+    "items": [
+     {
+      "type": "integer",
+      "value": "1"
+     },
+     {
+      "type": "integer",
+      "value": "2"
+     },
+     {
+      "type": "integer",
+      "value": "4"
+     },
+     {
+      "type": "integer",
+      "value": "8"
+     },
+     {
+      "type": "integer",
+      "value": "16"
+     },
+     {
+      "type": "integer",
+      "value": "32"
+     },
+     {
+      "type": "integer",
+      "value": "64"
+     },
+     {
+      "type": "integer",
+      "value": "128"
+     },
+     {
+      "type": "integer",
+      "value": "256"
+     },
+     {
+      "type": "integer",
+      "value": "512"
+     },
+     {
+      "type": "integer",
+      "value": "1024"
+     }
+    ],
+    "type": "tuple"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "divisors/edge/type_float": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "divisors/edge/type_limits_int": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "divisors/edge/type_none": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "divisors/edge/type_str": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "divisors/edge/type_true": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "divisors/edge/zero": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "divisors/micro/small_numbers#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "items": [
+     {
+      "type": "integer",
+      "value": "1"
+     },
+     {
+      "type": "integer",
+      "value": "2"
+     },
+     {
+      "type": "integer",
+      "value": "3"
+     },
+     {
+      "type": "integer",
+      "value": "4"
+     },
+     {
+      "type": "integer",
+      "value": "5"
+     },
+     {
+      "type": "integer",
+      "value": "6"
+     },
+     {
+      "type": "integer",
+      "value": "8"
+     },
+     {
+      "type": "integer",
+      "value": "9"
+     },
+     {
+      "type": "integer",
+      "value": "10"
+     },
+     {
+      "type": "integer",
+      "value": "12"
+     },
+     {
+      "type": "integer",
+      "value": "15"
+     },
+     {
+      "type": "integer",
+      "value": "18"
+     },
+     {
+      "type": "integer",
+      "value": "20"
+     },
+     {
+      "type": "integer",
+      "value": "24"
+     },
+     {
+      "type": "integer",
+      "value": "30"
+     },
+     {
+      "type": "integer",
+      "value": "36"
+     },
+     {
+      "type": "integer",
+      "value": "40"
+     },
+     {
+      "type": "integer",
+      "value": "45"
+     },
+     {
+      "type": "integer",
+      "value": "60"
+     },
+     {
+      "type": "integer",
+      "value": "72"
+     },
+     {
+      "type": "integer",
+      "value": "90"
+     },
+     {
+      "type": "integer",
+      "value": "120"
+     },
+     {
+      "type": "integer",
+      "value": "180"
+     },
+     {
+      "type": "integer",
+      "value": "360"
+     }
+    ],
+    "type": "tuple"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "divisors/micro/small_numbers#1": {
+  "error": null,
+  "value": {
+   "data": {
+    "items": [
+     {
+      "type": "integer",
+      "value": "1"
+     },
+     {
+      "type": "integer",
+      "value": "19"
+     },
+     {
+      "type": "integer",
+      "value": "361"
+     }
+    ],
+    "type": "tuple"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "divisors/micro/small_numbers#2": {
+  "error": null,
+  "value": {
+   "data": {
+    "items": [
+     {
+      "type": "integer",
+      "value": "1"
+     },
+     {
+      "type": "integer",
+      "value": "2"
+     },
+     {
+      "type": "integer",
+      "value": "181"
+     },
+     {
+      "type": "integer",
+      "value": "362"
+     }
+    ],
+    "type": "tuple"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "divisors/realistic/n720720#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "items": [
+     {
+      "type": "integer",
+      "value": "1"
+     },
+     {
+      "type": "integer",
+      "value": "2"
+     },
+     {
+      "type": "integer",
+      "value": "3"
+     },
+     {
+      "type": "integer",
+      "value": "4"
+     },
+     {
+      "type": "integer",
+      "value": "5"
+     },
+     {
+      "type": "integer",
+      "value": "6"
+     },
+     {
+      "type": "integer",
+      "value": "7"
+     },
+     {
+      "type": "integer",
+      "value": "8"
+     },
+     {
+      "type": "integer",
+      "value": "9"
+     },
+     {
+      "type": "integer",
+      "value": "10"
+     },
+     {
+      "type": "integer",
+      "value": "11"
+     },
+     {
+      "type": "integer",
+      "value": "12"
+     },
+     {
+      "type": "integer",
+      "value": "13"
+     },
+     {
+      "type": "integer",
+      "value": "14"
+     },
+     {
+      "type": "integer",
+      "value": "15"
+     },
+     {
+      "type": "integer",
+      "value": "16"
+     },
+     {
+      "type": "integer",
+      "value": "18"
+     },
+     {
+      "type": "integer",
+      "value": "20"
+     },
+     {
+      "type": "integer",
+      "value": "21"
+     },
+     {
+      "type": "integer",
+      "value": "22"
+     },
+     {
+      "type": "integer",
+      "value": "24"
+     },
+     {
+      "type": "integer",
+      "value": "26"
+     },
+     {
+      "type": "integer",
+      "value": "28"
+     },
+     {
+      "type": "integer",
+      "value": "30"
+     },
+     {
+      "type": "integer",
+      "value": "33"
+     },
+     {
+      "type": "integer",
+      "value": "35"
+     },
+     {
+      "type": "integer",
+      "value": "36"
+     },
+     {
+      "type": "integer",
+      "value": "39"
+     },
+     {
+      "type": "integer",
+      "value": "40"
+     },
+     {
+      "type": "integer",
+      "value": "42"
+     },
+     {
+      "type": "integer",
+      "value": "44"
+     },
+     {
+      "type": "integer",
+      "value": "45"
+     },
+     {
+      "type": "integer",
+      "value": "48"
+     },
+     {
+      "type": "integer",
+      "value": "52"
+     },
+     {
+      "type": "integer",
+      "value": "55"
+     },
+     {
+      "type": "integer",
+      "value": "56"
+     },
+     {
+      "type": "integer",
+      "value": "60"
+     },
+     {
+      "type": "integer",
+      "value": "63"
+     },
+     {
+      "type": "integer",
+      "value": "65"
+     },
+     {
+      "type": "integer",
+      "value": "66"
+     },
+     {
+      "type": "integer",
+      "value": "70"
+     },
+     {
+      "type": "integer",
+      "value": "72"
+     },
+     {
+      "type": "integer",
+      "value": "77"
+     },
+     {
+      "type": "integer",
+      "value": "78"
+     },
+     {
+      "type": "integer",
+      "value": "80"
+     },
+     {
+      "type": "integer",
+      "value": "84"
+     },
+     {
+      "type": "integer",
+      "value": "88"
+     },
+     {
+      "type": "integer",
+      "value": "90"
+     },
+     {
+      "type": "integer",
+      "value": "91"
+     },
+     {
+      "type": "integer",
+      "value": "99"
+     },
+     {
+      "type": "integer",
+      "value": "104"
+     },
+     {
+      "type": "integer",
+      "value": "105"
+     },
+     {
+      "type": "integer",
+      "value": "110"
+     },
+     {
+      "type": "integer",
+      "value": "112"
+     },
+     {
+      "type": "integer",
+      "value": "117"
+     },
+     {
+      "type": "integer",
+      "value": "120"
+     },
+     {
+      "type": "integer",
+      "value": "126"
+     },
+     {
+      "type": "integer",
+      "value": "130"
+     },
+     {
+      "type": "integer",
+      "value": "132"
+     },
+     {
+      "type": "integer",
+      "value": "140"
+     },
+     {
+      "type": "integer",
+      "value": "143"
+     },
+     {
+      "type": "integer",
+      "value": "144"
+     },
+     {
+      "type": "integer",
+      "value": "154"
+     },
+     {
+      "type": "integer",
+      "value": "156"
+     },
+     {
+      "type": "integer",
+      "value": "165"
+     },
+     {
+      "type": "integer",
+      "value": "168"
+     },
+     {
+      "type": "integer",
+      "value": "176"
+     },
+     {
+      "type": "integer",
+      "value": "180"
+     },
+     {
+      "type": "integer",
+      "value": "182"
+     },
+     {
+      "type": "integer",
+      "value": "195"
+     },
+     {
+      "type": "integer",
+      "value": "198"
+     },
+     {
+      "type": "integer",
+      "value": "208"
+     },
+     {
+      "type": "integer",
+      "value": "210"
+     },
+     {
+      "type": "integer",
+      "value": "220"
+     },
+     {
+      "type": "integer",
+      "value": "231"
+     },
+     {
+      "type": "integer",
+      "value": "234"
+     },
+     {
+      "type": "integer",
+      "value": "240"
+     },
+     {
+      "type": "integer",
+      "value": "252"
+     },
+     {
+      "type": "integer",
+      "value": "260"
+     },
+     {
+      "type": "integer",
+      "value": "264"
+     },
+     {
+      "type": "integer",
+      "value": "273"
+     },
+     {
+      "type": "integer",
+      "value": "280"
+     },
+     {
+      "type": "integer",
+      "value": "286"
+     },
+     {
+      "type": "integer",
+      "value": "308"
+     },
+     {
+      "type": "integer",
+      "value": "312"
+     },
+     {
+      "type": "integer",
+      "value": "315"
+     },
+     {
+      "type": "integer",
+      "value": "330"
+     },
+     {
+      "type": "integer",
+      "value": "336"
+     },
+     {
+      "type": "integer",
+      "value": "360"
+     },
+     {
+      "type": "integer",
+      "value": "364"
+     },
+     {
+      "type": "integer",
+      "value": "385"
+     },
+     {
+      "type": "integer",
+      "value": "390"
+     },
+     {
+      "type": "integer",
+      "value": "396"
+     },
+     {
+      "type": "integer",
+      "value": "420"
+     },
+     {
+      "type": "integer",
+      "value": "429"
+     },
+     {
+      "type": "integer",
+      "value": "440"
+     },
+     {
+      "type": "integer",
+      "value": "455"
+     },
+     {
+      "type": "integer",
+      "value": "462"
+     },
+     {
+      "type": "integer",
+      "value": "468"
+     },
+     {
+      "type": "integer",
+      "value": "495"
+     },
+     {
+      "type": "integer",
+      "value": "504"
+     },
+     {
+      "type": "integer",
+      "value": "520"
+     },
+     {
+      "type": "integer",
+      "value": "528"
+     },
+     {
+      "type": "integer",
+      "value": "546"
+     },
+     {
+      "type": "integer",
+      "value": "560"
+     },
+     {
+      "type": "integer",
+      "value": "572"
+     },
+     {
+      "type": "integer",
+      "value": "585"
+     },
+     {
+      "type": "integer",
+      "value": "616"
+     },
+     {
+      "type": "integer",
+      "value": "624"
+     },
+     {
+      "type": "integer",
+      "value": "630"
+     },
+     {
+      "type": "integer",
+      "value": "660"
+     },
+     {
+      "type": "integer",
+      "value": "693"
+     },
+     {
+      "type": "integer",
+      "value": "715"
+     },
+     {
+      "type": "integer",
+      "value": "720"
+     },
+     {
+      "type": "integer",
+      "value": "728"
+     },
+     {
+      "type": "integer",
+      "value": "770"
+     },
+     {
+      "type": "integer",
+      "value": "780"
+     },
+     {
+      "type": "integer",
+      "value": "792"
+     },
+     {
+      "type": "integer",
+      "value": "819"
+     },
+     {
+      "type": "integer",
+      "value": "840"
+     },
+     {
+      "type": "integer",
+      "value": "858"
+     },
+     {
+      "type": "integer",
+      "value": "880"
+     },
+     {
+      "type": "integer",
+      "value": "910"
+     },
+     {
+      "type": "integer",
+      "value": "924"
+     },
+     {
+      "type": "integer",
+      "value": "936"
+     },
+     {
+      "type": "integer",
+      "value": "990"
+     },
+     {
+      "type": "integer",
+      "value": "1001"
+     },
+     {
+      "type": "integer",
+      "value": "1008"
+     },
+     {
+      "type": "integer",
+      "value": "1040"
+     },
+     {
+      "type": "integer",
+      "value": "1092"
+     },
+     {
+      "type": "integer",
+      "value": "1144"
+     },
+     {
+      "type": "integer",
+      "value": "1155"
+     },
+     {
+      "type": "integer",
+      "value": "1170"
+     },
+     {
+      "type": "integer",
+      "value": "1232"
+     },
+     {
+      "type": "integer",
+      "value": "1260"
+     },
+     {
+      "type": "integer",
+      "value": "1287"
+     },
+     {
+      "type": "integer",
+      "value": "1320"
+     },
+     {
+      "type": "integer",
+      "value": "1365"
+     },
+     {
+      "type": "integer",
+      "value": "1386"
+     },
+     {
+      "type": "integer",
+      "value": "1430"
+     },
+     {
+      "type": "integer",
+      "value": "1456"
+     },
+     {
+      "type": "integer",
+      "value": "1540"
+     },
+     {
+      "type": "integer",
+      "value": "1560"
+     },
+     {
+      "type": "integer",
+      "value": "1584"
+     },
+     {
+      "type": "integer",
+      "value": "1638"
+     },
+     {
+      "type": "integer",
+      "value": "1680"
+     },
+     {
+      "type": "integer",
+      "value": "1716"
+     },
+     {
+      "type": "integer",
+      "value": "1820"
+     },
+     {
+      "type": "integer",
+      "value": "1848"
+     },
+     {
+      "type": "integer",
+      "value": "1872"
+     },
+     {
+      "type": "integer",
+      "value": "1980"
+     },
+     {
+      "type": "integer",
+      "value": "2002"
+     },
+     {
+      "type": "integer",
+      "value": "2145"
+     },
+     {
+      "type": "integer",
+      "value": "2184"
+     },
+     {
+      "type": "integer",
+      "value": "2288"
+     },
+     {
+      "type": "integer",
+      "value": "2310"
+     },
+     {
+      "type": "integer",
+      "value": "2340"
+     },
+     {
+      "type": "integer",
+      "value": "2520"
+     },
+     {
+      "type": "integer",
+      "value": "2574"
+     },
+     {
+      "type": "integer",
+      "value": "2640"
+     },
+     {
+      "type": "integer",
+      "value": "2730"
+     },
+     {
+      "type": "integer",
+      "value": "2772"
+     },
+     {
+      "type": "integer",
+      "value": "2860"
+     },
+     {
+      "type": "integer",
+      "value": "3003"
+     },
+     {
+      "type": "integer",
+      "value": "3080"
+     },
+     {
+      "type": "integer",
+      "value": "3120"
+     },
+     {
+      "type": "integer",
+      "value": "3276"
+     },
+     {
+      "type": "integer",
+      "value": "3432"
+     },
+     {
+      "type": "integer",
+      "value": "3465"
+     },
+     {
+      "type": "integer",
+      "value": "3640"
+     },
+     {
+      "type": "integer",
+      "value": "3696"
+     },
+     {
+      "type": "integer",
+      "value": "3960"
+     },
+     {
+      "type": "integer",
+      "value": "4004"
+     },
+     {
+      "type": "integer",
+      "value": "4095"
+     },
+     {
+      "type": "integer",
+      "value": "4290"
+     },
+     {
+      "type": "integer",
+      "value": "4368"
+     },
+     {
+      "type": "integer",
+      "value": "4620"
+     },
+     {
+      "type": "integer",
+      "value": "4680"
+     },
+     {
+      "type": "integer",
+      "value": "5005"
+     },
+     {
+      "type": "integer",
+      "value": "5040"
+     },
+     {
+      "type": "integer",
+      "value": "5148"
+     },
+     {
+      "type": "integer",
+      "value": "5460"
+     },
+     {
+      "type": "integer",
+      "value": "5544"
+     },
+     {
+      "type": "integer",
+      "value": "5720"
+     },
+     {
+      "type": "integer",
+      "value": "6006"
+     },
+     {
+      "type": "integer",
+      "value": "6160"
+     },
+     {
+      "type": "integer",
+      "value": "6435"
+     },
+     {
+      "type": "integer",
+      "value": "6552"
+     },
+     {
+      "type": "integer",
+      "value": "6864"
+     },
+     {
+      "type": "integer",
+      "value": "6930"
+     },
+     {
+      "type": "integer",
+      "value": "7280"
+     },
+     {
+      "type": "integer",
+      "value": "7920"
+     },
+     {
+      "type": "integer",
+      "value": "8008"
+     },
+     {
+      "type": "integer",
+      "value": "8190"
+     },
+     {
+      "type": "integer",
+      "value": "8580"
+     },
+     {
+      "type": "integer",
+      "value": "9009"
+     },
+     {
+      "type": "integer",
+      "value": "9240"
+     },
+     {
+      "type": "integer",
+      "value": "9360"
+     },
+     {
+      "type": "integer",
+      "value": "10010"
+     },
+     {
+      "type": "integer",
+      "value": "10296"
+     },
+     {
+      "type": "integer",
+      "value": "10920"
+     },
+     {
+      "type": "integer",
+      "value": "11088"
+     },
+     {
+      "type": "integer",
+      "value": "11440"
+     },
+     {
+      "type": "integer",
+      "value": "12012"
+     },
+     {
+      "type": "integer",
+      "value": "12870"
+     },
+     {
+      "type": "integer",
+      "value": "13104"
+     },
+     {
+      "type": "integer",
+      "value": "13860"
+     },
+     {
+      "type": "integer",
+      "value": "15015"
+     },
+     {
+      "type": "integer",
+      "value": "16016"
+     },
+     {
+      "type": "integer",
+      "value": "16380"
+     },
+     {
+      "type": "integer",
+      "value": "17160"
+     },
+     {
+      "type": "integer",
+      "value": "18018"
+     },
+     {
+      "type": "integer",
+      "value": "18480"
+     },
+     {
+      "type": "integer",
+      "value": "20020"
+     },
+     {
+      "type": "integer",
+      "value": "20592"
+     },
+     {
+      "type": "integer",
+      "value": "21840"
+     },
+     {
+      "type": "integer",
+      "value": "24024"
+     },
+     {
+      "type": "integer",
+      "value": "25740"
+     },
+     {
+      "type": "integer",
+      "value": "27720"
+     },
+     {
+      "type": "integer",
+      "value": "30030"
+     },
+     {
+      "type": "integer",
+      "value": "32760"
+     },
+     {
+      "type": "integer",
+      "value": "34320"
+     },
+     {
+      "type": "integer",
+      "value": "36036"
+     },
+     {
+      "type": "integer",
+      "value": "40040"
+     },
+     {
+      "type": "integer",
+      "value": "45045"
+     },
+     {
+      "type": "integer",
+      "value": "48048"
+     },
+     {
+      "type": "integer",
+      "value": "51480"
+     },
+     {
+      "type": "integer",
+      "value": "55440"
+     },
+     {
+      "type": "integer",
+      "value": "60060"
+     },
+     {
+      "type": "integer",
+      "value": "65520"
+     },
+     {
+      "type": "integer",
+      "value": "72072"
+     },
+     {
+      "type": "integer",
+      "value": "80080"
+     },
+     {
+      "type": "integer",
+      "value": "90090"
+     },
+     {
+      "type": "integer",
+      "value": "102960"
+     },
+     {
+      "type": "integer",
+      "value": "120120"
+     },
+     {
+      "type": "integer",
+      "value": "144144"
+     },
+     {
+      "type": "integer",
+      "value": "180180"
+     },
+     {
+      "type": "integer",
+      "value": "240240"
+     },
+     {
+      "type": "integer",
+      "value": "360360"
+     },
+     {
+      "type": "integer",
+      "value": "720720"
+     }
+    ],
+    "type": "tuple"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "divisors/realistic/n73513440#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "items": [
+     {
+      "type": "integer",
+      "value": "1"
+     },
+     {
+      "type": "integer",
+      "value": "2"
+     },
+     {
+      "type": "integer",
+      "value": "3"
+     },
+     {
+      "type": "integer",
+      "value": "4"
+     },
+     {
+      "type": "integer",
+      "value": "5"
+     },
+     {
+      "type": "integer",
+      "value": "6"
+     },
+     {
+      "type": "integer",
+      "value": "7"
+     },
+     {
+      "type": "integer",
+      "value": "8"
+     },
+     {
+      "type": "integer",
+      "value": "9"
+     },
+     {
+      "type": "integer",
+      "value": "10"
+     },
+     {
+      "type": "integer",
+      "value": "11"
+     },
+     {
+      "type": "integer",
+      "value": "12"
+     },
+     {
+      "type": "integer",
+      "value": "13"
+     },
+     {
+      "type": "integer",
+      "value": "14"
+     },
+     {
+      "type": "integer",
+      "value": "15"
+     },
+     {
+      "type": "integer",
+      "value": "16"
+     },
+     {
+      "type": "integer",
+      "value": "17"
+     },
+     {
+      "type": "integer",
+      "value": "18"
+     },
+     {
+      "type": "integer",
+      "value": "20"
+     },
+     {
+      "type": "integer",
+      "value": "21"
+     },
+     {
+      "type": "integer",
+      "value": "22"
+     },
+     {
+      "type": "integer",
+      "value": "24"
+     },
+     {
+      "type": "integer",
+      "value": "26"
+     },
+     {
+      "type": "integer",
+      "value": "27"
+     },
+     {
+      "type": "integer",
+      "value": "28"
+     },
+     {
+      "type": "integer",
+      "value": "30"
+     },
+     {
+      "type": "integer",
+      "value": "32"
+     },
+     {
+      "type": "integer",
+      "value": "33"
+     },
+     {
+      "type": "integer",
+      "value": "34"
+     },
+     {
+      "type": "integer",
+      "value": "35"
+     },
+     {
+      "type": "integer",
+      "value": "36"
+     },
+     {
+      "type": "integer",
+      "value": "39"
+     },
+     {
+      "type": "integer",
+      "value": "40"
+     },
+     {
+      "type": "integer",
+      "value": "42"
+     },
+     {
+      "type": "integer",
+      "value": "44"
+     },
+     {
+      "type": "integer",
+      "value": "45"
+     },
+     {
+      "type": "integer",
+      "value": "48"
+     },
+     {
+      "type": "integer",
+      "value": "51"
+     },
+     {
+      "type": "integer",
+      "value": "52"
+     },
+     {
+      "type": "integer",
+      "value": "54"
+     },
+     {
+      "type": "integer",
+      "value": "55"
+     },
+     {
+      "type": "integer",
+      "value": "56"
+     },
+     {
+      "type": "integer",
+      "value": "60"
+     },
+     {
+      "type": "integer",
+      "value": "63"
+     },
+     {
+      "type": "integer",
+      "value": "65"
+     },
+     {
+      "type": "integer",
+      "value": "66"
+     },
+     {
+      "type": "integer",
+      "value": "68"
+     },
+     {
+      "type": "integer",
+      "value": "70"
+     },
+     {
+      "type": "integer",
+      "value": "72"
+     },
+     {
+      "type": "integer",
+      "value": "77"
+     },
+     {
+      "type": "integer",
+      "value": "78"
+     },
+     {
+      "type": "integer",
+      "value": "80"
+     },
+     {
+      "type": "integer",
+      "value": "84"
+     },
+     {
+      "type": "integer",
+      "value": "85"
+     },
+     {
+      "type": "integer",
+      "value": "88"
+     },
+     {
+      "type": "integer",
+      "value": "90"
+     },
+     {
+      "type": "integer",
+      "value": "91"
+     },
+     {
+      "type": "integer",
+      "value": "96"
+     },
+     {
+      "type": "integer",
+      "value": "99"
+     },
+     {
+      "type": "integer",
+      "value": "102"
+     },
+     {
+      "type": "integer",
+      "value": "104"
+     },
+     {
+      "type": "integer",
+      "value": "105"
+     },
+     {
+      "type": "integer",
+      "value": "108"
+     },
+     {
+      "type": "integer",
+      "value": "110"
+     },
+     {
+      "type": "integer",
+      "value": "112"
+     },
+     {
+      "type": "integer",
+      "value": "117"
+     },
+     {
+      "type": "integer",
+      "value": "119"
+     },
+     {
+      "type": "integer",
+      "value": "120"
+     },
+     {
+      "type": "integer",
+      "value": "126"
+     },
+     {
+      "type": "integer",
+      "value": "130"
+     },
+     {
+      "type": "integer",
+      "value": "132"
+     },
+     {
+      "type": "integer",
+      "value": "135"
+     },
+     {
+      "type": "integer",
+      "value": "136"
+     },
+     {
+      "type": "integer",
+      "value": "140"
+     },
+     {
+      "type": "integer",
+      "value": "143"
+     },
+     {
+      "type": "integer",
+      "value": "144"
+     },
+     {
+      "type": "integer",
+      "value": "153"
+     },
+     {
+      "type": "integer",
+      "value": "154"
+     },
+     {
+      "type": "integer",
+      "value": "156"
+     },
+     {
+      "type": "integer",
+      "value": "160"
+     },
+     {
+      "type": "integer",
+      "value": "165"
+     },
+     {
+      "type": "integer",
+      "value": "168"
+     },
+     {
+      "type": "integer",
+      "value": "170"
+     },
+     {
+      "type": "integer",
+      "value": "176"
+     },
+     {
+      "type": "integer",
+      "value": "180"
+     },
+     {
+      "type": "integer",
+      "value": "182"
+     },
+     {
+      "type": "integer",
+      "value": "187"
+     },
+     {
+      "type": "integer",
+      "value": "189"
+     },
+     {
+      "type": "integer",
+      "value": "195"
+     },
+     {
+      "type": "integer",
+      "value": "198"
+     },
+     {
+      "type": "integer",
+      "value": "204"
+     },
+     {
+      "type": "integer",
+      "value": "208"
+     },
+     {
+      "type": "integer",
+      "value": "210"
+     },
+     {
+      "type": "integer",
+      "value": "216"
+     },
+     {
+      "type": "integer",
+      "value": "220"
+     },
+     {
+      "type": "integer",
+      "value": "221"
+     },
+     {
+      "type": "integer",
+      "value": "224"
+     },
+     {
+      "type": "integer",
+      "value": "231"
+     },
+     {
+      "type": "integer",
+      "value": "234"
+     },
+     {
+      "type": "integer",
+      "value": "238"
+     },
+     {
+      "type": "integer",
+      "value": "240"
+     },
+     {
+      "type": "integer",
+      "value": "252"
+     },
+     {
+      "type": "integer",
+      "value": "255"
+     },
+     {
+      "type": "integer",
+      "value": "260"
+     },
+     {
+      "type": "integer",
+      "value": "264"
+     },
+     {
+      "type": "integer",
+      "value": "270"
+     },
+     {
+      "type": "integer",
+      "value": "272"
+     },
+     {
+      "type": "integer",
+      "value": "273"
+     },
+     {
+      "type": "integer",
+      "value": "280"
+     },
+     {
+      "type": "integer",
+      "value": "286"
+     },
+     {
+      "type": "integer",
+      "value": "288"
+     },
+     {
+      "type": "integer",
+      "value": "297"
+     },
+     {
+      "type": "integer",
+      "value": "306"
+     },
+     {
+      "type": "integer",
+      "value": "308"
+     },
+     {
+      "type": "integer",
+      "value": "312"
+     },
+     {
+      "type": "integer",
+      "value": "315"
+     },
+     {
+      "type": "integer",
+      "value": "330"
+     },
+     {
+      "type": "integer",
+      "value": "336"
+     },
+     {
+      "type": "integer",
+      "value": "340"
+     },
+     {
+      "type": "integer",
+      "value": "351"
+     },
+     {
+      "type": "integer",
+      "value": "352"
+     },
+     {
+      "type": "integer",
+      "value": "357"
+     },
+     {
+      "type": "integer",
+      "value": "360"
+     },
+     {
+      "type": "integer",
+      "value": "364"
+     },
+     {
+      "type": "integer",
+      "value": "374"
+     },
+     {
+      "type": "integer",
+      "value": "378"
+     },
+     {
+      "type": "integer",
+      "value": "385"
+     },
+     {
+      "type": "integer",
+      "value": "390"
+     },
+     {
+      "type": "integer",
+      "value": "396"
+     },
+     {
+      "type": "integer",
+      "value": "408"
+     },
+     {
+      "type": "integer",
+      "value": "416"
+     },
+     {
+      "type": "integer",
+      "value": "420"
+     },
+     {
+      "type": "integer",
+      "value": "429"
+     },
+     {
+      "type": "integer",
+      "value": "432"
+     },
+     {
+      "type": "integer",
+      "value": "440"
+     },
+     {
+      "type": "integer",
+      "value": "442"
+     },
+     {
+      "type": "integer",
+      "value": "455"
+     },
+     {
+      "type": "integer",
+      "value": "459"
+     },
+     {
+      "type": "integer",
+      "value": "462"
+     },
+     {
+      "type": "integer",
+      "value": "468"
+     },
+     {
+      "type": "integer",
+      "value": "476"
+     },
+     {
+      "type": "integer",
+      "value": "480"
+     },
+     {
+      "type": "integer",
+      "value": "495"
+     },
+     {
+      "type": "integer",
+      "value": "504"
+     },
+     {
+      "type": "integer",
+      "value": "510"
+     },
+     {
+      "type": "integer",
+      "value": "520"
+     },
+     {
+      "type": "integer",
+      "value": "528"
+     },
+     {
+      "type": "integer",
+      "value": "540"
+     },
+     {
+      "type": "integer",
+      "value": "544"
+     },
+     {
+      "type": "integer",
+      "value": "546"
+     },
+     {
+      "type": "integer",
+      "value": "560"
+     },
+     {
+      "type": "integer",
+      "value": "561"
+     },
+     {
+      "type": "integer",
+      "value": "572"
+     },
+     {
+      "type": "integer",
+      "value": "585"
+     },
+     {
+      "type": "integer",
+      "value": "594"
+     },
+     {
+      "type": "integer",
+      "value": "595"
+     },
+     {
+      "type": "integer",
+      "value": "612"
+     },
+     {
+      "type": "integer",
+      "value": "616"
+     },
+     {
+      "type": "integer",
+      "value": "624"
+     },
+     {
+      "type": "integer",
+      "value": "630"
+     },
+     {
+      "type": "integer",
+      "value": "660"
+     },
+     {
+      "type": "integer",
+      "value": "663"
+     },
+     {
+      "type": "integer",
+      "value": "672"
+     },
+     {
+      "type": "integer",
+      "value": "680"
+     },
+     {
+      "type": "integer",
+      "value": "693"
+     },
+     {
+      "type": "integer",
+      "value": "702"
+     },
+     {
+      "type": "integer",
+      "value": "714"
+     },
+     {
+      "type": "integer",
+      "value": "715"
+     },
+     {
+      "type": "integer",
+      "value": "720"
+     },
+     {
+      "type": "integer",
+      "value": "728"
+     },
+     {
+      "type": "integer",
+      "value": "748"
+     },
+     {
+      "type": "integer",
+      "value": "756"
+     },
+     {
+      "type": "integer",
+      "value": "765"
+     },
+     {
+      "type": "integer",
+      "value": "770"
+     },
+     {
+      "type": "integer",
+      "value": "780"
+     },
+     {
+      "type": "integer",
+      "value": "792"
+     },
+     {
+      "type": "integer",
+      "value": "816"
+     },
+     {
+      "type": "integer",
+      "value": "819"
+     },
+     {
+      "type": "integer",
+      "value": "840"
+     },
+     {
+      "type": "integer",
+      "value": "858"
+     },
+     {
+      "type": "integer",
+      "value": "864"
+     },
+     {
+      "type": "integer",
+      "value": "880"
+     },
+     {
+      "type": "integer",
+      "value": "884"
+     },
+     {
+      "type": "integer",
+      "value": "910"
+     },
+     {
+      "type": "integer",
+      "value": "918"
+     },
+     {
+      "type": "integer",
+      "value": "924"
+     },
+     {
+      "type": "integer",
+      "value": "935"
+     },
+     {
+      "type": "integer",
+      "value": "936"
+     },
+     {
+      "type": "integer",
+      "value": "945"
+     },
+     {
+      "type": "integer",
+      "value": "952"
+     },
+     {
+      "type": "integer",
+      "value": "990"
+     },
+     {
+      "type": "integer",
+      "value": "1001"
+     },
+     {
+      "type": "integer",
+      "value": "1008"
+     },
+     {
+      "type": "integer",
+      "value": "1020"
+     },
+     {
+      "type": "integer",
+      "value": "1040"
+     },
+     {
+      "type": "integer",
+      "value": "1056"
+     },
+     {
+      "type": "integer",
+      "value": "1071"
+     },
+     {
+      "type": "integer",
+      "value": "1080"
+     },
+     {
+      "type": "integer",
+      "value": "1092"
+     },
+     {
+      "type": "integer",
+      "value": "1105"
+     },
+     {
+      "type": "integer",
+      "value": "1120"
+     },
+     {
+      "type": "integer",
+      "value": "1122"
+     },
+     {
+      "type": "integer",
+      "value": "1144"
+     },
+     {
+      "type": "integer",
+      "value": "1155"
+     },
+     {
+      "type": "integer",
+      "value": "1170"
+     },
+     {
+      "type": "integer",
+      "value": "1188"
+     },
+     {
+      "type": "integer",
+      "value": "1190"
+     },
+     {
+      "type": "integer",
+      "value": "1224"
+     },
+     {
+      "type": "integer",
+      "value": "1232"
+     },
+     {
+      "type": "integer",
+      "value": "1248"
+     },
+     {
+      "type": "integer",
+      "value": "1260"
+     },
+     {
+      "type": "integer",
+      "value": "1287"
+     },
+     {
+      "type": "integer",
+      "value": "1309"
+     },
+     {
+      "type": "integer",
+      "value": "1320"
+     },
+     {
+      "type": "integer",
+      "value": "1326"
+     },
+     {
+      "type": "integer",
+      "value": "1360"
+     },
+     {
+      "type": "integer",
+      "value": "1365"
+     },
+     {
+      "type": "integer",
+      "value": "1386"
+     },
+     {
+      "type": "integer",
+      "value": "1404"
+     },
+     {
+      "type": "integer",
+      "value": "1428"
+     },
+     {
+      "type": "integer",
+      "value": "1430"
+     },
+     {
+      "type": "integer",
+      "value": "1440"
+     },
+     {
+      "type": "integer",
+      "value": "1456"
+     },
+     {
+      "type": "integer",
+      "value": "1485"
+     },
+     {
+      "type": "integer",
+      "value": "1496"
+     },
+     {
+      "type": "integer",
+      "value": "1512"
+     },
+     {
+      "type": "integer",
+      "value": "1530"
+     },
+     {
+      "type": "integer",
+      "value": "1540"
+     },
+     {
+      "type": "integer",
+      "value": "1547"
+     },
+     {
+      "type": "integer",
+      "value": "1560"
+     },
+     {
+      "type": "integer",
+      "value": "1584"
+     },
+     {
+      "type": "integer",
+      "value": "1632"
+     },
+     {
+      "type": "integer",
+      "value": "1638"
+     },
+     {
+      "type": "integer",
+      "value": "1680"
+     },
+     {
+      "type": "integer",
+      "value": "1683"
+     },
+     {
+      "type": "integer",
+      "value": "1716"
+     },
+     {
+      "type": "integer",
+      "value": "1755"
+     },
+     {
+      "type": "integer",
+      "value": "1760"
+     },
+     {
+      "type": "integer",
+      "value": "1768"
+     },
+     {
+      "type": "integer",
+      "value": "1785"
+     },
+     {
+      "type": "integer",
+      "value": "1820"
+     },
+     {
+      "type": "integer",
+      "value": "1836"
+     },
+     {
+      "type": "integer",
+      "value": "1848"
+     },
+     {
+      "type": "integer",
+      "value": "1870"
+     },
+     {
+      "type": "integer",
+      "value": "1872"
+     },
+     {
+      "type": "integer",
+      "value": "1890"
+     },
+     {
+      "type": "integer",
+      "value": "1904"
+     },
+     {
+      "type": "integer",
+      "value": "1980"
+     },
+     {
+      "type": "integer",
+      "value": "1989"
+     },
+     {
+      "type": "integer",
+      "value": "2002"
+     },
+     {
+      "type": "integer",
+      "value": "2016"
+     },
+     {
+      "type": "integer",
+      "value": "2040"
+     },
+     {
+      "type": "integer",
+      "value": "2079"
+     },
+     {
+      "type": "integer",
+      "value": "2080"
+     },
+     {
+      "type": "integer",
+      "value": "2142"
+     },
+     {
+      "type": "integer",
+      "value": "2145"
+     },
+     {
+      "type": "integer",
+      "value": "2160"
+     },
+     {
+      "type": "integer",
+      "value": "2184"
+     },
+     {
+      "type": "integer",
+      "value": "2210"
+     },
+     {
+      "type": "integer",
+      "value": "2244"
+     },
+     {
+      "type": "integer",
+      "value": "2288"
+     },
+     {
+      "type": "integer",
+      "value": "2295"
+     },
+     {
+      "type": "integer",
+      "value": "2310"
+     },
+     {
+      "type": "integer",
+      "value": "2340"
+     },
+     {
+      "type": "integer",
+      "value": "2376"
+     },
+     {
+      "type": "integer",
+      "value": "2380"
+     },
+     {
+      "type": "integer",
+      "value": "2431"
+     },
+     {
+      "type": "integer",
+      "value": "2448"
+     },
+     {
+      "type": "integer",
+      "value": "2457"
+     },
+     {
+      "type": "integer",
+      "value": "2464"
+     },
+     {
+      "type": "integer",
+      "value": "2520"
+     },
+     {
+      "type": "integer",
+      "value": "2574"
+     },
+     {
+      "type": "integer",
+      "value": "2618"
+     },
+     {
+      "type": "integer",
+      "value": "2640"
+     },
+     {
+      "type": "integer",
+      "value": "2652"
+     },
+     {
+      "type": "integer",
+      "value": "2720"
+     },
+     {
+      "type": "integer",
+      "value": "2730"
+     },
+     {
+      "type": "integer",
+      "value": "2772"
+     },
+     {
+      "type": "integer",
+      "value": "2805"
+     },
+     {
+      "type": "integer",
+      "value": "2808"
+     },
+     {
+      "type": "integer",
+      "value": "2856"
+     },
+     {
+      "type": "integer",
+      "value": "2860"
+     },
+     {
+      "type": "integer",
+      "value": "2912"
+     },
+     {
+      "type": "integer",
+      "value": "2970"
+     },
+     {
+      "type": "integer",
+      "value": "2992"
+     },
+     {
+      "type": "integer",
+      "value": "3003"
+     },
+     {
+      "type": "integer",
+      "value": "3024"
+     },
+     {
+      "type": "integer",
+      "value": "3060"
+     },
+     {
+      "type": "integer",
+      "value": "3080"
+     },
+     {
+      "type": "integer",
+      "value": "3094"
+     },
+     {
+      "type": "integer",
+      "value": "3120"
+     },
+     {
+      "type": "integer",
+      "value": "3168"
+     },
+     {
+      "type": "integer",
+      "value": "3213"
+     },
+     {
+      "type": "integer",
+      "value": "3276"
+     },
+     {
+      "type": "integer",
+      "value": "3315"
+     },
+     {
+      "type": "integer",
+      "value": "3360"
+     },
+     {
+      "type": "integer",
+      "value": "3366"
+     },
+     {
+      "type": "integer",
+      "value": "3432"
+     },
+     {
+      "type": "integer",
+      "value": "3465"
+     },
+     {
+      "type": "integer",
+      "value": "3510"
+     },
+     {
+      "type": "integer",
+      "value": "3536"
+     },
+     {
+      "type": "integer",
+      "value": "3570"
+     },
+     {
+      "type": "integer",
+      "value": "3640"
+     },
+     {
+      "type": "integer",
+      "value": "3672"
+     },
+     {
+      "type": "integer",
+      "value": "3696"
+     },
+     {
+      "type": "integer",
+      "value": "3740"
+     },
+     {
+      "type": "integer",
+      "value": "3744"
+     },
+     {
+      "type": "integer",
+      "value": "3780"
+     },
+     {
+      "type": "integer",
+      "value": "3808"
+     },
+     {
+      "type": "integer",
+      "value": "3861"
+     },
+     {
+      "type": "integer",
+      "value": "3927"
+     },
+     {
+      "type": "integer",
+      "value": "3960"
+     },
+     {
+      "type": "integer",
+      "value": "3978"
+     },
+     {
+      "type": "integer",
+      "value": "4004"
+     },
+     {
+      "type": "integer",
+      "value": "4080"
+     },
+     {
+      "type": "integer",
+      "value": "4095"
+     },
+     {
+      "type": "integer",
+      "value": "4158"
+     },
+     {
+      "type": "integer",
+      "value": "4284"
+     },
+     {
+      "type": "integer",
+      "value": "4290"
+     },
+     {
+      "type": "integer",
+      "value": "4320"
+     },
+     {
+      "type": "integer",
+      "value": "4368"
+     },
+     {
+      "type": "integer",
+      "value": "4420"
+     },
+     {
+      "type": "integer",
+      "value": "4488"
+     },
+     {
+      "type": "integer",
+      "value": "4576"
+     },
+     {
+      "type": "integer",
+      "value": "4590"
+     },
+     {
+      "type": "integer",
+      "value": "4620"
+     },
+     {
+      "type": "integer",
+      "value": "4641"
+     },
+     {
+      "type": "integer",
+      "value": "4680"
+     },
+     {
+      "type": "integer",
+      "value": "4752"
+     },
+     {
+      "type": "integer",
+      "value": "4760"
+     },
+     {
+      "type": "integer",
+      "value": "4862"
+     },
+     {
+      "type": "integer",
+      "value": "4896"
+     },
+     {
+      "type": "integer",
+      "value": "4914"
+     },
+     {
+      "type": "integer",
+      "value": "5005"
+     },
+     {
+      "type": "integer",
+      "value": "5040"
+     },
+     {
+      "type": "integer",
+      "value": "5049"
+     },
+     {
+      "type": "integer",
+      "value": "5148"
+     },
+     {
+      "type": "integer",
+      "value": "5236"
+     },
+     {
+      "type": "integer",
+      "value": "5280"
+     },
+     {
+      "type": "integer",
+      "value": "5304"
+     },
+     {
+      "type": "integer",
+      "value": "5355"
+     },
+     {
+      "type": "integer",
+      "value": "5460"
+     },
+     {
+      "type": "integer",
+      "value": "5544"
+     },
+     {
+      "type": "integer",
+      "value": "5610"
+     },
+     {
+      "type": "integer",
+      "value": "5616"
+     },
+     {
+      "type": "integer",
+      "value": "5712"
+     },
+     {
+      "type": "integer",
+      "value": "5720"
+     },
+     {
+      "type": "integer",
+      "value": "5940"
+     },
+     {
+      "type": "integer",
+      "value": "5967"
+     },
+     {
+      "type": "integer",
+      "value": "5984"
+     },
+     {
+      "type": "integer",
+      "value": "6006"
+     },
+     {
+      "type": "integer",
+      "value": "6048"
+     },
+     {
+      "type": "integer",
+      "value": "6120"
+     },
+     {
+      "type": "integer",
+      "value": "6160"
+     },
+     {
+      "type": "integer",
+      "value": "6188"
+     },
+     {
+      "type": "integer",
+      "value": "6240"
+     },
+     {
+      "type": "integer",
+      "value": "6426"
+     },
+     {
+      "type": "integer",
+      "value": "6435"
+     },
+     {
+      "type": "integer",
+      "value": "6545"
+     },
+     {
+      "type": "integer",
+      "value": "6552"
+     },
+     {
+      "type": "integer",
+      "value": "6630"
+     },
+     {
+      "type": "integer",
+      "value": "6732"
+     },
+     {
+      "type": "integer",
+      "value": "6864"
+     },
+     {
+      "type": "integer",
+      "value": "6930"
+     },
+     {
+      "type": "integer",
+      "value": "7020"
+     },
+     {
+      "type": "integer",
+      "value": "7072"
+     },
+     {
+      "type": "integer",
+      "value": "7140"
+     },
+     {
+      "type": "integer",
+      "value": "7280"
+     },
+     {
+      "type": "integer",
+      "value": "7293"
+     },
+     {
+      "type": "integer",
+      "value": "7344"
+     },
+     {
+      "type": "integer",
+      "value": "7392"
+     },
+     {
+      "type": "integer",
+      "value": "7480"
+     },
+     {
+      "type": "integer",
+      "value": "7560"
+     },
+     {
+      "type": "integer",
+      "value": "7722"
+     },
+     {
+      "type": "integer",
+      "value": "7735"
+     },
+     {
+      "type": "integer",
+      "value": "7854"
+     },
+     {
+      "type": "integer",
+      "value": "7920"
+     },
+     {
+      "type": "integer",
+      "value": "7956"
+     },
+     {
+      "type": "integer",
+      "value": "8008"
+     },
+     {
+      "type": "integer",
+      "value": "8160"
+     },
+     {
+      "type": "integer",
+      "value": "8190"
+     },
+     {
+      "type": "integer",
+      "value": "8316"
+     },
+     {
+      "type": "integer",
+      "value": "8415"
+     },
+     {
+      "type": "integer",
+      "value": "8568"
+     },
+     {
+      "type": "integer",
+      "value": "8580"
+     },
+     {
+      "type": "integer",
+      "value": "8736"
+     },
+     {
+      "type": "integer",
+      "value": "8840"
+     },
+     {
+      "type": "integer",
+      "value": "8976"
+     },
+     {
+      "type": "integer",
+      "value": "9009"
+     },
+     {
+      "type": "integer",
+      "value": "9180"
+     },
+     {
+      "type": "integer",
+      "value": "9240"
+     },
+     {
+      "type": "integer",
+      "value": "9282"
+     },
+     {
+      "type": "integer",
+      "value": "9360"
+     },
+     {
+      "type": "integer",
+      "value": "9504"
+     },
+     {
+      "type": "integer",
+      "value": "9520"
+     },
+     {
+      "type": "integer",
+      "value": "9724"
+     },
+     {
+      "type": "integer",
+      "value": "9828"
+     },
+     {
+      "type": "integer",
+      "value": "9945"
+     },
+     {
+      "type": "integer",
+      "value": "10010"
+     },
+     {
+      "type": "integer",
+      "value": "10080"
+     },
+     {
+      "type": "integer",
+      "value": "10098"
+     },
+     {
+      "type": "integer",
+      "value": "10296"
+     },
+     {
+      "type": "integer",
+      "value": "10395"
+     },
+     {
+      "type": "integer",
+      "value": "10472"
+     },
+     {
+      "type": "integer",
+      "value": "10608"
+     },
+     {
+      "type": "integer",
+      "value": "10710"
+     },
+     {
+      "type": "integer",
+      "value": "10920"
+     },
+     {
+      "type": "integer",
+      "value": "11088"
+     },
+     {
+      "type": "integer",
+      "value": "11220"
+     },
+     {
+      "type": "integer",
+      "value": "11232"
+     },
+     {
+      "type": "integer",
+      "value": "11424"
+     },
+     {
+      "type": "integer",
+      "value": "11440"
+     },
+     {
+      "type": "integer",
+      "value": "11781"
+     },
+     {
+      "type": "integer",
+      "value": "11880"
+     },
+     {
+      "type": "integer",
+      "value": "11934"
+     },
+     {
+      "type": "integer",
+      "value": "12012"
+     },
+     {
+      "type": "integer",
+      "value": "12155"
+     },
+     {
+      "type": "integer",
+      "value": "12240"
+     },
+     {
+      "type": "integer",
+      "value": "12285"
+     },
+     {
+      "type": "integer",
+      "value": "12320"
+     },
+     {
+      "type": "integer",
+      "value": "12376"
+     },
+     {
+      "type": "integer",
+      "value": "12852"
+     },
+     {
+      "type": "integer",
+      "value": "12870"
+     },
+     {
+      "type": "integer",
+      "value": "13090"
+     },
+     {
+      "type": "integer",
+      "value": "13104"
+     },
+     {
+      "type": "integer",
+      "value": "13260"
+     },
+     {
+      "type": "integer",
+      "value": "13464"
+     },
+     {
+      "type": "integer",
+      "value": "13728"
+     },
+     {
+      "type": "integer",
+      "value": "13860"
+     },
+     {
+      "type": "integer",
+      "value": "13923"
+     },
+     {
+      "type": "integer",
+      "value": "14040"
+     },
+     {
+      "type": "integer",
+      "value": "14280"
+     },
+     {
+      "type": "integer",
+      "value": "14560"
+     },
+     {
+      "type": "integer",
+      "value": "14586"
+     },
+     {
+      "type": "integer",
+      "value": "14688"
+     },
+     {
+      "type": "integer",
+      "value": "14960"
+     },
+     {
+      "type": "integer",
+      "value": "15015"
+     },
+     {
+      "type": "integer",
+      "value": "15120"
+     },
+     {
+      "type": "integer",
+      "value": "15444"
+     },
+     {
+      "type": "integer",
+      "value": "15470"
+     },
+     {
+      "type": "integer",
+      "value": "15708"
+     },
+     {
+      "type": "integer",
+      "value": "15840"
+     },
+     {
+      "type": "integer",
+      "value": "15912"
+     },
+     {
+      "type": "integer",
+      "value": "16016"
+     },
+     {
+      "type": "integer",
+      "value": "16065"
+     },
+     {
+      "type": "integer",
+      "value": "16380"
+     },
+     {
+      "type": "integer",
+      "value": "16632"
+     },
+     {
+      "type": "integer",
+      "value": "16830"
+     },
+     {
+      "type": "integer",
+      "value": "17017"
+     },
+     {
+      "type": "integer",
+      "value": "17136"
+     },
+     {
+      "type": "integer",
+      "value": "17160"
+     },
+     {
+      "type": "integer",
+      "value": "17680"
+     },
+     {
+      "type": "integer",
+      "value": "17952"
+     },
+     {
+      "type": "integer",
+      "value": "18018"
+     },
+     {
+      "type": "integer",
+      "value": "18360"
+     },
+     {
+      "type": "integer",
+      "value": "18480"
+     },
+     {
+      "type": "integer",
+      "value": "18564"
+     },
+     {
+      "type": "integer",
+      "value": "18720"
+     },
+     {
+      "type": "integer",
+      "value": "19040"
+     },
+     {
+      "type": "integer",
+      "value": "19305"
+     },
+     {
+      "type": "integer",
+      "value": "19448"
+     },
+     {
+      "type": "integer",
+      "value": "19635"
+     },
+     {
+      "type": "integer",
+      "value": "19656"
+     },
+     {
+      "type": "integer",
+      "value": "19890"
+     },
+     {
+      "type": "integer",
+      "value": "20020"
+     },
+     {
+      "type": "integer",
+      "value": "20196"
+     },
+     {
+      "type": "integer",
+      "value": "20592"
+     },
+     {
+      "type": "integer",
+      "value": "20790"
+     },
+     {
+      "type": "integer",
+      "value": "20944"
+     },
+     {
+      "type": "integer",
+      "value": "21216"
+     },
+     {
+      "type": "integer",
+      "value": "21420"
+     },
+     {
+      "type": "integer",
+      "value": "21840"
+     },
+     {
+      "type": "integer",
+      "value": "21879"
+     },
+     {
+      "type": "integer",
+      "value": "22176"
+     },
+     {
+      "type": "integer",
+      "value": "22440"
+     },
+     {
+      "type": "integer",
+      "value": "22880"
+     },
+     {
+      "type": "integer",
+      "value": "23205"
+     },
+     {
+      "type": "integer",
+      "value": "23562"
+     },
+     {
+      "type": "integer",
+      "value": "23760"
+     },
+     {
+      "type": "integer",
+      "value": "23868"
+     },
+     {
+      "type": "integer",
+      "value": "24024"
+     },
+     {
+      "type": "integer",
+      "value": "24310"
+     },
+     {
+      "type": "integer",
+      "value": "24480"
+     },
+     {
+      "type": "integer",
+      "value": "24570"
+     },
+     {
+      "type": "integer",
+      "value": "24752"
+     },
+     {
+      "type": "integer",
+      "value": "25245"
+     },
+     {
+      "type": "integer",
+      "value": "25704"
+     },
+     {
+      "type": "integer",
+      "value": "25740"
+     },
+     {
+      "type": "integer",
+      "value": "26180"
+     },
+     {
+      "type": "integer",
+      "value": "26208"
+     },
+     {
+      "type": "integer",
+      "value": "26520"
+     },
+     {
+      "type": "integer",
+      "value": "26928"
+     },
+     {
+      "type": "integer",
+      "value": "27027"
+     },
+     {
+      "type": "integer",
+      "value": "27720"
+     },
+     {
+      "type": "integer",
+      "value": "27846"
+     },
+     {
+      "type": "integer",
+      "value": "28080"
+     },
+     {
+      "type": "integer",
+      "value": "28560"
+     },
+     {
+      "type": "integer",
+      "value": "29172"
+     },
+     {
+      "type": "integer",
+      "value": "29835"
+     },
+     {
+      "type": "integer",
+      "value": "29920"
+     },
+     {
+      "type": "integer",
+      "value": "30030"
+     },
+     {
+      "type": "integer",
+      "value": "30240"
+     },
+     {
+      "type": "integer",
+      "value": "30888"
+     },
+     {
+      "type": "integer",
+      "value": "30940"
+     },
+     {
+      "type": "integer",
+      "value": "31416"
+     },
+     {
+      "type": "integer",
+      "value": "31824"
+     },
+     {
+      "type": "integer",
+      "value": "32032"
+     },
+     {
+      "type": "integer",
+      "value": "32130"
+     },
+     {
+      "type": "integer",
+      "value": "32760"
+     },
+     {
+      "type": "integer",
+      "value": "33264"
+     },
+     {
+      "type": "integer",
+      "value": "33660"
+     },
+     {
+      "type": "integer",
+      "value": "34034"
+     },
+     {
+      "type": "integer",
+      "value": "34272"
+     },
+     {
+      "type": "integer",
+      "value": "34320"
+     },
+     {
+      "type": "integer",
+      "value": "35343"
+     },
+     {
+      "type": "integer",
+      "value": "35360"
+     },
+     {
+      "type": "integer",
+      "value": "36036"
+     },
+     {
+      "type": "integer",
+      "value": "36465"
+     },
+     {
+      "type": "integer",
+      "value": "36720"
+     },
+     {
+      "type": "integer",
+      "value": "36960"
+     },
+     {
+      "type": "integer",
+      "value": "37128"
+     },
+     {
+      "type": "integer",
+      "value": "38610"
+     },
+     {
+      "type": "integer",
+      "value": "38896"
+     },
+     {
+      "type": "integer",
+      "value": "39270"
+     },
+     {
+      "type": "integer",
+      "value": "39312"
+     },
+     {
+      "type": "integer",
+      "value": "39780"
+     },
+     {
+      "type": "integer",
+      "value": "40040"
+     },
+     {
+      "type": "integer",
+      "value": "40392"
+     },
+     {
+      "type": "integer",
+      "value": "41184"
+     },
+     {
+      "type": "integer",
+      "value": "41580"
+     },
+     {
+      "type": "integer",
+      "value": "41769"
+     },
+     {
+      "type": "integer",
+      "value": "41888"
+     },
+     {
+      "type": "integer",
+      "value": "42840"
+     },
+     {
+      "type": "integer",
+      "value": "43680"
+     },
+     {
+      "type": "integer",
+      "value": "43758"
+     },
+     {
+      "type": "integer",
+      "value": "44880"
+     },
+     {
+      "type": "integer",
+      "value": "45045"
+     },
+     {
+      "type": "integer",
+      "value": "46410"
+     },
+     {
+      "type": "integer",
+      "value": "47124"
+     },
+     {
+      "type": "integer",
+      "value": "47520"
+     },
+     {
+      "type": "integer",
+      "value": "47736"
+     },
+     {
+      "type": "integer",
+      "value": "48048"
+     },
+     {
+      "type": "integer",
+      "value": "48620"
+     },
+     {
+      "type": "integer",
+      "value": "49140"
+     },
+     {
+      "type": "integer",
+      "value": "49504"
+     },
+     {
+      "type": "integer",
+      "value": "50490"
+     },
+     {
+      "type": "integer",
+      "value": "51051"
+     },
+     {
+      "type": "integer",
+      "value": "51408"
+     },
+     {
+      "type": "integer",
+      "value": "51480"
+     },
+     {
+      "type": "integer",
+      "value": "52360"
+     },
+     {
+      "type": "integer",
+      "value": "53040"
+     },
+     {
+      "type": "integer",
+      "value": "53856"
+     },
+     {
+      "type": "integer",
+      "value": "54054"
+     },
+     {
+      "type": "integer",
+      "value": "55440"
+     },
+     {
+      "type": "integer",
+      "value": "55692"
+     },
+     {
+      "type": "integer",
+      "value": "56160"
+     },
+     {
+      "type": "integer",
+      "value": "57120"
+     },
+     {
+      "type": "integer",
+      "value": "58344"
+     },
+     {
+      "type": "integer",
+      "value": "58905"
+     },
+     {
+      "type": "integer",
+      "value": "59670"
+     },
+     {
+      "type": "integer",
+      "value": "60060"
+     },
+     {
+      "type": "integer",
+      "value": "61776"
+     },
+     {
+      "type": "integer",
+      "value": "61880"
+     },
+     {
+      "type": "integer",
+      "value": "62832"
+     },
+     {
+      "type": "integer",
+      "value": "63648"
+     },
+     {
+      "type": "integer",
+      "value": "64260"
+     },
+     {
+      "type": "integer",
+      "value": "65520"
+     },
+     {
+      "type": "integer",
+      "value": "65637"
+     },
+     {
+      "type": "integer",
+      "value": "66528"
+     },
+     {
+      "type": "integer",
+      "value": "67320"
+     },
+     {
+      "type": "integer",
+      "value": "68068"
+     },
+     {
+      "type": "integer",
+      "value": "68640"
+     },
+     {
+      "type": "integer",
+      "value": "69615"
+     },
+     {
+      "type": "integer",
+      "value": "70686"
+     },
+     {
+      "type": "integer",
+      "value": "72072"
+     },
+     {
+      "type": "integer",
+      "value": "72930"
+     },
+     {
+      "type": "integer",
+      "value": "73440"
+     },
+     {
+      "type": "integer",
+      "value": "74256"
+     },
+     {
+      "type": "integer",
+      "value": "77220"
+     },
+     {
+      "type": "integer",
+      "value": "77792"
+     },
+     {
+      "type": "integer",
+      "value": "78540"
+     },
+     {
+      "type": "integer",
+      "value": "78624"
+     },
+     {
+      "type": "integer",
+      "value": "79560"
+     },
+     {
+      "type": "integer",
+      "value": "80080"
+     },
+     {
+      "type": "integer",
+      "value": "80784"
+     },
+     {
+      "type": "integer",
+      "value": "83160"
+     },
+     {
+      "type": "integer",
+      "value": "83538"
+     },
+     {
+      "type": "integer",
+      "value": "85085"
+     },
+     {
+      "type": "integer",
+      "value": "85680"
+     },
+     {
+      "type": "integer",
+      "value": "87516"
+     },
+     {
+      "type": "integer",
+      "value": "89760"
+     },
+     {
+      "type": "integer",
+      "value": "90090"
+     },
+     {
+      "type": "integer",
+      "value": "92820"
+     },
+     {
+      "type": "integer",
+      "value": "94248"
+     },
+     {
+      "type": "integer",
+      "value": "95472"
+     },
+     {
+      "type": "integer",
+      "value": "96096"
+     },
+     {
+      "type": "integer",
+      "value": "97240"
+     },
+     {
+      "type": "integer",
+      "value": "98280"
+     },
+     {
+      "type": "integer",
+      "value": "100980"
+     },
+     {
+      "type": "integer",
+      "value": "102102"
+     },
+     {
+      "type": "integer",
+      "value": "102816"
+     },
+     {
+      "type": "integer",
+      "value": "102960"
+     },
+     {
+      "type": "integer",
+      "value": "104720"
+     },
+     {
+      "type": "integer",
+      "value": "106080"
+     },
+     {
+      "type": "integer",
+      "value": "108108"
+     },
+     {
+      "type": "integer",
+      "value": "109395"
+     },
+     {
+      "type": "integer",
+      "value": "110880"
+     },
+     {
+      "type": "integer",
+      "value": "111384"
+     },
+     {
+      "type": "integer",
+      "value": "116688"
+     },
+     {
+      "type": "integer",
+      "value": "117810"
+     },
+     {
+      "type": "integer",
+      "value": "119340"
+     },
+     {
+      "type": "integer",
+      "value": "120120"
+     },
+     {
+      "type": "integer",
+      "value": "123552"
+     },
+     {
+      "type": "integer",
+      "value": "123760"
+     },
+     {
+      "type": "integer",
+      "value": "125664"
+     },
+     {
+      "type": "integer",
+      "value": "128520"
+     },
+     {
+      "type": "integer",
+      "value": "131040"
+     },
+     {
+      "type": "integer",
+      "value": "131274"
+     },
+     {
+      "type": "integer",
+      "value": "134640"
+     },
+     {
+      "type": "integer",
+      "value": "135135"
+     },
+     {
+      "type": "integer",
+      "value": "136136"
+     },
+     {
+      "type": "integer",
+      "value": "139230"
+     },
+     {
+      "type": "integer",
+      "value": "141372"
+     },
+     {
+      "type": "integer",
+      "value": "144144"
+     },
+     {
+      "type": "integer",
+      "value": "145860"
+     },
+     {
+      "type": "integer",
+      "value": "148512"
+     },
+     {
+      "type": "integer",
+      "value": "153153"
+     },
+     {
+      "type": "integer",
+      "value": "154440"
+     },
+     {
+      "type": "integer",
+      "value": "157080"
+     },
+     {
+      "type": "integer",
+      "value": "159120"
+     },
+     {
+      "type": "integer",
+      "value": "160160"
+     },
+     {
+      "type": "integer",
+      "value": "161568"
+     },
+     {
+      "type": "integer",
+      "value": "166320"
+     },
+     {
+      "type": "integer",
+      "value": "167076"
+     },
+     {
+      "type": "integer",
+      "value": "170170"
+     },
+     {
+      "type": "integer",
+      "value": "171360"
+     },
+     {
+      "type": "integer",
+      "value": "175032"
+     },
+     {
+      "type": "integer",
+      "value": "176715"
+     },
+     {
+      "type": "integer",
+      "value": "180180"
+     },
+     {
+      "type": "integer",
+      "value": "185640"
+     },
+     {
+      "type": "integer",
+      "value": "188496"
+     },
+     {
+      "type": "integer",
+      "value": "190944"
+     },
+     {
+      "type": "integer",
+      "value": "194480"
+     },
+     {
+      "type": "integer",
+      "value": "196560"
+     },
+     {
+      "type": "integer",
+      "value": "201960"
+     },
+     {
+      "type": "integer",
+      "value": "204204"
+     },
+     {
+      "type": "integer",
+      "value": "205920"
+     },
+     {
+      "type": "integer",
+      "value": "208845"
+     },
+     {
+      "type": "integer",
+      "value": "209440"
+     },
+     {
+      "type": "integer",
+      "value": "216216"
+     },
+     {
+      "type": "integer",
+      "value": "218790"
+     },
+     {
+      "type": "integer",
+      "value": "222768"
+     },
+     {
+      "type": "integer",
+      "value": "233376"
+     },
+     {
+      "type": "integer",
+      "value": "235620"
+     },
+     {
+      "type": "integer",
+      "value": "238680"
+     },
+     {
+      "type": "integer",
+      "value": "240240"
+     },
+     {
+      "type": "integer",
+      "value": "247520"
+     },
+     {
+      "type": "integer",
+      "value": "255255"
+     },
+     {
+      "type": "integer",
+      "value": "257040"
+     },
+     {
+      "type": "integer",
+      "value": "262548"
+     },
+     {
+      "type": "integer",
+      "value": "269280"
+     },
+     {
+      "type": "integer",
+      "value": "270270"
+     },
+     {
+      "type": "integer",
+      "value": "272272"
+     },
+     {
+      "type": "integer",
+      "value": "278460"
+     },
+     {
+      "type": "integer",
+      "value": "282744"
+     },
+     {
+      "type": "integer",
+      "value": "288288"
+     },
+     {
+      "type": "integer",
+      "value": "291720"
+     },
+     {
+      "type": "integer",
+      "value": "306306"
+     },
+     {
+      "type": "integer",
+      "value": "308880"
+     },
+     {
+      "type": "integer",
+      "value": "314160"
+     },
+     {
+      "type": "integer",
+      "value": "318240"
+     },
+     {
+      "type": "integer",
+      "value": "328185"
+     },
+     {
+      "type": "integer",
+      "value": "332640"
+     },
+     {
+      "type": "integer",
+      "value": "334152"
+     },
+     {
+      "type": "integer",
+      "value": "340340"
+     },
+     {
+      "type": "integer",
+      "value": "350064"
+     },
+     {
+      "type": "integer",
+      "value": "353430"
+     },
+     {
+      "type": "integer",
+      "value": "360360"
+     },
+     {
+      "type": "integer",
+      "value": "371280"
+     },
+     {
+      "type": "integer",
+      "value": "376992"
+     },
+     {
+      "type": "integer",
+      "value": "388960"
+     },
+     {
+      "type": "integer",
+      "value": "393120"
+     },
+     {
+      "type": "integer",
+      "value": "403920"
+     },
+     {
+      "type": "integer",
+      "value": "408408"
+     },
+     {
+      "type": "integer",
+      "value": "417690"
+     },
+     {
+      "type": "integer",
+      "value": "432432"
+     },
+     {
+      "type": "integer",
+      "value": "437580"
+     },
+     {
+      "type": "integer",
+      "value": "445536"
+     },
+     {
+      "type": "integer",
+      "value": "459459"
+     },
+     {
+      "type": "integer",
+      "value": "471240"
+     },
+     {
+      "type": "integer",
+      "value": "477360"
+     },
+     {
+      "type": "integer",
+      "value": "480480"
+     },
+     {
+      "type": "integer",
+      "value": "510510"
+     },
+     {
+      "type": "integer",
+      "value": "514080"
+     },
+     {
+      "type": "integer",
+      "value": "525096"
+     },
+     {
+      "type": "integer",
+      "value": "540540"
+     },
+     {
+      "type": "integer",
+      "value": "544544"
+     },
+     {
+      "type": "integer",
+      "value": "556920"
+     },
+     {
+      "type": "integer",
+      "value": "565488"
+     },
+     {
+      "type": "integer",
+      "value": "583440"
+     },
+     {
+      "type": "integer",
+      "value": "612612"
+     },
+     {
+      "type": "integer",
+      "value": "617760"
+     },
+     {
+      "type": "integer",
+      "value": "628320"
+     },
+     {
+      "type": "integer",
+      "value": "656370"
+     },
+     {
+      "type": "integer",
+      "value": "668304"
+     },
+     {
+      "type": "integer",
+      "value": "680680"
+     },
+     {
+      "type": "integer",
+      "value": "700128"
+     },
+     {
+      "type": "integer",
+      "value": "706860"
+     },
+     {
+      "type": "integer",
+      "value": "720720"
+     },
+     {
+      "type": "integer",
+      "value": "742560"
+     },
+     {
+      "type": "integer",
+      "value": "765765"
+     },
+     {
+      "type": "integer",
+      "value": "807840"
+     },
+     {
+      "type": "integer",
+      "value": "816816"
+     },
+     {
+      "type": "integer",
+      "value": "835380"
+     },
+     {
+      "type": "integer",
+      "value": "864864"
+     },
+     {
+      "type": "integer",
+      "value": "875160"
+     },
+     {
+      "type": "integer",
+      "value": "918918"
+     },
+     {
+      "type": "integer",
+      "value": "942480"
+     },
+     {
+      "type": "integer",
+      "value": "954720"
+     },
+     {
+      "type": "integer",
+      "value": "1021020"
+     },
+     {
+      "type": "integer",
+      "value": "1050192"
+     },
+     {
+      "type": "integer",
+      "value": "1081080"
+     },
+     {
+      "type": "integer",
+      "value": "1113840"
+     },
+     {
+      "type": "integer",
+      "value": "1130976"
+     },
+     {
+      "type": "integer",
+      "value": "1166880"
+     },
+     {
+      "type": "integer",
+      "value": "1225224"
+     },
+     {
+      "type": "integer",
+      "value": "1312740"
+     },
+     {
+      "type": "integer",
+      "value": "1336608"
+     },
+     {
+      "type": "integer",
+      "value": "1361360"
+     },
+     {
+      "type": "integer",
+      "value": "1413720"
+     },
+     {
+      "type": "integer",
+      "value": "1441440"
+     },
+     {
+      "type": "integer",
+      "value": "1531530"
+     },
+     {
+      "type": "integer",
+      "value": "1633632"
+     },
+     {
+      "type": "integer",
+      "value": "1670760"
+     },
+     {
+      "type": "integer",
+      "value": "1750320"
+     },
+     {
+      "type": "integer",
+      "value": "1837836"
+     },
+     {
+      "type": "integer",
+      "value": "1884960"
+     },
+     {
+      "type": "integer",
+      "value": "2042040"
+     },
+     {
+      "type": "integer",
+      "value": "2100384"
+     },
+     {
+      "type": "integer",
+      "value": "2162160"
+     },
+     {
+      "type": "integer",
+      "value": "2227680"
+     },
+     {
+      "type": "integer",
+      "value": "2297295"
+     },
+     {
+      "type": "integer",
+      "value": "2450448"
+     },
+     {
+      "type": "integer",
+      "value": "2625480"
+     },
+     {
+      "type": "integer",
+      "value": "2722720"
+     },
+     {
+      "type": "integer",
+      "value": "2827440"
+     },
+     {
+      "type": "integer",
+      "value": "3063060"
+     },
+     {
+      "type": "integer",
+      "value": "3341520"
+     },
+     {
+      "type": "integer",
+      "value": "3500640"
+     },
+     {
+      "type": "integer",
+      "value": "3675672"
+     },
+     {
+      "type": "integer",
+      "value": "4084080"
+     },
+     {
+      "type": "integer",
+      "value": "4324320"
+     },
+     {
+      "type": "integer",
+      "value": "4594590"
+     },
+     {
+      "type": "integer",
+      "value": "4900896"
+     },
+     {
+      "type": "integer",
+      "value": "5250960"
+     },
+     {
+      "type": "integer",
+      "value": "5654880"
+     },
+     {
+      "type": "integer",
+      "value": "6126120"
+     },
+     {
+      "type": "integer",
+      "value": "6683040"
+     },
+     {
+      "type": "integer",
+      "value": "7351344"
+     },
+     {
+      "type": "integer",
+      "value": "8168160"
+     },
+     {
+      "type": "integer",
+      "value": "9189180"
+     },
+     {
+      "type": "integer",
+      "value": "10501920"
+     },
+     {
+      "type": "integer",
+      "value": "12252240"
+     },
+     {
+      "type": "integer",
+      "value": "14702688"
+     },
+     {
+      "type": "integer",
+      "value": "18378360"
+     },
+     {
+      "type": "integer",
+      "value": "24504480"
+     },
+     {
+      "type": "integer",
+      "value": "36756720"
+     },
+     {
+      "type": "integer",
+      "value": "73513440"
+     }
+    ],
+    "type": "tuple"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "factor_integer/edge/explicit_limits": {
+  "error": [
+   "OperationError",
+   "resource_limit_exceeded"
+  ],
+  "value": null
+ },
+ "factor_integer/edge/minus_one": {
+  "error": null,
+  "value": {
+   "data": {
+    "factors": {
+     "items": [],
+     "type": "tuple"
+    },
+    "sign": {
+     "type": "integer",
+     "value": "-1"
+    },
+    "type": "v5_integer_factorization"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 5
+  }
+ },
+ "factor_integer/edge/negative": {
+  "error": null,
+  "value": {
+   "data": {
+    "factors": {
+     "items": [
+      {
+       "items": [
+        {
+         "type": "integer",
+         "value": "2"
+        },
+        {
+         "type": "integer",
+         "value": "3"
+        }
+       ],
+       "type": "tuple"
+      },
+      {
+       "items": [
+        {
+         "type": "integer",
+         "value": "3"
+        },
+        {
+         "type": "integer",
+         "value": "2"
+        }
+       ],
+       "type": "tuple"
+      },
+      {
+       "items": [
+        {
+         "type": "integer",
+         "value": "5"
+        },
+        {
+         "type": "integer",
+         "value": "1"
+        }
+       ],
+       "type": "tuple"
+      }
+     ],
+     "type": "tuple"
+    },
+    "sign": {
+     "type": "integer",
+     "value": "-1"
+    },
+    "type": "v5_integer_factorization"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 5
+  }
+ },
+ "factor_integer/edge/one": {
+  "error": null,
+  "value": {
+   "data": {
+    "factors": {
+     "items": [],
+     "type": "tuple"
+    },
+    "sign": {
+     "type": "integer",
+     "value": "1"
+    },
+    "type": "v5_integer_factorization"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 5
+  }
+ },
+ "factor_integer/edge/over_limit": {
+  "error": [
+   "OperationError",
+   "resource_limit_exceeded"
+  ],
+  "value": null
+ },
+ "factor_integer/edge/prime": {
+  "error": null,
+  "value": {
+   "data": {
+    "factors": {
+     "items": [
+      {
+       "items": [
+        {
+         "type": "integer",
+         "value": "97"
+        },
+        {
+         "type": "integer",
+         "value": "1"
+        }
+       ],
+       "type": "tuple"
+      }
+     ],
+     "type": "tuple"
+    },
+    "sign": {
+     "type": "integer",
+     "value": "1"
+    },
+    "type": "v5_integer_factorization"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 5
+  }
+ },
+ "factor_integer/edge/prime_power": {
+  "error": null,
+  "value": {
+   "data": {
+    "factors": {
+     "items": [
+      {
+       "items": [
+        {
+         "type": "integer",
+         "value": "2"
+        },
+        {
+         "type": "integer",
+         "value": "20"
+        }
+       ],
+       "type": "tuple"
+      }
+     ],
+     "type": "tuple"
+    },
+    "sign": {
+     "type": "integer",
+     "value": "1"
+    },
+    "type": "v5_integer_factorization"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 5
+  }
+ },
+ "factor_integer/edge/square_of_prime": {
+  "error": null,
+  "value": {
+   "data": {
+    "factors": {
+     "items": [
+      {
+       "items": [
+        {
+         "type": "integer",
+         "value": "97"
+        },
+        {
+         "type": "integer",
+         "value": "2"
+        }
+       ],
+       "type": "tuple"
+      }
+     ],
+     "type": "tuple"
+    },
+    "sign": {
+     "type": "integer",
+     "value": "1"
+    },
+    "type": "v5_integer_factorization"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 5
+  }
+ },
+ "factor_integer/edge/two_primes": {
+  "error": null,
+  "value": {
+   "data": {
+    "factors": {
+     "items": [
+      {
+       "items": [
+        {
+         "type": "integer",
+         "value": "7"
+        },
+        {
+         "type": "integer",
+         "value": "1"
+        }
+       ],
+       "type": "tuple"
+      },
+      {
+       "items": [
+        {
+         "type": "integer",
+         "value": "13"
+        },
+        {
+         "type": "integer",
+         "value": "1"
+        }
+       ],
+       "type": "tuple"
+      }
+     ],
+     "type": "tuple"
+    },
+    "sign": {
+     "type": "integer",
+     "value": "1"
+    },
+    "type": "v5_integer_factorization"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 5
+  }
+ },
+ "factor_integer/edge/type_float": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "factor_integer/edge/type_limits_int": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "factor_integer/edge/type_none": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "factor_integer/edge/type_str": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "factor_integer/edge/type_true": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "factor_integer/edge/zero": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "factor_integer/micro/small_numbers#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "factors": {
+     "items": [
+      {
+       "items": [
+        {
+         "type": "integer",
+         "value": "2"
+        },
+        {
+         "type": "integer",
+         "value": "3"
+        }
+       ],
+       "type": "tuple"
+      },
+      {
+       "items": [
+        {
+         "type": "integer",
+         "value": "3"
+        },
+        {
+         "type": "integer",
+         "value": "2"
+        }
+       ],
+       "type": "tuple"
+      },
+      {
+       "items": [
+        {
+         "type": "integer",
+         "value": "5"
+        },
+        {
+         "type": "integer",
+         "value": "1"
+        }
+       ],
+       "type": "tuple"
+      }
+     ],
+     "type": "tuple"
+    },
+    "sign": {
+     "type": "integer",
+     "value": "1"
+    },
+    "type": "v5_integer_factorization"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 5
+  }
+ },
+ "factor_integer/micro/small_numbers#1": {
+  "error": null,
+  "value": {
+   "data": {
+    "factors": {
+     "items": [
+      {
+       "items": [
+        {
+         "type": "integer",
+         "value": "19"
+        },
+        {
+         "type": "integer",
+         "value": "2"
+        }
+       ],
+       "type": "tuple"
+      }
+     ],
+     "type": "tuple"
+    },
+    "sign": {
+     "type": "integer",
+     "value": "1"
+    },
+    "type": "v5_integer_factorization"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 5
+  }
+ },
+ "factor_integer/micro/small_numbers#2": {
+  "error": null,
+  "value": {
+   "data": {
+    "factors": {
+     "items": [
+      {
+       "items": [
+        {
+         "type": "integer",
+         "value": "2"
+        },
+        {
+         "type": "integer",
+         "value": "1"
+        }
+       ],
+       "type": "tuple"
+      },
+      {
+       "items": [
+        {
+         "type": "integer",
+         "value": "181"
+        },
+        {
+         "type": "integer",
+         "value": "1"
+        }
+       ],
+       "type": "tuple"
+      }
+     ],
+     "type": "tuple"
+    },
+    "sign": {
+     "type": "integer",
+     "value": "1"
+    },
+    "type": "v5_integer_factorization"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 5
+  }
+ },
+ "factor_integer/realistic/euler3#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "factors": {
+     "items": [
+      {
+       "items": [
+        {
+         "type": "integer",
+         "value": "71"
+        },
+        {
+         "type": "integer",
+         "value": "1"
+        }
+       ],
+       "type": "tuple"
+      },
+      {
+       "items": [
+        {
+         "type": "integer",
+         "value": "839"
+        },
+        {
+         "type": "integer",
+         "value": "1"
+        }
+       ],
+       "type": "tuple"
+      },
+      {
+       "items": [
+        {
+         "type": "integer",
+         "value": "1471"
+        },
+        {
+         "type": "integer",
+         "value": "1"
+        }
+       ],
+       "type": "tuple"
+      },
+      {
+       "items": [
+        {
+         "type": "integer",
+         "value": "6857"
+        },
+        {
+         "type": "integer",
+         "value": "1"
+        }
+       ],
+       "type": "tuple"
+      }
+     ],
+     "type": "tuple"
+    },
+    "sign": {
+     "type": "integer",
+     "value": "1"
+    },
+    "type": "v5_integer_factorization"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 5
+  }
+ },
+ "factor_integer/realistic/semiprime_12_digits#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "factors": {
+     "items": [
+      {
+       "items": [
+        {
+         "type": "integer",
+         "value": "999983"
+        },
+        {
+         "type": "integer",
+         "value": "1"
+        }
+       ],
+       "type": "tuple"
+      },
+      {
+       "items": [
+        {
+         "type": "integer",
+         "value": "1000003"
+        },
+        {
+         "type": "integer",
+         "value": "1"
+        }
+       ],
+       "type": "tuple"
+      }
+     ],
+     "type": "tuple"
+    },
+    "sign": {
+     "type": "integer",
+     "value": "1"
+    },
+    "type": "v5_integer_factorization"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 5
+  }
+ },
+ "integer_gcd/edge/coprime": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "1"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_gcd/edge/equal": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "7"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_gcd/edge/explicit_limits": {
+  "error": [
+   "OperationError",
+   "resource_limit_exceeded"
+  ],
+  "value": null
+ },
+ "integer_gcd/edge/negative_both": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "6"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_gcd/edge/negative_left": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "6"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_gcd/edge/negative_right": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "6"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_gcd/edge/over_limit": {
+  "error": [
+   "OperationError",
+   "resource_limit_exceeded"
+  ],
+  "value": null
+ },
+ "integer_gcd/edge/over_limit_second": {
+  "error": [
+   "OperationError",
+   "resource_limit_exceeded"
+  ],
+  "value": null
+ },
+ "integer_gcd/edge/raised_limits": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "4"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_gcd/edge/type_float": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "integer_gcd/edge/type_limits_int": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "integer_gcd/edge/type_none": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "integer_gcd/edge/type_second_float": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "integer_gcd/edge/type_second_str": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "integer_gcd/edge/type_str": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "integer_gcd/edge/type_true": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "integer_gcd/edge/zero_left": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "5"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_gcd/edge/zero_right": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "5"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_gcd/edge/zero_zero": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "0"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_gcd/micro/pairs#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "6"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_gcd/micro/pairs#1": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "18"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_gcd/micro/pairs#2": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "6"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_gcd/realistic/bits30000#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "1"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_gcd/realistic/bits30000#1": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "1"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_gcd/realistic/bits30000#2": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "1"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_gcd/realistic/rsa_moduli#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "2032488563550187349615520369599531127143406498946920616249276637253636347401058886998243967976210984781956246230084454049741607346207421812877157583227790786409189891642149898620363704983264303430134516314859385652665277497133956867647008642341790470477241097244806202740308331601932751425514706147369187520907"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_gcd/realistic/rsa_moduli#1": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "156345274119245180739655413046117779011031269149763124326867433634895103646235298999864920613554691137073557402314188773057046718939032447144396737171368522031476145510934607586181823460251100263856501254989183511743482884394919759049769895564753113113633930557292784826177563969379442417347285088259168270841"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_gcd/realistic/rsa_moduli#2": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "156345274119245180739655413046117779011031269149763124326867433634895103646235298999864920613554691137073557402314188773057046718939032447144396737171368522031476145510934607586181823460251100263856501254989183511743482884394919759049769895564753113113633930557292784826177563969379442417347285088259168270843"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_lcm/edge/coprime": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "630"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_lcm/edge/equal": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "7"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_lcm/edge/explicit_limits": {
+  "error": [
+   "OperationError",
+   "resource_limit_exceeded"
+  ],
+  "value": null
+ },
+ "integer_lcm/edge/negative_both": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "420"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_lcm/edge/negative_left": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "420"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_lcm/edge/negative_right": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "420"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_lcm/edge/over_limit": {
+  "error": [
+   "OperationError",
+   "resource_limit_exceeded"
+  ],
+  "value": null
+ },
+ "integer_lcm/edge/over_limit_second": {
+  "error": [
+   "OperationError",
+   "resource_limit_exceeded"
+  ],
+  "value": null
+ },
+ "integer_lcm/edge/type_float": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "integer_lcm/edge/type_limits_int": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "integer_lcm/edge/type_none": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "integer_lcm/edge/type_second_float": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "integer_lcm/edge/type_second_str": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "integer_lcm/edge/type_str": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "integer_lcm/edge/type_true": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "integer_lcm/edge/zero_left": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "0"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_lcm/edge/zero_right": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "0"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_lcm/edge/zero_zero": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "0"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_lcm/micro/pairs#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "420"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_lcm/micro/pairs#1": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "180"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_lcm/micro/pairs#2": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "672"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_lcm/realistic/bits20000#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "116018815968263123268395676795728083969703560113134105332525311113647479256242644473867044798336931890126465595493551172475452897951474837961401315446365405068753515029070668253638244857049382255323281406749007738246614494652815152161361027393217441594340030071241856920860395237690937322582067649703432849790544569567227380853659895119437572567391413833347810630142061058261591669032161469766183257112542108109593185451880218799115460375493803617916910361096913774084136985608946173557110230844640530995020398602280138074477419855441410501787621858701179561593793241489439043329782485760300779891768851682090892058554317149583387522271578258054886695183275492190881647137373839978620918176820028449103445693873510594836462371216410820181821604968692430825256746462232934751187661546495365086367578648074801005004280083110958767232090734071470985823328055754637368064897789973242667542988209099014750566997384944555489778421746588008674735956401356914529152548883619334675031653474914739771256588711714013894421778608733684206965993211473204129249410484398272278719070035192062578388312056445856207129319787523218946345220040471708805277340283642201527350339893798653200816718222121550610644979133287278727650892879099525270318098611504806511913429464880773397536438067252210798721884757818897795899414152411857031616465305434279793271475903318907940249950176516898896030887504670099737987113048328190292236513959658577459607440154425250171092185544186882948938805904317949389100184092142193322270359436264760448505024959734896925360852604355673246002838915611256572478135881033958387392122834335137353814112332386737235724043696887789300869287571224501894632948112134994268364998946092618200121531418769300285625165394156544646157154470915102791328052318102650548750495445183268279381213578281300499431242260631109114256045736685245557876289056293897116414864216593467122407275836077655380731608168458178908185427027992573553964095269807620170499336305917454348098032692550352206022490228680549643770781145050936166655145014873162001100507994371664251098164715940458062005867245801397719728216855333222143891972018012230833061063175134749760439143172112967462873506521962767042594306712044396018323083656933823001066394012211986838861740386370855896480984007575301894079060422130348729756267085581700007535058689929807965242983468135503968309555602911139744625592974672154646238884359751892921997938491537017552097053183281675483719121890278773367402787887667938057587850309154479554097627577552826068557206498076189425000059174759305358970775992876765829245444811660550251021609507444128659404423959820047056381501314008132508377452385788340849036693664439117765009051171356760935901009400688896276183951453116671417382996632946378256715423022563429769909443411502139647503535208128862529510427406739415907163307143558982999855218499011499473247910953449460744874125202088470432291122127924722840935012947550548231650679271687623753451959273083127089497291880965228642362264543091301306749910514850287435287120864041276789080984928138226248540870031645409446554755422615659058396374304708997043981267766688259840156689810521090211913038838034730978941136533523997387019896957741803600359088430447232574094276074052744463687821805338166917897926001701563834132680829250245368460464114394741791664634869389002848861829731835283498930769621569960929867301708244914098405182837592190784769502474802879493163248167342811088360514387543242833240601291809704457275929326223012379038457462911115284933202321709172919380783706755919753295082286534589528359014997843209737933996406071486535180897646434037051411210121381809508661011962934013988571156522997195213945827106067978841214289109182405200371621339964065453215035860681720361926304623322361632990262531545355550805845327839987036435399834577924163424599191221796772853470924853304863862472447591625487414281216916664380064476868479454160783664308857535698938261715585890563332528620931193298111668186284301428411095467084699423035480918631092785729952882640503994196766211805068109644970427358221694371929172870078108046160652466416109135871478033557734653596654898259761732788715257476894638632769138481723147879570607905039678395405841172398216095674116389347670758232771167237789868316859006524739867259137948256782419792591047884475715432456649556561587930004719980909959662644167538202117690530696161631278725719531269680057488279757285596124816848464243483224539932284014071938856132642511183224743447339974982474977024113119057155218721548588635466597294863935705985992274170055296979467417966508722043347221088665142775470642774458972047450875569477817249251595657167438762575514020331192813375993854688717645491555231314318219359406303989618724690257806471083289115022217892170788058908986251764139205814960640713521976234289313263229719655262774218358127916710970697431850017206788864200298367956042727775119816657473645162568399243952877534841282237141398114962808759246591915444809947767662700485786704790133225004257927113222652498732054065659708403851472787796487611609341331343489761498998110523488077229037055663294490708370702625972380175310617108835362944774757415076792106096543337919209798534285491257562112620481318838690672047306544722158237543899862934860680296116141066342764058428008823620547442555586441627207726361529290820425685759386378610020455336065425521077615637131938145622603975642796192974072526179022670492616439497846289988934194585157031674567937840874817213090575897452033605915616571063851226091251524041148359697988828165694899960428993377535448977688671001983864304263400553029547657816221234942401936751324424914042622432969396988144543633365118402377534794797699157130894388952745253859629575330358132453994733487020348487906391809804738071284357522172256545736279440688771985939982547142163181699414070829318311072072393324966466384226973038438067362886318226306236275580357024898906182717571709515724016204701676880917983012690475251273814960195417511038920520765613496096843387429843010605733780907553858556795685666352882814960607651810233078914952560748610277495012780055746154258388602302507798251912391320719578572864552096233222905839132513186489955242979864076435850723801930816009537968350147224061534319031453050197709752380424433504457844155193909958507190341503723679734229541050027459660840124984363186175412958947946724156707468458724377848498281645375350476675623418397935164063292011788234751757530121160990480902659825606469592393787016136619575563759656896670758143084256174710335596173171408644007502317334283485292130587322471166880438314984207230813529329124969237946715632963334883641390360796637705725641394389227956282771419455226735366080781952622686159219621966399899722701642321857299379346514597996846266881541876029274216947710501910540067883085505473392072305543568547523426652250655718212631128093070545336662986384090746462188210615163547213262708905157524897605133594226972326519909138516555016197741512462934190249876991973463793609482051905163461153676774328388110772767672224516633090381932650250091854263570150735235200031623939105175390985304890900758545999828339000673292940399837270564872934204342979432661553717072717321227333686022739195337133962890465764487118391939429347446704264736408402520801563549095619206956935503044301064494706327310085653963288357620713931413273349436456968510447183023953515101950956376491106032034845166918829841874360240438202578174427631945302450757425176336166959638897736876706196765299025201246080497857919036746591287341217826380514584218987115643096392632375128003610193711352442350400936793433761417351432590765069070040338813461901529754979410204740634778060977281034492142004986945672975833218805689053874352844847096325617931794407802416721858153316372619093506165060220757807632527279946648639034810234201203229336849766905206289417272903151713644216704509748884894090205406831553375202244013491243141271888879640219344832617483208536019291436752178569779270616517822096829041298848610891932212171902205629421438724606170324479893512957718077753899237498670017846744472546592545035790964528505560599145577347153555992171246045073543260299191451288571204622992300740951428267029520180866498022888019804391642649392944819307135588047095509412268524791700956679431197656279191183846910401786527336788129512476275684649593176901929832740175640425658015000225525516956965493297882715537910263183289979989760923985000728544720368206339619321348013037887736008624168359387132734957395023879294724399534452134147515637339520696116889476784800819946593571849374780398803918828911521031472787307874192914028050802708137486290299991740214504096453853127260489914028974955184924510333651514941073807647021046180746226866438281753394431285782124907770712326022683381594428074202932821928330226597639718415313830483065938704922491693869940326932831935214164770109281561400640506586896031198063368009052614986991981125526306356952650050012813444400781106119409214517942794751829636814676416309805966678179363707400377124090813071224329963659978211669783006949050343563631054554620218832882539591785281890916912176909728143140426054521826100452842664521099084539495637559112103091423742963680872017048523091264980116987162114894837675549020761377852524529678588070816906276182588945769161721502362579074605246884529250742322737419038749327634902571693223074103115434689394934683691724117808131947826365636633841140288286268704921339518568869654327405560696683718867411674817481255260237094803925121185670344209323604546373016745595255114775524664967494215068018445157089293027725755302634473075192883053560823314528518849438792498537092030403021511328494044601814383593919612964247263275080127936659920425976110467264278207448301951321100005870469997969623864604216749029691905167371932923424820854246788819492659422459190013100787741596014177801966897164866953098531125891807202388601840532885225639197133113402500383831623233255109882714838877509836727810862817110564060236481929672169882278501398719893954786516092530461251762693009216660542300850626370790339403445022608087332452779556700421439872459218090411581658389548889387201276808461628124262555313877886913365900968666155054832641947127109505236145289709223553067240935670744121148738051778158879055616923461932567782029532714178199013078598963960773597449945489725793169815698360259086940684428513564804144996684518431546446226032214270314818474627223026422425658081661709506346070895070565105956692281439913752905220849539949001475383247401593596879286796388926112344665492726324370152448614289758687502088171052555347959265997021859959863444203534904666734606963828778501072293697575705633035833962390810247086339754167594774649329320732872294008020086064971765407666749615858640851946739840665009498682130669972130370857635555373024692830032068451250429673723077457194285698616177314729072646559459874193237084154562577818488897670524748823287130854796634669190957032236610167272754999162260344803660133923113461600532504674203914441444425202468608425241773360317933952223820589288555472217663002059796283562096516649995891823868233476107216731814582122303940697981672208685066187836602037443940743359914153322203379398855964966248835274263186653651701826667624566347113739123108136923667974228401061165672913174752150137000353849277456953062184117547845181571740311526188973565108471540028168677410408161009477468785487513742163710216198083137599148928534221249135106636610225711933905143003101537813919136601938441764977830331422494921198337253851732108464917940045219811962017392032622190540185070843375922906464564495866300399304017023125215171335661134420186134961263453885093610227489168152242363246647324333324354325500986637029800120911050727846868791852206067639918868800458085314553613931560926729861353281162446723782186106301238869977212705283373156335159230342133354132291839427103409542016686813370956291197129911949785989931778832209718474429172404096562150754296846953289353204541835308766323270439199029171475349416345541878655659482771794078666228823086660072329728285625224593032791601094977905"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_lcm/realistic/bits20000#1": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "116018815968263123268395676795728083969703560113134105332525311113647479256242644473867044798336931890126465595493551172475452897951474837961401315446365405068753515029070668253638244857049382255323281406749007738246614494652815152161361027393217441594340030071241856920860395237690937322582067649703432849790544569567227380853659895119437572567391413833347810630142061058261591669032161469766183257112542108109593185451880218799115460375493803617916910361096913774084136985608946173557110230844640530995020398602280138074477419855441410501787621858701179561593793241489439043329782485760300779891768851682090892058554317149583387522271578258054886695183275492190881647137373839978620918176820028449103445693873510594836462371216410820181821604968692430825256746462232934751187661546495365086367578648074801005004280083110958767232090734071470985823328055754637368064897789973242667542988209099014750566997384944555489778421746588008674735956401356914529152548883619334675031653474914739771256588711714013894421778608733684206965993211473204129249410484398272278719070035192062578388312056445856207129319787523218946345220040471708805277340283642201527350339893798653200816718222121550610644979133287278727650892879099525270318098611504806511913429464880773397536438067252210798721884757818897795899414152411857031616465305434279793271475903318907940249950176516898896030887504670099737987113048328190292236513959658577459607440154425250171092185544186882948938805904317949389100184092142193322270359436264760448505024959734896925360852604355673246002838915611256572478135881033958387392122834335137353814112332386737235724043696887789300869287571224501894632948112134994268364998946092618200121531418769300285625165394156544646157154470915102791328052318102650548750495445183268279381213578281300499431242260631109114256045736685245557876289056293897116414864216593467122407275836077655380731608168458178908185427027992573553964095269807620170499336305917454348098032692550352206022490228680549643770781145050936166655145014873162001100507994371664251098164715940458062005867245801397719728216855333222143891972018012230833061063175134749760439143172112967462873506521962767042594306712044396018323083656933823001066394012211986838861740386370855896480984007575301894079060422130348729756267085581700007535058689929807965242983468135503968309555602911139744625592974672154646238884359751892921997938491537017552097053183281675483719121890278773367402787887667938057587850309154479554097627577552826068557206498076189425000059174759305358970775992876765829245444811660550251021609507444128659404423959820047056381501314008132508377452385788340849036693664439117765009051171356760935901009400688896276183951453116671417382996632946378256715423022563429769909443411502139647503535208128862529510427406739415907163307143558982999855218499011499473247910953449460744874125202088470432291122127924722840935012947550548231650679271687623753451959273083127089497291880965228642362264543091301306749910514850287435287120864041276789080984928138226248540870031645409446554755422615659058396374304708997043981267766688259840156689810521090211913038838034730978941136533523997387019896957741803600359088430447232574094276074052744463687821805338166917897926001701563834132680829250245368460464114394741791664634869389002848861829731835283498930769621569960929867301708244914098405182837592190784769502474802879493163248167342811088360514387543242833240601291809704457275929326223012379038457462911115284933202321709172919380783706755919753295082286534589528359014997843209737933996406071486535180897646434037051411210121381809508661011962934013988571156522997195213945827106067978841214289109182405200371621339964065453215035860681720361926304623322361632990262531545355550805845327839987036435399834577924163424599191221796772853470924853304863862472447591625487414281216916664380064476868479454160783664308857535698938261715585890563332528620931193298111668186284301428411095467084699423035480918631092785729952882640503994196766211805068109644970427358221694371929172870078108046160652466416109135871478033557734653596654898259761732788715257476894638632769138481723147879570607905039678395405841172398216095674116389347670758232771167237789868316859006524739867259137948256782419792591047884475715432456649556561587930004719980909959662644167538202117690530696161631278725719531269680057488279757285596124816848464243483224539932284014071938856132642511183224743447339974982474977024113119057155218721548588635466597294863935705985992274170055296979467417966508722043347221088665142775470642774458972047450875569477817249251595657167438762575514020331192813375993854688717645491555231314318219359406303989618724690257806471083289115022217892170788058908986251764139205814960640713521976234289313263229719655262774218358127916710970697431850017206788864200298367956042727775119816657473645162568399243952877534841282237141398114962808759246591915444809947767662700485786704790133225004257927113222652498732054065659708403851472787796487611609341331343489761498998110523488077229037055663294490708370702625972380175310617108835362944774757415076792106096543337919209798534285491257562112620481318838690672047306544722158237543899862934860680296116141066342764058428008823620547442555586441627207726361529290820425685759386378610020455336065425521077615637131938145622603975642796192974072526179022670492616439497846289988934194585157031674567937840874817213090575897452033605915616571063851226091251524041148359697988828165694899960428993377535448977688671001983864304263400553029547657816221234942401936751324424914042622432969396988144543633365118402377534794797699157130894388952745253859629575330358132453994733487020348487906391809804738071284357522172256545736279440688771985939982547142163181699414070829318311072072393324966466384226973038438067362886318226306236275580357024898906182717571709515724016204701676880917983012690475251273814960195417511038920520765613496096843387429843010605733780907553858556795685666352884183507622040947173673951715198560300981216510961048197845337380188334173152818533903079192073373050118275123712207260635623297201956059609302266581208552754778291695068897797423949510399470305847327833274580400889672134473432603086387933995192947364636174552615063861235566730472965404596943854571608217427320581370670972893232225450673836783327905482895860573093643889664731918879673866245217440647733996409134216810381020988661844530790557739341481647596723760975788409341648584102212355580701620101916111673506066938456195237218201867460525709031893438411181926199414573637185250757858763655005206568231753152538448972265859260906118717510225203894490542215140522482319381471662486336337425703431861802346161087508218934102639263297584888794492755304235325937279127513268217043219273373531680194668035238099547758296525570000039082778650732145509626653903961922083508196564843094526593825011857253685684196148365192040827764837854683069473121314071281489199608720066814953696366458000878779881205906950407402831764125944552261362931448229132141737146264039986891592021332808615275970964497045511303263642218782215460122125231656750105718697740208605289778336506956452262993025770043588152212065608785951203111164571111932673997002531813284587787317041619108065901917976337815021255795929365755326804865834164754365344403335128206225766464946026527057323481218741863123258797808918407484789074080556127037209141026393338312262305094900627884123388233820969162364058761498985437844472341660927123055739343531828602522644524722963243133940024744178103448677358961414770020533945580436062848929230003768450462428910951052036002312498198643497170917844817043560186750155493721958248352496747180707335916542703322316259974947857077823379032891629750153751067086154865626853815724372784984038033582038246465533346933242262009718035886805356953549330562277408613215436248669076390992981502050197337382990754296262705206756709411787971082052967154502850521956112158108619042815073475343557824542927516665847383921667239043687549183520566569585236435138957029683901396927886632505641766333060508300425708953683885907448771975122054189635772084295516860849360699982546068206077338131817877278804606471830745663967816089160848145548434697109240959484710682358423894138216891449809563446951125047894539761665953756715940689323627099378910387821111050723662096535262838181514708089596550257754024697347467447454219805587070753156268012542212505159062027719888145119939353247455629563582215899165805182743336629051922977420551834987083839207751277069652022178738849496982344624334418740164068697264607978309517966277596918772616983521878655489840166020343327885422945123504068407311949137915763216104197971855618975069666055726655667958067035577316050033200729448778064270644678963022054806373703252608321334298676131247985802152405948478952957150950253848475938612508841691558085116245471515503722023489178211533524885589989223603289839097053343819984900302758865748807771564109580963678276659786196295173372039393338777683049848149119293228056412615312093428329649617083278470056512143502180364605335712184875203696949911126501615407968910862051128093641030170250901417208861784579291276461509070325715151395869525795036537140216081378208597316711980095772026329289921202305218667705254142879228354728087851790043281645440114410116073543331573211945094685353850939013603797474976059530127225738675150576297413396336478907720223657001038242203086451746633642714494610931653877987655574532280635123362221928048366948164927432162718091595420905928136446827745021703874719412894660071075219792590239552012312393724331229231375130785993103814661839561571648893013039286560042708117317445094149410610047039898310546883609160685107141907700590912777657492251906125561043129324869278543280139791292133911657713273015807597350270587728290765161496860773975170857289469947324059252637808610963982369394310861752551280193738810521766823927783559802276372160014155290445860363476543463872120208910621262692413029387641022263363416351125328637943911119912789689013795836062535201986724858492385575149842516488962705162308771251314704293665555236424795014948807471568939718957459137124346996168371258797755931563861343385565811134615623894541835213264531168727528106582961591049072206014001284941113218162790654035521946989749219568534995447090312660329647757608213875884088217420838607016280540472004950904344164845011345939956840377382537953386826473924605513384452400731908540789980196342045688235593108437403907120756898434210042854358190581734646260974518669348890821888209738395293132160340266497417356819181864459819559627502079734973134782303024588555199699593393097626890138261683819225222412822967909489054753670968677322108986617682030806604221075012296160408124456413943148328892848147075246743631590099603100718332774161453361820253738440712583568266231599598366206876089351017503675652938525319803125202375998976777844235933285133675077754893021841925628658744755328891126280901175618776572614780328022715276248408502971308972232621764835499691239468885742964558297871468401314007302656743100189552255567731384538356060468125120732354484502245065957378504952425406978577329530531521184844844682412924648905125470947676634740296128700222598985013258096673497989582678807977440864854257976269973543902230047983451889495442203541932326756972556723902192042395793877653312557474803781084100748757767572124973233149069799817441015741884563497104184465922479911936265304877274051908936613190499217731758424139774244669215859780966381916596777715310146875347440971322483886534100781623108638182568333317751950784039196553415203505281880731980598359288515152463956984742594718469061173842563167423872271649026661295979018567850859668876224696015262910087459757173048146872730871501555664887868827191865330339349107877445803041471432183890690350571369012269106416530640141280821379756708995649394391830513748580332472877578881723084347533351324855144277859737225142457879649276936731347398584046978849563226272727465870076543384047195773017"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_lcm/realistic/bits20000#2": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "116018815968263123268395676795728083969703560113134105332525311113647479256242644473867044798336931890126465595493551172475452897951474837961401315446365405068753515029070668253638244857049382255323281406749007738246614494652815152161361027393217441594340030071241856920860395237690937322582067649703432849790544569567227380853659895119437572567391413833347810630142061058261591669032161469766183257112542108109593185451880218799115460375493803617916910361096913774084136985608946173557110230844640530995020398602280138074477419855441410501787621858701179561593793241489439043329782485760300779891768851682090892058554317149583387522271578258054886695183275492190881647137373839978620918176820028449103445693873510594836462371216410820181821604968692430825256746462232934751187661546495365086367578648074801005004280083110958767232090734071470985823328055754637368064897789973242667542988209099014750566997384944555489778421746588008674735956401356914529152548883619334675031653474914739771256588711714013894421778608733684206965993211473204129249410484398272278719070035192062578388312056445856207129319787523218946345220040471708805277340283642201527350339893798653200816718222121550610644979133287278727650892879099525270318098611504806511913429464880773397536438067252210798721884757818897795899414152411857031616465305434279793271475903318907940249950176516898896030887504670099737987113048328190292236513959658577459607440154425250171092185544186882948938805904317949389100184092142193322270359436264760448505024959734896925360852604355673246002838915611256572478135881033958387392122834335137353814112332386737235724043696887789300869287571224501894632948112134994268364998946092618200121531418769300285625165394156544646157154470915102791328052318102650548750495445183268279381213578281300499431242260631109114256045736685245557876289056293897116414864216593467122407275836077655380731608168458178908185427027992573553964095269807620170499336305917454348098032692550352206022490228680549643770781145050936166655145014873162001100507994371664251098164715940458062005867245801397719728216855333222143891972018012230833061063175134749760439143172112967462873506521962767042594306712044396018323083656933823001066394012211986838861740386370855896480984007575301894079060422130348729756267085581700007535058689929807965242983468135503968309555602911139744625592974672154646238884359751892921997938491537017552097053183281675483719121890278773367402787887667938057587850309154479554097627577552826068557206498076189425000059174759305358970775992876765829245444811660550251021609507444128659404423959820047056381501314008132508377452385788340849036693664439117765009051171356760935901009400688896276183951453116671417382996632946378256715423022563429769909443411502139647503535208128862529510427406739415907163307143558982999855218499011499473247910953449460744874125202088470432291122127924722840935012947550548231650679271687623753451959273083127089497291880965228642362264543091301306749910514850287435287120864041276789080984928138226248540870031645409446554755422615659058396374304708997043981267766688259840156689810521090211913038838034730978941136533523997387019896957741803600359088430447232574094276074052744463687821805338166917897926001701563834132680829250245368460464114394741791664634869389002848861829731835283498930769621569960929867301708244914098405182837592190784769502474802879493163248167342811088360514387543242833240601291809704457275929326223012379038457462911115284933202321709172919380783706755919753295082286534589528359014997843209737933996406071486535180897646434037051411210121381809508661011962934013988571156522997195213945827106067978841214289109182405200371621339964065453215035860681720361926304623322361632990262531545355550805845327839987036435399834577924163424599191221796772853470924853304863862472447591625487414281216916664380064476868479454160783664308857535698938261715585890563332528620931193298111668186284301428411095467084699423035480918631092785729952882640503994196766211805068109644970427358221694371929172870078108046160652466416109135871478033557734653596654898259761732788715257476894638632769138481723147879570607905039678395405841172398216095674116389347670758232771167237789868316859006524739867259137948256782419792591047884475715432456649556561587930004719980909959662644167538202117690530696161631278725719531269680057488279757285596124816848464243483224539932284014071938856132642511183224743447339974982474977024113119057155218721548588635466597294863935705985992274170055296979467417966508722043347221088665142775470642774458972047450875569477817249251595657167438762575514020331192813375993854688717645491555231314318219359406303989618724690257806471083289115022217892170788058908986251764139205814960640713521976234289313263229719655262774218358127916710970697431850017206788864200298367956042727775119816657473645162568399243952877534841282237141398114962808759246591915444809947767662700485786704790133225004257927113222652498732054065659708403851472787796487611609341331343489761498998110523488077229037055663294490708370702625972380175310617108835362944774757415076792106096543337919209798534285491257562112620481318838690672047306544722158237543899862934860680296116141066342764058428008823620547442555586441627207726361529290820425685759386378610020455336065425521077615637131938145622603975642796192974072526179022670492616439497846289988934194585157031674567937840874817213090575897452033605915616571063851226091251524041148359697988828165694899960428993377535448977688671001983864304263400553029547657816221234942401936751324424914042622432969396988144543633365118402377534794797699157130894388952745253859629575330358132453994733487020348487906391809804738071284357522172256545736279440688771985939982547142163181699414070829318311072072393324966466384226973038438067362886318226306236275580357024898906182717571709515724016204701676880917983012690475251273814960195417511038920520765613496096843387429843010605733780907553858556795685666352885552054636430084114268988477836371991684938009142040649536416371774365838507385155414837664568173235684454014201508682138733407913956876238740456726566381707625767380599827244700674959264621580241605468839408421354910764489021050978865909483195553225548669371000586672443673800105805824830701533730257486907917006033873487062086602403066028191305334290168302748252123716037452049524595974960313720304987090158442827151169648190307552442005551719026066624435304437695402108347700995033016067153900922869548738054881546554441223593998088750713820604534457751853125905683196183939486860125356730672304687495069117077120615173112263295076871354238497785102821864808314645064916061301003115373295504892265726758425440633140408593988330816093259237521102425102997259802252711457988910659786296091345147758207977405653758853606667049253615977346686300743805990598902766319269411259535459216726667740885197952355170650784267449891405652683735902345336760576237399517245540665805241796619965243777240926672029881250564713809264681738369287525831272519159108083307223189073024638042837278229878648988594253752041654350233221451487582696746240782890210061794394471384219539051022438761498933148147746956977426952835494003701527578674769728787048128123524874510139376910906046149872664318009328580178585382074196641221221146484777173704719300035960426897857207887195817120563123485808315017443409183024275697403687077738251322413888939747818413424502230567000695969784019287981526235656753049308430099102867130468382294431282077041678855734574043917479112694922445480003285332064470971027552347410224168103480597332160290079760924823037512482991410341321366002470828398066499147466140347590878773199086558997949974932090272013426443730653934888950433255979553658863099362075530050478294598978664761786649891173341217422477161974775134541981568203882353723458880541325983289600608458512562641130386617186138746690071840346840634242802305753845335064635460394809111700052414011608664191422344516791169192342075613617013944096979417357251622568586546625437079313385553807203648278426111455291361420075943057591118715916483243692920957943367427843277139070852855200698511945287744769505283318816447422021165848152079059410840477365016859899213115027298072059019578189511000146921306623934477300725348165956339347691481855416881153121737241792327477759506563537061009780545686602105431178464555795139843055075613546895401723438132882144176637951690052923100176145051890705426572347395621787643735681442133580685853311510274105466323271170248849503981522666516736483284784965913886540531351190028145654314711860165182805294703923516259011858832800646028817099612848123824844066261909948185616522437095146426271035940525624116648729858883261713201249226301873468761740482242298058223419221121617918877466178283810733383187492386690042904171390371009883103837139687899262238025702257589863875538292980994630602577575316947640556662035652454750041379430271330163833927338367790215166004128348856132223355912414378676961071837627211802468641743618367623230285638838904965742387057256828796972598232482534628757828759848651322854404184693891127724514078760421384170233537249236822717430561454263744877373997379273577778262060463519256168004249573810648032911921597612469447411695313153868114597991469536430821806884482480505983447856190833885548455362545338291942363005071068036886919308681247197720735882607695973747034130108954090403765629832746816247311368978372081615084779898258761382958565553809446494722059476361881665877884697775032408457435539177383197700772436482584434910306939881349651902493150076082513296293404060644079156341959021960366048598995206637865600102462652821138027186588236977721214223609798651469902614104621184591910233809892631890163649565462302593599227279367073459491840988253645513459648866748241602010049564774327934391881015065116075381806781245618121443993988672854856073782845995265832576614803932969587619085189932382862041526911860997765940436994397282988655128233308724283757924655673736387429257228049188555369460268878956587719212906979992391791327435881763098408224516297286062062228624742495221430141806694535197255667816028374201769628565025140925095806846851390714389670908612252566652307785856515888396996348159256043134566959221324546962082512844089056620627221048984103209550984874332924994209662193774213069483002157436949701807618650791606902999282300395462617434619457585923221399314851323001552803407900209551385657399870220202293164003757979031805693490550437661792899507109732583620545328608121333255952015478737918199572884572123851657356851754493762419940788023286603285292613349222859929810438454402461070078453913901245760190458395873042778076030077178126162767501272345145535842565391931242350806594651567627986216844376635866984062618836956207788647002884477128790106088448713486556352914303606678238861938450373445282897382067365816394273640440472333495405589737608752028337943456805749623005111839769409812892287042049357010788442033303600921408971367489958334833814946146334382368726879675107558610704295378712384781160814498687316623641277515312916674533425325135968761022096919261329570148525165665921735641664160305452832393438476022575950241717712374142276713494292103807679082648295060969672666915890042916981240068109700157968204426350973522695988555938735101580476246074387184728457599705640673868593504617707476186415386313033094860905309432316041323295038061820962894881830685229230538600422464902674193355902815995352955286335778623501499456246926298798246648718556840926728990934753993351390864919519752601732540428826031141403873212750410291340589224954588043763916437130636842393076043667898113848574138709091253555832920267207825674497595237277404423204140792607891096110868079096392733408044857423768249037719738173440578424041597306546406376327788196540926177554410424409945608112588426843129501450351924285084245587202226632906730650207375592550615928137402371796263450681117080370058104743037103639071101668616130939270871039054122817169306515560053976493296568137"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_lcm/realistic/rsa_moduli#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "162583663963848555816734024494396542373201356176490736209102395047608217469440605061632185239019049606436261801795748563427093898634086175972615439221966794038005482108845303674490373934527025307217870929895033891429071281743252422747925587951240059773166151416012877267930512267332061887618359250549357142176748325184629356119545695854016561100420695181047905306292745116565485196493819860572473004713090484164905326635629958416220728499369337195354002143187680683825633456025701472500143497370587707648397901619441035647183820920106526231255038153053414444256857096440318261194587048775775452101373303329459927103360904347839607989915433638683440089652202737589878840794935719511656851411912059880779016431614387708626445819133660078584270873819993815081267512763677004727993608547479745079197612677585802855909831196951594402744194823540714534141340053104061010859562050751147727175943421724469994799725977244130762466559"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_lcm/realistic/rsa_moduli#1": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "2113587631530031225617542318427155050851617630294379570718331135618906827102727865801218408107247644883671403423344731324552220682243120287644000709885568322494071267414988947768374861148851328993832322088635440588577926662662281495723032643366120777051159968408167404483096659475316804539038670257141642848397499016004388643529916769811433473838863206779688355966218668788751828768066905312803582788566522157346277195812621535022137707604564118595362980147591692832925098842777119217114340716858034873673895550630081902144949255920882546329855565749199240541231977554110896123930253390530433028973098775253176630371319742982316900516468571191038424308653328649551581623027581141520913315881719865870265642703039276612470828933445946512246540482897056980469686200110063375936902637969266602857101875029784211319475722443394975643512281440388234031228625003005296694146553518437382082628808285506012802248032328730804894245749"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_lcm/realistic/rsa_moduli#2": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "2113587631530031225617542318427155050851617630294379570718331135618906827102727865801218408107247644883671403423344731324552220682243120287644000709885568322494071267414988947768374861148851328993832322088635440588577926662662281495723032643366120777051159968408167404483096659475316804539038670257141642848497269804608595657505739493520651653372257376205753942950631651062152349981714152438165016515862868020548785145362053610633405944717326853651123932433743536776116962757220119291726815967898429547918618380207430340876508839880380251653395635508704093307124812854497654852330875146975785180628344607223374208402059330820601649207437418555949902574904775645756528463079815739502410122390706353678476202387627480398520630777341974836966217368964152307884332726123884013402527217002458467193952767957674179631119363520101667392183299210777787344039807267132790120899081427731169189809866090350591936055567649524510521343919"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_xgcd/edge/coprime": {
+  "error": null,
+  "value": {
+   "data": {
+    "items": [
+     {
+      "type": "integer",
+      "value": "1"
+     },
+     {
+      "type": "integer",
+      "value": "-1"
+     },
+     {
+      "type": "integer",
+      "value": "2"
+     }
+    ],
+    "type": "tuple"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_xgcd/edge/equal": {
+  "error": null,
+  "value": {
+   "data": {
+    "items": [
+     {
+      "type": "integer",
+      "value": "7"
+     },
+     {
+      "type": "integer",
+      "value": "0"
+     },
+     {
+      "type": "integer",
+      "value": "1"
+     }
+    ],
+    "type": "tuple"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_xgcd/edge/explicit_limits": {
+  "error": [
+   "OperationError",
+   "resource_limit_exceeded"
+  ],
+  "value": null
+ },
+ "integer_xgcd/edge/negative_both": {
+  "error": null,
+  "value": {
+   "data": {
+    "items": [
+     {
+      "type": "integer",
+      "value": "6"
+     },
+     {
+      "type": "integer",
+      "value": "1"
+     },
+     {
+      "type": "integer",
+      "value": "-3"
+     }
+    ],
+    "type": "tuple"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_xgcd/edge/negative_left": {
+  "error": null,
+  "value": {
+   "data": {
+    "items": [
+     {
+      "type": "integer",
+      "value": "6"
+     },
+     {
+      "type": "integer",
+      "value": "1"
+     },
+     {
+      "type": "integer",
+      "value": "3"
+     }
+    ],
+    "type": "tuple"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_xgcd/edge/negative_right": {
+  "error": null,
+  "value": {
+   "data": {
+    "items": [
+     {
+      "type": "integer",
+      "value": "6"
+     },
+     {
+      "type": "integer",
+      "value": "-1"
+     },
+     {
+      "type": "integer",
+      "value": "-3"
+     }
+    ],
+    "type": "tuple"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_xgcd/edge/over_limit": {
+  "error": [
+   "OperationError",
+   "resource_limit_exceeded"
+  ],
+  "value": null
+ },
+ "integer_xgcd/edge/over_limit_second": {
+  "error": [
+   "OperationError",
+   "resource_limit_exceeded"
+  ],
+  "value": null
+ },
+ "integer_xgcd/edge/raised_limits": {
+  "error": null,
+  "value": {
+   "data": {
+    "items": [
+     {
+      "type": "integer",
+      "value": "4"
+     },
+     {
+      "type": "integer",
+      "value": "0"
+     },
+     {
+      "type": "integer",
+      "value": "1"
+     }
+    ],
+    "type": "tuple"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_xgcd/edge/type_float": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "integer_xgcd/edge/type_limits_int": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "integer_xgcd/edge/type_none": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "integer_xgcd/edge/type_second_float": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "integer_xgcd/edge/type_second_str": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "integer_xgcd/edge/type_str": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "integer_xgcd/edge/type_true": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "integer_xgcd/edge/zero_left": {
+  "error": null,
+  "value": {
+   "data": {
+    "items": [
+     {
+      "type": "integer",
+      "value": "5"
+     },
+     {
+      "type": "integer",
+      "value": "0"
+     },
+     {
+      "type": "integer",
+      "value": "1"
+     }
+    ],
+    "type": "tuple"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_xgcd/edge/zero_right": {
+  "error": null,
+  "value": {
+   "data": {
+    "items": [
+     {
+      "type": "integer",
+      "value": "5"
+     },
+     {
+      "type": "integer",
+      "value": "1"
+     },
+     {
+      "type": "integer",
+      "value": "0"
+     }
+    ],
+    "type": "tuple"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_xgcd/edge/zero_zero": {
+  "error": null,
+  "value": {
+   "data": {
+    "items": [
+     {
+      "type": "integer",
+      "value": "0"
+     },
+     {
+      "type": "integer",
+      "value": "1"
+     },
+     {
+      "type": "integer",
+      "value": "0"
+     }
+    ],
+    "type": "tuple"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_xgcd/micro/pairs#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "items": [
+     {
+      "type": "integer",
+      "value": "6"
+     },
+     {
+      "type": "integer",
+      "value": "-1"
+     },
+     {
+      "type": "integer",
+      "value": "3"
+     }
+    ],
+    "type": "tuple"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_xgcd/micro/pairs#1": {
+  "error": null,
+  "value": {
+   "data": {
+    "items": [
+     {
+      "type": "integer",
+      "value": "18"
+     },
+     {
+      "type": "integer",
+      "value": "1"
+     },
+     {
+      "type": "integer",
+      "value": "-2"
+     }
+    ],
+    "type": "tuple"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_xgcd/micro/pairs#2": {
+  "error": null,
+  "value": {
+   "data": {
+    "items": [
+     {
+      "type": "integer",
+      "value": "6"
+     },
+     {
+      "type": "integer",
+      "value": "-3"
+     },
+     {
+      "type": "integer",
+      "value": "7"
+     }
+    ],
+    "type": "tuple"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_xgcd/realistic/bits16000#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "items": [
+     {
+      "type": "integer",
+      "value": "7"
+     },
+     {
+      "type": "integer",
+      "value": "1478870907473779085804856557693576003035273180383795985131378002026910508342564360177053935989338205600525807173830136589157447912282749673030359887153938145668974878971076418986415255636927135486770084877436142428765307466990469506382731316848754809836055867631498085669936177551849563328313125488078512013543725423003110578737880467306301029559462160535003962125121407394844220767163654343308970764042979163239518724464534174862232496253565940307838692921541926320302041868066382067328254959027989963819245008082746922776252216085006705814038398226659369828635646400950394011661286542270971551442342785149885995519988301225785598358461274287008250830103660691417202532433520519212078261489719264042154957851795727303662268409124600510258770285948636946602574847330847556329985392193229428733401027371872172538509758499419585110622595641892908517743148609480718934311024360538117965758326838906383410240743271135777008365905632277723569680751504089673894004396572948029444143464325976145669748777717205306984004843151101122510082552329802017797005597636306036267738090102609375099193264185999900230792223528557941855140680467704469613052968549864269805879591000413343603580530642170001343783911980373203658404413906042407784890658711229564455964519343994306579846704197258278190642871113633075297035927658332390505336506095261064971449082886213199348973439715454336637774943688757684542625671113734501952658642221249965934103450054796325497246846769692479607796748751002545564459096679803617022571708710718861750019198671708726315627871765744026796424158752242163788936880686799773468758541632185094974984441592132098492232850548019375009522472040605311746880912540742723181880919938743756509114521760706211523477806741286588110679083152773841660290354703264846683279941722933627735412858940913008200780415755779258652607085890932909312302977868341701772956017279838791929723093112190082625811257003954499789779930556285139653849504966565036603459243375717060954841170426784999358505121616741886724671006407042305111779423404358875646163502329445199181977902454934136182933969410006862385979131451856339237646978806550545914522542663001494475339988822121015063543871996407849179520523671275317040704785425700068479478439508881018816926183839525103313692442253641997247985132198872074824443239965040971089230298720826712528934724866583628843114877082876897612750244332136486846711381443788999305989183306477598241216126137717640094131773672501733259068412035623923685528997639322433895824424718338209577565324284762394744304343380046563755621328869471222602187492020355024068009365455423697182656568477023874790459191913577457088801734560790829981817281563263523809371097252714480072149506224209801238685011589875070219609250183825366851174554477024843658359091111836284478801482981946340436846396353859551310269001872378626121116118517276424132723465949531991846756321599751273348822750043617219903849448860879904938501724209325247101419666975835862039213008887631999218796520704978825184851195034289015777812146504873426843752043146328541947425573096705148185640005927246633406467650714388973523175586569190203582822761116742547134452215948916980258256620416743284835917097130411150825630395707740306987218753357858620776542446977627573025587947897967311318001744047218410025371891327435480332502131698821434310099332999317771845970919972980623579909863147546865762806220792358423861629770076783354720865518452856573881607881696506354481953818706620148504970307507985945810662307183679386674804113553414665619291059986255171043388402734806015429298948507187133589862405678573106994952383254195298515391279913946480082203724372602520826727220960856414132930777394528166133852064092572359292889255388424325245625489505610886981379160861521101444954334421114545380773708837302794940366060728406409154450731531895143530509856471534815734106763879778706474288047756672004981440876336237267723462245680915043666550404929179430932461638661831886426808967893659916143638984331435156442143894312225556880508706415174509048067135737058974185782885272314807136886378403253479769932889548705660322384286035112534363557773372984646654643632824126260536410648152413416238192674437913257392154868861213476668384288798841415888284370565054929846578577302042916250255178152949638066280265404963946293926545594273531641320926302363225339540429504244681845787457566221729733906000120647849386378591855737808880760433373756594315490330526403865308132309744866375497745269601101950472852533726930991841396206098762266609821350006490270021674289752872183430620139023714386500898619385935239166434166925182615553416439637643554023702673296218559980750637390658531458026419677294558481753759801208797543035756005174724734969871092809532700088661635802321958515566185443823656366915270455114766545014517561708043818057359909960802275709469"
+     },
+     {
+      "type": "integer",
+      "value": "-766479064417940793459506472099975843046473738688865723426342539790776461721906223620241775483364047043459483007396359043876350030748874267533015425614384388169425426678739676484374289328961741399741297939184274210740648420196552235724253860321780402132572344038927241426306728943189883028752827767743700480153859591775658071019681773611589804481736040816180213456607411187252247142836837387774269442522557637679673609223965299675252553738572563992771911678602955760246696683783854990124535793393238835048510621127237469146411369123162889157911211458565857032256039001350532859153032720082021292201286545650472518119394078563092983665069756674452568523473788179361314019284140445025859181005467195584453664249439398480411056212828323269941088402424819434447278194280471456681175109532237714076194044052921006234263788856832595258857042912733555346749769467839512768499945662327648147074603494874323494721669171110735523882007527425184913526197705056897653812629107730633934414278928769637799717496242780108247697124462450507524694092121028746579560087101217985051686813203674830552446790394469245067791902213746575984447714235666493249577432567510466793855127178988793365402802552373720758216569895935952378120091234919441775451140193304634555261324393444957770345669289634198298087829940234988567257310142163322686608845113715695205279284922679805139624203445109626423991290008288820600989609579308713660014400535983347448832656745583736924062868321797914308916109625182212017519679074197064771539481282960112432413898443356935985398978975877969163283891683612479041137471265642028447565601201553525517318629350647004025866211747876263205478718980814770055580991777827244340943243089404114224686256510837151968891675003123605808361911530986353239194292326860806166908533274426673097292313052255338850677920637862207408988134326821101287330428902284139411313589638326735337158906744981198700468496179295384507860045375379064606030836015275482601742378299682633530916648677494418246523656976690760397081058757760292123869040894301917279205950588595481089223636644155443481350909678626608733388837951322155172269209671376778092623673386738138704779712393293461691671267861150106111333560608497978563312224726390332092379494200235601378315084417395550148455404447066449025873048770717070761706266307295054708074797538267348925351101146238706302216750396010235620411076661331474436099916481829973678953365350587505601783594891022336967592951980689667985620657358584552007761360349791993862689119251893068764213774631162221713091192780157086668022035809296548603917315168207926087102422199693630723847380475158662232882035414538717903314827448109695792335188590958367887746507136278441435585780453537960008826210845964721750219234549037730460469257531316266135528942084332186818822998658695211161083596713232542047419985520272571570515721142095528067097261548054023201612738593719323038473624416555999406169970529122301410276362423258288614729995477925742467812786838891994932074365217157319758250878087976797121293645107065806324386640072750347338696593225674616593838126390668597416831413216990857612996824000606203577138428449548414493364617709574520428225934114968407210997047447429996723143562262606712848349323033481776779697417271794176502961159929674757291786086769500868605177636307899528419618432285235737142767021967587038136782039729050780311731570680970004095052892052516471144291268411451616514872144660109123367447506206228125791065488292359089086414223012411553759781976010958510785257229847117658991166652976538760344417623917758012338966328144392213233639036963604337387604257890618264574241585345622293103071205085463625697776955452728902401653464788289085367173925220156320268828986522329585104534764301606483096761951858805098265632814728154669181575385319924628317755078758867310342726862632436587690669416781933127109519201752829095696204007339640036805264397502860814768017607933460601172244486608479147598909157506803534933720743284334151363444697482229981091475049538304412835922508476216141088732214121844063385169873749521696266022964681908624786678159956250270555284407736428011487539664881756001616457556127901825526066085955995018148736288822352187527790814234400839631994051167220042997753401118524076738786843088644103492804048510979235041861876348546025931243100908554387949751946210416913320565578006829804722314086724270822534772193802943685805761687640485811197384139806151911104817847325485592299553159318107859405131244121925700231585535449309624690223812953316638288904080939534015069798022679886594194420169606165498945796835503151426656144596046314119875617995998859104594585524738213986506283634984346699274134038679385389459414101631703355300869317309809438798826663425509060804680806316084027736125591228728180922886710366537476469527389416484185327562009812414039827760887140"
+     }
+    ],
+    "type": "tuple"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "integer_xgcd/realistic/bits4096#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "items": [
+     {
+      "type": "integer",
+      "value": "1"
+     },
+     {
+      "type": "integer",
+      "value": "297656126093540192371881480036992667274614720383944692604074518702580956486913024967936162117210616088553790871376433858844736575426498784141834918820864808771043516304784064464112458975480326359210250008416783246410067522059753494444232185286508710398199015700913043885331695294046568971355997766729092321519490505086010252983027088132134192021321181208960831519785891216896787955147486738195219636270087773038674381960593373231753221107064246272824300811580673814639515903842045109943388122239254906239430373423022639140490173125489846634598389169492961534828281943667748998884782090990845274640902990540217189252625843348568988096922848028882558908765131596520854232845357232819189863560314506318966139900053246517729811830461128567683161910762005411223837914181537960872885361205883206344684258745826289199912420380527132294411898331816877458465361567050136189868282852001734538669850391002938918218378772163883941384069837708380462897208156487992147296295073471367253278610494903869741361644195653504786306824809081183622944853306293158942122143736024515973990363063332125149902925318056500935708653412798245692301147116640645229745880257474512321542286646062223274385990132036920031227054519105336439325787273797117245170616666"
+     },
+     {
+      "type": "integer",
+      "value": "-193595499117025234624414000253997748397834310119445300549283787091498905777948121715029674247021661632251162974135028493363889268840591158803832688563834538788546281788718261978096355098219522836350257627234537248598480431434093718200530159528527510906757862351938206191366413653085863567572164469329265050252967301434252794656452883097851036974362879431015842241850301582951486135899561356955773847517125260273578855354724712238400673937814511651528239682379016228420419169318966380789716576679601931764890155138305763628587316331158960453254537243544284476652834274100436624293400364105309592916970170346121409459771224052323059914323546935882675324054463064296622670149506481820529604879234693087308562011261408785620127261640092460715195189009964877725605475395238019184065953702202319673262941529629691374232042995479227686293894692196608765355405126124598725931899733799726171898898345433983967034179167327551633485512816406997781002812346236133564118042364982600095372627026169630308122952260386352364976627073700100874933730602020962581321960122194801009030056371780795398791284287743661285490201314234695294038078705099781582656914082147268249546748767782996493547981286400356492027770830981449696230955324205513616933474439"
+     }
+    ],
+    "type": "tuple"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "is_prime/edge/above_trial_bound": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "boolean",
+    "value": true
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "is_prime/edge/below_trial_bound": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "boolean",
+    "value": false
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "is_prime/edge/carmichael_561": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "boolean",
+    "value": false
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "is_prime/edge/explicit_limits": {
+  "error": [
+   "OperationError",
+   "resource_limit_exceeded"
+  ],
+  "value": null
+ },
+ "is_prime/edge/fermat_pseudoprime_base_two": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "boolean",
+    "value": false
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "is_prime/edge/four": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "boolean",
+    "value": false
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "is_prime/edge/mersenne_61": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "boolean",
+    "value": true
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "is_prime/edge/negative": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "boolean",
+    "value": false
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "is_prime/edge/one": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "boolean",
+    "value": false
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "is_prime/edge/over_limit": {
+  "error": [
+   "OperationError",
+   "resource_limit_exceeded"
+  ],
+  "value": null
+ },
+ "is_prime/edge/prime_9973": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "boolean",
+    "value": true
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "is_prime/edge/raised_limits": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "boolean",
+    "value": false
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "is_prime/edge/square_of_prime": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "boolean",
+    "value": false
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "is_prime/edge/three": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "boolean",
+    "value": true
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "is_prime/edge/two": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "boolean",
+    "value": true
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "is_prime/edge/type_float": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "is_prime/edge/type_limits_int": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "is_prime/edge/type_none": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "is_prime/edge/type_str": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "is_prime/edge/type_true": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "is_prime/edge/zero": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "boolean",
+    "value": false
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "is_prime/micro/odd_numbers#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "boolean",
+    "value": true
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "is_prime/micro/odd_numbers#1": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "boolean",
+    "value": true
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "is_prime/micro/odd_numbers#2": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "boolean",
+    "value": false
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "is_prime/realistic/mersenne61#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "boolean",
+    "value": true
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "is_prime/realistic/prime_near_3e24#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "boolean",
+    "value": true
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "mod_inverse/edge/a_above_modulus": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "5"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "mod_inverse/edge/a_negative": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "2"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "mod_inverse/edge/a_zero": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "mod_inverse/edge/explicit_limits": {
+  "error": [
+   "OperationError",
+   "resource_limit_exceeded"
+  ],
+  "value": null
+ },
+ "mod_inverse/edge/modulus_negative": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "mod_inverse/edge/modulus_one": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "0"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "mod_inverse/edge/modulus_zero": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "mod_inverse/edge/no_inverse": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "mod_inverse/edge/over_limit": {
+  "error": [
+   "OperationError",
+   "resource_limit_exceeded"
+  ],
+  "value": null
+ },
+ "mod_inverse/edge/over_limit_modulus": {
+  "error": [
+   "OperationError",
+   "resource_limit_exceeded"
+  ],
+  "value": null
+ },
+ "mod_inverse/edge/type_float": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "mod_inverse/edge/type_limits_int": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "mod_inverse/edge/type_none": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "mod_inverse/edge/type_second_float": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "mod_inverse/edge/type_second_str": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "mod_inverse/edge/type_str": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "mod_inverse/edge/type_true": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "mod_inverse/micro/prime_modulus#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "2050"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "mod_inverse/micro/prime_modulus#1": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "2733"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "mod_inverse/micro/prime_modulus#2": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "1025"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "mod_inverse/realistic/mersenne19937#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "38921815310848796844906730497562162487477120728553098859318364633066168060911449406780723311922539302311975658830143923976297558182928716391970331631664399794924511723773079982183935934687880603383858910573457816870252288273046207006778698180023106608661945462391876147561660212498996422593662820022047268391905839562143828945381184624948201488836628077106406451724538989877205715964382763218167414533384009681577369188899550554430571650106567743245735661864321370951564488770202179408106054906777959183671725363941557212206961339877565332077536779224702173057488679370889269693784840356167300137705994782333486970360778670697945606538070213124417280222103064287784043617380032219833736963713351287960391344939708416652035005149797496109698269545432881822147151886186701562030042101586232575179997462618864396385264980127522969880009587204631565871408198647529131473331067980471732714814704195229261315456771472483948343124509927909016760508075910813484144784486596001421248381204329942937745722372223405095389902458092414904454312487665241955996268184029249976931669626886396059227116053439095678934381805023134324207255536570861868996848867963665366176670010450329671464244543284588010646172108204590083890883782495406383900562200756782416271909204551072359765418969829841521964976587825982836809324811076391964789122386710264395040482372286718456371298705770178176637733017735794625338712579690085989696447363084356083638788711424900810392831612286622521093374570686956456982514419356715315863882751630019661476971540147611927878704694838919768835095294838015976577920194457120685469078141648886280128423822648486004602021512804274649895546975738516669967699416266776188963669215339607455521370946360662452492446108990999967415187675219028375498198522025060735888727442406725676701125784489085698671591994643351820220834983223798816595537510431515430434641256642927066018679427678634204214952038178053807242917459840378630515894957405670239995999301720058695378028446721694883562021628098110925783201415229807539291602646276356438014575139333086902896235156197512438734622040741070402719769081364002855418422769980593508717295671620450365382858479403164007187954898902547919894186657215950835468746310236585643808091884528423013643744446735002737687899188637924268099211198266327374274479560764999291301582633691345358151079129761210129578750471256918095485676167593068797391081119469384621502974877547497179625353193460911789282534231312349245219162873424369771049123203883783006989363504546119217680249078348543001202002068899847971654018456431989295017247984750796623691933615792301218748059673401590433702661482076287399477385954944578079220469980461563710770700492391721643790059845866917631221202427209438627296335634274199273311675865099214094179855240877027176807122224268039787152943369326592367559609200085454424828947518346110732615274407247096380564113724507919543598432613007846453713563199508797264939261888209502245290262665861360735653024028215840657961270161125417966076004659568431144682931343419787774943446599179032300800521816776441772703561797614798768858305022484524522757521706776355200091158854045399852385039588409936710027592406172722600073193716631102637733692179126293522480485959204201114315141106869819706035529320721305122420932844899757426897263639357667431429318207608117030369220519401569122249424481667514619754214714779160048285569910526431740335039521615780663233172260474412136849600461577201437015995148462433134567987884175550375273832842421161491603619856157236765208554468163737499420091040335399845950742698140123226999761168913716359036226453901956884526066929912790784067278028184645049412835382421358340799341966278013075256851171171806620903620749882090601888883566327272310103349852372728509595552462153293043000835053372587537700207381125791622195248902805079430490666680818365982163377972412735006697117271893530508062015417828595726906277020254226087343689821740865990983769027027923814935422565994556331062929071984992682805353148357329747209985939679538723390475028345394631116009512573091588801781889689489783881565977889892452587784352011974801175693315444161267585266507626105686970519162667317371131098147258840688010979684879118111340283923043165441551241641132261066788121070786951002776658768765025450498028943462351278263886934095220643405579727751040825087276899932065862517225849900087165482778407186335809521531552416772109168533834351112711232327633150611216380526000468271367108189517997298276722510706342198285727867378584714347083466820954138152464338742684358986309686131469594232021941006073288126711795084491382509870424765362221541569706038483903929219248960125494014886529212220095728094380250009433062735128658732685105581693628644025890269170210673329014850003783916892988271660982082539619262552663661144653224358790102085507144943978825928330682177000604654321960562149224907702356532640235764960369168995112885765745482529525693405460755452203405334734988273184680263029782313609198698824668169135064087514272033512394146354572830881381549845335696956599633905262820220140084285927982382135059439696332861214463337063316323637468771684228487327399702803219899361574862865279943141468111989295699473068459202079541641150178233169133152549272652872365428256600028263935958552407473804321865049410363929311205927835563364823149590555392639227096089218867401555634084433317614146337248961232966817543919439898349488297606666553404757062891941157143371752424952904902376560666708836259838086210986520163587114914912762957854545964683880880847800743211718195185478334877407032123632571807155218789393502395872559003358431451764293634962393340759394499394807932167406042200189650509175825300364596707426843297834812544898040485094235288023817542741228343115154951035261914004029900734492405031389805422913535718292839758638665425520565753046561193081799961798107960591137956494480594981780241677639553575049932495611166376533676709154084129469245821722985357926537450469900601344963910452742325472611568840925623400653270911247"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "mod_inverse/realistic/mersenne4423#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "96319028816656314329016308357280583300304852167029664404305789013668476498888077253930463387434275298658758642158092250837647941042584477840794633450564072766130487121458102952464974805514763757087501665384543116531019577943395087157105982198000546241631624454976912416719197717305495434869329531588935447500532722324887313364076590928288534920233466046965409468723653639512986347078480627873898420708165405069195314431799804121499685375158778553257176483356858460066303635241056517910846779385412637508813433680994032365222390917264500884998193877650196263423333466073268889622875492326897775954039772945395034415419106569849876172294375440625641166539167622112837696230568408346909187592827755930450621616816710367354931939841155516033551492531917731368376485281188252245004855887708320820608903689915118171193582004429682331465130545835496517383600762310285588340005469248782460327403844100822440777902597171254389024309891436365216598734860884524662682159086007191759722985972559755318513954597143990443000678353848472407060784293844789459411315309255247410242875377836734995351054251469164833252692233008888634264597905629136646416883879778240124654474964139373746237175917875417388376792122781794536444637727995003643032778406222353336191912549924633979588698641170385227019421681347038743646623414970321458858725214960918079"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "totient/edge/composite": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "96"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "totient/edge/explicit_limits": {
+  "error": [
+   "OperationError",
+   "resource_limit_exceeded"
+  ],
+  "value": null
+ },
+ "totient/edge/negative": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "totient/edge/one": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "1"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "totient/edge/over_limit": {
+  "error": [
+   "OperationError",
+   "resource_limit_exceeded"
+  ],
+  "value": null
+ },
+ "totient/edge/prime": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "96"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "totient/edge/prime_power": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "524288"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "totient/edge/two": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "1"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "totient/edge/type_float": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "totient/edge/type_limits_int": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "totient/edge/type_none": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "totient/edge/type_str": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "totient/edge/type_true": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "totient/edge/zero": {
+  "error": [
+   "OperationError",
+   "invalid_input"
+  ],
+  "value": null
+ },
+ "totient/micro/small_numbers#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "12"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "totient/micro/small_numbers#1": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "36"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "totient/micro/small_numbers#2": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "18"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "totient/realistic/euler3#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "591194251200"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ },
+ "totient/realistic/toy_rsa_modulus#0": {
+  "error": null,
+  "value": {
+   "data": {
+    "type": "integer",
+    "value": "1000034000064"
+   },
+   "format": "mathforge",
+   "kind": "object",
+   "version": 1
+  }
+ }
+}

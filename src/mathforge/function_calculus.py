@@ -474,6 +474,13 @@ TYPES={"function_derivative_trace":FunctionDerivativeTrace,"taylor_polynomial":T
 
 
 def produce(operation,args):
+    # Inside a run this shares its budget; called alone it opens one, where _taylor, the jacobian and the hessian
+    # charge current_budget() (they raised AttributeError without one).
+    with computation():
+        return _produce(operation,args)
+
+
+def _produce(operation,args):
     if operation not in ARGUMENTS:raise UnsupportedOperation("Unknown function operation")
     if operation in ("function_differentiate","function_partial_diff"):
         source=_source(args["expression"],args["variable"])

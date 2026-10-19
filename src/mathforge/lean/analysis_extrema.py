@@ -46,8 +46,10 @@ def _produce(args: dict) -> tuple[object, tuple]:
     lead = stationary.leading_coefficient
     roots: list[tuple[Rational, int]] = []
     quadratics: list[tuple[Rational, Rational, Rational]] = []
+    budget = current_budget()
     for factor in (stationary / lead).square_free().factors:
-        current_budget().tick()
+        if budget is not None:
+            budget.tick()
         multiplicity = factor.multiplicity
         parts: Any = (factor.polynomial,)
         if factor.polynomial.degree > 2:  # Split it over Q: its linear and quadratic factors are handled below.

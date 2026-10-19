@@ -31,11 +31,12 @@ An operation is listed with one of two values. A ratio is its worst MathForge-to
 positive finite number; the criterion holds for the operation when the ratio is at most SPEED_LIMIT. The exemption
 object is for an operation that the spec exempts from the ratio gate because SymPy has no counterpart to time it
 against (verify, provenance and proof records, the proven is_prime: spec H2), which gets an absolute time budget
-instead. It has exactly two keys: "exempt", a non-empty string that says why, and "budget_met", a JSON boolean that
-says whether the operation kept its budget; the criterion holds for the operation exactly when budget_met is true.
-Other top-level keys are ignored. A missing file, or an operation that the file does not list, leaves criterion 7
-unmet; a malformed file (another value, an exemption object with a key missing, another key, an empty reason or a
-budget_met that is not a boolean) raises ValueError.
+instead. Only the operations of SPEED_EXEMPTIONS may have one. It has exactly two keys: "exempt", a non-empty string
+that says why, and "budget_met", a JSON boolean that says whether the operation kept its budget; the criterion holds
+for the operation exactly when budget_met is true. Other top-level keys are ignored. A missing file, or an operation
+that the file does not list, leaves criterion 7 unmet; a malformed file (another value, an exemption object with a key
+missing, another key, an empty reason, a budget_met that is not a boolean, or an exemption for an operation outside
+SPEED_EXEMPTIONS) raises ValueError.
 
 The adapter protocol. An adapter (ADAPTERS maps a row id to it) poses one SymPy reference example to the row's MathForge
 operation and judges the answer: adapter(example) -> (outcome, result), where
@@ -95,6 +96,13 @@ __all__ = ["CRITERIA", "DEPTH_THRESHOLD", "SPEED_LIMIT", "EXAMPLE_BUDGET", "Spee
 CRITERIA = ("capabilities", "checker", "json", "mcp", "docs", "differential", "speed", "depth")
 DEPTH_THRESHOLD = 0.8
 SPEED_LIMIT = 3.0
+# The only operations that the spec exempts from the ratio gate (they get an absolute time budget instead), each with
+# why. A speed file may carry an exemption object for these and no others; tools/check_speed.py reads the same list.
+SPEED_EXEMPTIONS: Mapping[str, str] = {
+    "verify": "re-verification of a record; no SymPy counterpart",
+    "is_prime": "proven primality above 3.3e24; no SymPy counterpart (spec H2)",
+}
+__all__.append("SPEED_EXEMPTIONS")  # Public like SPEED_LIMIT; listed here, with its definition.
 EXAMPLE_BUDGET = 60.0  # Seconds of wall time, on the monotonic clock, that one adapter call may take
 _POLL = 0.5  # Seconds between two checks of a running adapter call, so that Ctrl+C reaches the gate on every platform
 _RENAMINGS = 720  # same_value tries every renaming of Dummies when there are at most this many (six of one kind)
@@ -218,6 +226,9 @@ def _speed_entries(path: Path | None) -> dict[str, float | SpeedExemption]:
 def _speed_entry(name: str, entry: object) -> float | SpeedExemption:
     """One operation's value in the speed file, checked strictly: a ratio or an exemption object."""
     if isinstance(entry, dict):
+        if name not in SPEED_EXEMPTIONS:
+            raise ValueError(f"{name} is not exempt from the speed ratio gate; only {', '.join(SPEED_EXEMPTIONS)} may "
+                             "be (SPEED_EXEMPTIONS)")
         if set(entry) != {"exempt", "budget_met"}:
             raise ValueError(f'the exemption of {name} must have exactly the keys "exempt" and "budget_met", not '
                              f"{sorted(entry)}")

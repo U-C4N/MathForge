@@ -59,6 +59,7 @@ import argparse
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import functools
 from functools import partial
 import gc
 import hashlib
@@ -267,13 +268,18 @@ def reference_versions() -> dict[str, Any]:
 
 
 class Reset:
-    """The reset before a sample: SymPy's caches as benchmarks/fresh_comparison.py clears them, then every
-    BoundedCache of MathForge. SymPy is cleared once it has been imported; before that it has nothing to clear."""
+    """The reset before a sample: SymPy's caches as benchmarks/fresh_comparison.py clears them, every functools
+    lru_cache of a loaded SymPy module (clear_cache() leaves them alone, and igcd keeps 1,024 entries, so a
+    single-variant sample would time cache hits), then every BoundedCache of MathForge. SymPy's persistent tables
+    that are no lru_cache (recurrence_memo, mpmath's constants) stay, as the spec's cache symmetry allows. SymPy is
+    cleared once it has been imported; before that it has nothing to clear."""
 
     def __init__(self) -> None:
         from mathforge.trusted.caches import clear_all
         self._clear_all = clear_all
         self._sympy: tuple[Callable[[], object], ...] | None = None
+        self._lru: tuple[Callable[[], object], ...] = ()
+        self._scanned = 0  # len(sys.modules) at the last scan for lru caches
 
     def __call__(self) -> None:
         if self._sympy is None and "sympy" in sys.modules:
@@ -282,9 +288,25 @@ class Reset:
             from sympy.ntheory.factor_ import factor_cache
             self._sympy = (clear_cache, sympy.CRootOf.clear_cache, factor_cache.cache_clear)
         if self._sympy is not None:
-            for clear in self._sympy:
+            if len(sys.modules) != self._scanned:  # a builder may import more of SymPy later
+                self._lru = sympy_lru_caches()
+                self._scanned = len(sys.modules)
+            for clear in self._sympy + self._lru:
                 clear()
         self._clear_all()
+
+
+def sympy_lru_caches() -> tuple[Callable[[], object], ...]:
+    """The cache_clear of every functools.lru_cache wrapper defined by a loaded SymPy module, each once."""
+    found: dict[int, Callable[[], object]] = {}
+    for name, module in list(sys.modules.items()):
+        if module is None or not (name == "sympy" or name.startswith("sympy.")):
+            continue
+        for value in list(vars(module).values()):
+            if (isinstance(value, functools._lru_cache_wrapper)
+                    and str(getattr(value, "__module__", "")).startswith("sympy")):
+                found.setdefault(id(value), value.cache_clear)
+    return tuple(found.values())
 
 
 # --- Timing -----------------------------------------------------------------------------------------------------

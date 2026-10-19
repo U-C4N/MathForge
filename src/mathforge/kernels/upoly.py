@@ -11,7 +11,7 @@ from __future__ import annotations
 from math import gcd
 
 from ..limits import ResourceLimitError, current_budget
-from ..model import trusted_rational
+from ..model import Rational, trusted_rational
 from ..trusted import caches
 from ..trusted import upoly as tp
 
@@ -30,9 +30,9 @@ def _too_long() -> ResourceLimitError:
 # ---------------------------------------------------------------------------------------------------------------
 # Calculus over Q
 
-def derivative(coefficients, n: int):
+def derivative(coefficients, n: int, widest: int | None = None):
     """The coefficients of the n-th derivative (n >= 0): c_k k (k-1) ... (k-n+1), the falling factorial updated
-    from one k to the next."""
+    from one k to the next. ``widest`` bounds the bit length of the input numerators, when the caller knows it."""
     degree = len(coefficients) - 1
     if n == 0:
         return coefficients
@@ -43,11 +43,13 @@ def derivative(coefficients, n: int):
     falling = 1
     for factor in range(2, n + 1):
         falling *= factor
-    # No result is longer than the longest input integer times the largest falling factorial, below degree**n.
-    checked = (max(value.numerator.bit_length() for value in coefficients) + n * degree.bit_length()) > limit
+    if widest is None:
+        widest = max(value.numerator.bit_length() for value in coefficients)
+    # No result is longer than the longest input numerator times the largest falling factorial, below degree**n.
+    checked = widest + n * degree.bit_length() > limit
     result = []
     append = result.append
-    rational = trusted_rational
+    new, set_numerator, set_denominator = tp.RATIONAL_SLOTS
     k = n
     for value in coefficients[n:]:
         if k > n:
@@ -66,7 +68,10 @@ def derivative(coefficients, n: int):
             denominator //= divisor
         if checked and numerator.bit_length() > limit:
             raise _too_long()
-        append(rational(numerator, denominator))
+        item = new(Rational)
+        set_numerator(item, numerator)
+        set_denominator(item, denominator)
+        append(item)
     return tuple(result)
 
 

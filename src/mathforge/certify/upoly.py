@@ -50,19 +50,25 @@ def canonical_tuple(coefficients) -> bool:
 # Calculus
 
 def check_derivative(coefficients, n: int, result) -> bool:
-    """result is the n-th derivative: result_j = c_(j+n) * (j+n)! / j!, the factor from math.perm."""
-    if not canonical_tuple(result):
-        return False
+    """result is the n-th derivative: result_j = c_(j+n) * (j+n)! / j!, the factor from math.perm, each a canonical
+    Rational."""
     degree = len(coefficients) - 1
     if n == 0:
-        return result == coefficients
+        return result == coefficients and canonical_tuple(result)
     if _is_zero(coefficients) or n > degree:
-        return _is_zero(result)
-    if len(result) != degree - n + 1:
+        return canonical_tuple(result) and _is_zero(result)
+    if type(result) is not tuple or len(result) != degree - n + 1 or not result[-1].numerator:
         return False
     tp.charge(len(result))
     for value, source, k in zip(result, coefficients[n:], range(n, degree + 1)):
-        if value.numerator * source.denominator != source.numerator * perm(k, n) * value.denominator:
+        if type(value) is not Rational:
+            return False
+        denominator = value.denominator
+        if denominator == 1:
+            if value.numerator * source.denominator != source.numerator * perm(k, n):
+                return False
+        elif (denominator < 1 or gcd(value.numerator, denominator) != 1
+              or value.numerator * source.denominator != source.numerator * perm(k, n) * denominator):
             return False
     return True
 

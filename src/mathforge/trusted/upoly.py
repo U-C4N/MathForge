@@ -32,6 +32,9 @@ __all__ = [
 ]
 
 _new = object.__new__
+# What model.trusted_rational does, unrolled into a loop by callers that build many Rationals in lowest terms:
+# object.__new__ and the slot setters of numerator and denominator.
+RATIONAL_SLOTS = (_new, Rational.__dict__["numerator"].__set__, Rational.__dict__["denominator"].__set__)
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -437,7 +440,8 @@ def expression(coefficients, variable):
     constructors, which would only repeat what the coefficients already are."""
     constant = None
     units = []
-    scaled = []
+    numerators, denominators, scaled = [], [], []
+    fractional = False
     for index, coefficient in enumerate(coefficients):
         numerator = coefficient.numerator
         if not numerator:
@@ -452,16 +456,23 @@ def expression(coefficients, variable):
         else:
             constant = coefficient
             continue
-        if numerator == 1 and coefficient.denominator == 1:
+        denominator = coefficient.denominator
+        if numerator == 1 and denominator == 1:
             units.append(monomial)
         else:
             term = _new(Mul)
             term.__dict__["factors"] = (coefficient, monomial)
-            scaled.append((numerator, coefficient.denominator, index, term))
-    if scaled:
-        if len(scaled) > 1:
-            scaled.sort()  # The first three items differ between any two entries: no node is compared.
-        units.extend([item[3] for item in scaled])
+            numerators.append(numerator)
+            denominators.append(denominator)
+            scaled.append(term)
+            if denominator != 1:
+                fractional = True
+    if len(scaled) > 1:
+        # By (numerator, denominator); a stable sort keeps equal coefficients in exponent order.
+        keys = list(zip(numerators, denominators)) if fractional else numerators
+        units.extend([scaled[position] for position in sorted(range(len(scaled)), key=keys.__getitem__)])
+    elif scaled:
+        units.append(scaled[0])
     if constant is not None:
         units.insert(0, constant)
     if not units:

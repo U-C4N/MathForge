@@ -10,7 +10,7 @@ from mathforge.kernels import linalg as kernel
 from mathforge.trusted import primes
 from mathforge.trusted.intmatrix import clear_row_denominators
 
-from .support import as_fraction, fraction_det, fraction_rows, matrices
+from .support import R, as_fraction, fraction_det, fraction_rows, matrices
 
 
 def outcome(call):
@@ -107,6 +107,30 @@ class LeanValuesTest(unittest.TestCase):
             for operation in ("rref", "rank", "nullspace", "rowspace", "columnspace", "lu"):
                 with self.subTest(operation=operation, matrix=matrix):
                     self.assertLeanEqualsStructured(operation, matrix)
+
+    def test_charpoly_and_real_eigenvalues_equal_v07(self):
+        variable = mf.Symbol("t")
+        for matrix in matrices(15, 120, square=True, max_size=5):
+            with self.subTest(matrix=matrix):
+                self.assertLeanEqualsStructured("charpoly", matrix, variable)
+                self.assertLeanEqualsStructured("real_eigenvalues", matrix)
+        for edge in (mf.Symbol("n", mf.Integers), "t", None,
+                     mf.Symbol("p", assumptions=(mf.Assumption("positive", mf.Truth.TRUE),))):
+            self.assertIs(lean.functions.charpoly(mf.Matrix(((1, 2), (3, 4))), edge), lean.FALLBACK)
+
+    def test_charpoly_kernel_equals_the_oracle(self):
+        from fractions import Fraction
+        for matrix in matrices(16, 60, square=True, max_size=6):
+            int_rows, scales = clear_row_denominators(matrix.rows)
+            if any(scale != 1 for scale in scales):
+                continue
+            coefficients = kernel.charpoly(int_rows)
+            n = matrix.nrows
+            for point in range(n + 1):  # det(x I - A) at n + 1 points determines it.
+                shifted = mf.Matrix(tuple(tuple(R(point * (i == j)) - v for j, v in enumerate(row))
+                                          for i, row in enumerate(matrix.rows)), ncols=n)
+                value = sum(c * point ** (n - k) for k, c in enumerate(coefficients))
+                self.assertEqual(Fraction(value), fraction_det(shifted))
 
     def test_full_rank_shortcut(self):
         """An invertible 16x16 is certified by the minor test alone: the elimination kernel never runs."""

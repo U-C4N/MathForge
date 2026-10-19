@@ -6,6 +6,7 @@ import unittest
 import mathforge as mf
 from mathforge.certify.linalg import determinant as det_checker, inverse as inverse_checker
 from mathforge.certify.linalg._modular import det_mod, nonsingular_mod
+from mathforge.certify.linalg.charpoly import check_charpoly
 from mathforge.certify.linalg.echelon import check_echelon
 from mathforge.certify.linalg.lu import check_lu
 from mathforge.certify.linalg.trace import check_trace
@@ -153,6 +154,25 @@ class LUCertificateTest(unittest.TestCase):
                 lower = [list(row) for row in L]
                 lower[0][1] = R(1)  # Not lower triangular.
                 self.assertFalse(check_lu(matrix, P, tuple(map(tuple, lower)), U))
+
+
+class CharpolyCertificateTest(unittest.TestCase):
+    def test_honest_and_forged_coefficients(self):
+        for matrix in matrices(26, 150, square=True, max_size=7):
+            int_rows, _ = clear_row_denominators(matrix.rows)
+            coefficients = kernel.charpoly(int_rows)
+            with self.subTest(matrix=matrix):
+                self.assertTrue(check_charpoly(int_rows, coefficients))
+                for index in range(len(coefficients)):
+                    forged = list(coefficients)
+                    forged[index] += 1
+                    self.assertFalse(check_charpoly(int_rows, forged))
+                self.assertFalse(check_charpoly(int_rows, coefficients[:-1]))
+        rows = ((2, 1), (1, 2))
+        self.assertTrue(check_charpoly(rows, [1, -4, 3]))
+        self.assertFalse(check_charpoly(rows, [1, -4, 3 + MODULI[0]]))  # Right modulo the prime, past the bound.
+        self.assertFalse(check_charpoly(rows, [1, -4.0, 3]))
+        self.assertFalse(check_charpoly(rows, [2, -8, 6]))
 
 
 class TraceCertificateTest(unittest.TestCase):

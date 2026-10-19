@@ -16,6 +16,7 @@ mathforge.certify.linalg, never by rerunning these routines.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from operator import mul
 from typing import NamedTuple
 
 from ..limits import current_budget
@@ -125,6 +126,31 @@ def echelon(rows: Sequence[Sequence[int]], ncols: int) -> Echelon:
     if r == 0:
         return Echelon((), (), (), 1, 2)
     return Echelon(tuple(pivots), tuple(order[:r]), numerators, previous, _modulus(previous))
+
+
+def charpoly(rows: Sequence[Sequence[int]]) -> list[int]:
+    """The coefficients of det(t I - A) for a square integer matrix, highest power first (1, c_1, ..., c_n), by
+    Berkowitz's division-free algorithm: the Toeplitz products of the trailing principal blocks, as v0.7 computed
+    them over the rationals."""
+    budget = current_budget()
+    n = len(rows)
+    coefficients = [1]
+    for start in range(n - 1, -1, -1):
+        size = n - start
+        right = rows[start][start + 1:]
+        vector = [rows[i][start] for i in range(start + 1, n)]
+        block = [row[start + 1:] for row in rows[start + 1:]]
+        sequence = [1, -rows[start][start]]
+        for power in range(size - 1):
+            sequence.append(-sum(map(mul, right, vector)))
+            if power < size - 2:
+                vector = [sum(map(mul, row, vector)) for row in block]
+        if budget is not None:
+            budget.tick(1 + size * size * size)
+        count = len(coefficients)
+        coefficients = [sum(map(mul, sequence[index::-1][:count], coefficients[:index + 1]))
+                        for index in range(size + 1)]
+    return coefficients
 
 
 def lu(rows: Sequence[Sequence[Rational]]) -> tuple[tuple[tuple[Rational, ...], ...], ...]:

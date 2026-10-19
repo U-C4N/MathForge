@@ -14,17 +14,20 @@ sum of the row sizes past the integer bound) falls back before any elimination.
 
 from __future__ import annotations
 
-from math import gcd, prod
+from math import gcd, lcm, prod
 
+from ..certify.linalg.charpoly import check_charpoly
 from ..certify.linalg.determinant import check_integer_determinant
 from ..certify.linalg.echelon import check_echelon
 from ..certify.linalg.inverse import check_inverse
 from ..certify.linalg.lu import check_lu
 from ..certify.linalg.trace import check_trace
-from ..kernels.linalg import Echelon, determinant, echelon as integer_echelon, inverse as integer_inverse, lu as plu
+from ..kernels.linalg import (Echelon, charpoly as integer_charpoly, determinant, echelon as integer_echelon,
+                              inverse as integer_inverse, lu as plu)
 from ..limits import ComputationLimits, computation, current_budget
 from ..matrices import Matrix, trusted_matrix, trusted_rref
-from ..model import Rational
+from ..model import Rational, Reals, Symbol
+from ..polynomial import Polynomial
 from ..trusted.intmatrix import ONE, ZERO, clear_row_denominators, ratio
 from ..trusted.primes import MODULI
 from . import FALLBACK
@@ -265,5 +268,71 @@ def _lu(A):
     return trusted_lu(trusted_matrix(P, n), trusted_matrix(L, n), trusted_matrix(U, n))
 
 
+def _characteristic(A, variable):
+    """det(t I - A) as v0.7's Polynomial in variable, or None: Berkowitz on the integer matrix d A (d the lcm of all
+    denominators; kernels.linalg.charpoly), checked by certify.linalg.charpoly, then c_k(A) = c_k(d A) / d**k."""
+    if type(variable) is not Symbol or variable.domain is not Reals or variable.assumptions:
+        return None
+    rows = _entries(A)
+    if rows is None or len(rows) != A.ncols:
+        return None
+    integers = _integer_rows(rows)
+    if integers is None:
+        return None
+    int_rows, scales = integers
+    common = lcm(*scales) if scales else 1
+    if common != 1:
+        int_rows = tuple(tuple([value * (common // scale) for value in row]) for row, scale in zip(int_rows, scales))
+        if _integer_rows_fit(int_rows) is False:
+            return None
+    n = len(rows)
+    with computation(fresh=True):
+        coefficients = integer_charpoly(int_rows)
+        if check_charpoly(int_rows, coefficients) is not True:
+            return None
+    return Polynomial(tuple(ratio(coefficients[n - power], common ** (n - power)) for power in range(n + 1)),
+                      variable)
+
+
+def _integer_rows_fit(int_rows):
+    """Whether rescaled integer rows still keep the eliminations within the integer bound."""
+    total = 0
+    for row in int_rows:
+        if row:
+            bits = max(max(row), -min(row)).bit_length()
+            if bits > _MAX_BITS:
+                return False
+            total += bits
+    return total + len(int_rows) * len(int_rows).bit_length() <= _MAX_BITS
+
+
+def charpoly(A, variable):
+    """det(t I - A): Berkowitz over the integers, checked modulo primes through a Hessenberg form."""
+    try:
+        if current_budget() is not None:
+            return FALLBACK
+        value = _characteristic(A, variable)
+        return FALLBACK if value is None else value
+    except Exception:
+        return FALLBACK
+
+
+def real_eigenvalues(A):
+    """The real roots of the certified characteristic polynomial in v0.7's root variable, through the real_roots
+    lean function (whose own checker certifies the roots), as v0.7's real_eigenvalues isolates them."""
+    try:
+        if current_budget() is not None:
+            return FALLBACK
+        from ..root_isolation import ROOT_VARIABLE
+        polynomial = _characteristic(A, ROOT_VARIABLE)
+        if polynomial is None:
+            return FALLBACK
+        from . import functions
+        return functions.real_roots(polynomial, ROOT_VARIABLE)
+    except Exception:
+        return FALLBACK
+
+
 LEAN = {"trace": trace, "det": det, "inverse": inverse, "rref": _rref, "rank": _rank, "nullspace": _nullspace,
-        "rowspace": _rowspace, "columnspace": _columnspace, "lu": _lu}
+        "rowspace": _rowspace, "columnspace": _columnspace, "lu": _lu, "charpoly": charpoly,
+        "real_eigenvalues": real_eigenvalues}

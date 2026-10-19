@@ -33,7 +33,7 @@ def continued_fraction(example: Example) -> tuple[Outcome, Result[Any] | None]:
     if not mathforge.verify(result).verified:
         return Outcome.UNVERIFIED, result
     terms = [int(term) for term in result.value.terms]
-    return (Outcome.MATCH if same_value(example.srepr, terms) else Outcome.MISMATCH), result
+    return (Outcome.MATCH if same_value(example, terms) else Outcome.MISMATCH), result
 
 
 def _expanded_number(sympy: Any, function: Any, arguments: tuple[Any, ...], keywords: dict[str, Any]) -> Any:

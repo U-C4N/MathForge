@@ -40,7 +40,8 @@ budget_met that is not a boolean) raises ValueError.
 The adapter protocol. An adapter (ADAPTERS maps a row id to it) poses one SymPy reference example to the row's MathForge
 operation and judges the answer: adapter(example) -> (outcome, result), where
 
-- MATCH: MathForge computed an exact, verified value that equals SymPy's recorded one (same_value); result is the Result;
+- MATCH: MathForge computed an exact, verified value that equals SymPy's recorded one (same_value(example, value));
+  result is the Result;
 - MISMATCH: MathForge computed a verified value that differs from SymPy's; result is the Result;
 - UNVERIFIED: MathForge computed a value whose verification does not pass; result is the Result;
 - UNEVALUATED: the example cannot be posed to the operation (an input outside its domain, an API it does not compute),
@@ -62,12 +63,16 @@ available. SymPy is imported only when same_value or an adapter runs.
 
 import ast
 import contextlib
-import functools
+import importlib
+import inspect
 import itertools
 import json
 import math
+import pkgutil
 import threading
 import time
+import types
+import warnings
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from enum import Enum
@@ -370,12 +375,27 @@ def _result_problem(result: Result[Any]) -> str:
 # ----------------------------------------------------------------------------------------------------------------------
 # Comparison with SymPy
 
-def same_value(sympy_srepr: str, candidate: object) -> bool:
-    """Whether candidate equals the value that SymPy recorded as sympy_srepr, judged on the SymPy side: structural
-    equality first, then structural equality up to a consistent renaming of Dummies, then, for two expressions,
-    simplify(a - b) == 0. Lists and tuples (and SymPy Tuples) compare element by element, dicts key by key (keys
-    structurally). A candidate is a SymPy object, a Python number, bool or Fraction, or a container of them: adapters
-    convert MathForge values first, and anything SymPy does not convert strictly is unequal.
+def same_value(reference: Example | str, candidate: object) -> bool:
+    """Whether candidate equals the value that SymPy recorded for the reference example, judged on the SymPy side:
+    structural equality first, then structural equality up to a consistent renaming of Dummies, then, for two
+    expressions, simplify(a - b) == 0. Lists and tuples (and SymPy Tuples) compare element by element, dicts key by key
+    (keys structurally). A candidate is a SymPy object, a Python number, bool or Fraction, or a container of them:
+    adapters convert MathForge values first, and a candidate that SymPy does not convert strictly is unequal. A
+    reference that SymPy does not convert (a domain such as QQ, a polynomial ring, a function class such as Mod, a
+    string key) is compared as it is: the candidate must be of its type and equal to it.
+
+    The reference value is rebuilt from the example's srepr (the inverse that srepr documents, eval(srepr(expr)) ==
+    expr), evaluated with the names of SymPy (see _rebuild_names: those of the sympy package and every public class and
+    function of its submodules, such as Str, ExprCondPair, VectorAdd and DomainMatrix) and no builtins but set and
+    frozenset. It is used only when it is SymPy's recorded value: its srepr prints the recorded text back (the elements
+    of a set display in any order), and its str the recorded output, unless the value holds a Python set or a Dummy,
+    which print in an order that hashing and the Dummies' indices decide. When the srepr does not rebuild the value (it
+    is not Python, as for a class, which prints as <'sympy....'>; it names something that is not a SymPy class or
+    function, such as a variable of the example's setup; a constructor refuses it; or it evaluates to something else: a
+    domain element read as a float, a Groebner basis computed anew, a polynomial without its modulus), the comparison is
+    strict: str(candidate) must be the recorded output, character for character, with no simplify and no renaming of
+    Dummies. reference may also be an srepr text alone, which has no output to fall back on: ValueError when it does not
+    rebuild a value.
 
     A Dummy (the variable of an ImageSet's Lambda, of a RootSum, of an Integral) is equal only to itself, and the frozen
     srepr renumbers SymPy's Dummies from 0, so the Dummies of the value rebuilt from it never equal an adapter's. The
@@ -384,15 +404,14 @@ def same_value(sympy_srepr: str, candidate: object) -> bool:
     when that does not make them equal and there are at most _RENAMINGS renamings, in every other way, because the order
     of a sorted container (an Add, a FiniteSet) can follow the Dummies' indices. The simplify fallback compares with the
     candidate renamed in order of first appearance. Nothing is renamed when the two values hold different numbers or
-    kinds of Dummies: no renaming is consistent then.
-
-    The text is SymPy's srepr from the frozen examples file; it is evaluated with SymPy's names and no builtins, the
-    inverse that srepr documents (eval(srepr(expr)) == expr). ValueError when it does not evaluate."""
+    kinds of Dummies: no renaming is consistent then."""
     import sympy
-    try:
-        expected = eval(sympy_srepr, {"__builtins__": {}, **_sympy_names()})
-    except Exception as error:
-        raise ValueError(f"cannot rebuild a SymPy value from {sympy_srepr!r}: {error}") from error
+    text, output = (reference.srepr, reference.output) if isinstance(reference, Example) else (reference, None)
+    expected, problem = _reference(sympy, text, output)
+    if problem:
+        if output is None:
+            raise ValueError(f"cannot rebuild a SymPy value from {text!r}: {problem}")
+        return str(candidate) == output  # Strict: the text SymPy printed, character for character.
     if _same(sympy, expected, candidate, simplify=False):
         return True
     first = candidate
@@ -404,10 +423,193 @@ def same_value(sympy_srepr: str, candidate: object) -> bool:
     return _same(sympy, expected, first)
 
 
-@functools.cache
-def _sympy_names() -> dict[str, Any]:
+def _reference(sympy: Any, text: str, output: str | None) -> tuple[Any, str]:
+    """(SymPy's recorded value rebuilt from its srepr text, "") or (None, why the text does not rebuild it). Without an
+    output only the srepr is checked."""
+    names = _rebuild_names()[0]
+    try:
+        value = eval(text, {"__builtins__": _REBUILD_BUILTINS}, names)
+    except SyntaxError:
+        return None, "not Python"
+    except Exception as error:
+        return None, f"does not evaluate ({type(error).__name__})"
+    try:
+        reprinted, printed = sympy.srepr(value), str(value)
+    except Exception as error:
+        return None, f"does not print ({type(error).__name__})"
+    if _shape(reprinted) != _shape(text):
+        return None, "srepr prints other text"
+    if output is not None and printed != output and not _printed_in_arbitrary_order(sympy, value):
+        return None, "str prints another output"
+    return value, ""
+
+
+def _shape(text: str) -> str | None:
+    """The syntax tree of Python text as a string, with the elements of every set display in a fixed order (a set
+    prints its elements in hash order); None for text that does not parse."""
+    try:
+        tree = ast.parse(text, mode="eval")
+    except (SyntaxError, ValueError):
+        return None
+    for node in reversed(list(ast.walk(tree))):  # Inner sets first: the order of an outer set depends on theirs.
+        if isinstance(node, ast.Set):
+            node.elts.sort(key=ast.dump)
+    return ast.dump(tree)
+
+
+def _printed_in_arbitrary_order(sympy: Any, value: object) -> bool:
+    """Whether value holds a Python set or a Dummy: a set prints its elements in hash order, and SymPy prints the
+    elements of a set or the terms of a sum that hold Dummies in an order that follows their indices, which the frozen
+    srepr renumbered. Its str can then differ from the recorded output with the value the same."""
+    pending = [value]
+    while pending:
+        item = pending.pop()
+        if isinstance(item, (set, frozenset, sympy.Dummy)):
+            return True
+        if isinstance(item, dict):
+            pending.extend(part for pair in item.items() for part in pair)
+        elif isinstance(item, (list, tuple)):
+            pending.extend(item)
+        elif isinstance(item, sympy.Basic):
+            pending.extend(item.args)
+    return False
+
+
+# The names of the rebuild namespace that several different SymPy objects share, each with the module whose object
+# the namespace keeps: the shallowest module that exports one ("sympy", the package itself, before any submodule; the
+# first in name order on a tie). A test pins this table, so that a clash that SymPy or the walk brings is reviewed.
+_KEPT: tuple[tuple[str, str], ...] = (
+    ("sympy", "Abs And Catalan Chi Complexes Domain E EmptySequence EmptySet EulerGamma FractionField GoldenRatio "
+              "Integers Matrix Naturals Naturals0 Not Or Order Point PolynomialRing Rationals Reals S "
+              "TribonacciConstant UniversalSet acos acosh asin asinh assumptions atan atanh bottom_up codegen "
+              "continued_fraction core cos cosh decompose default_sort_key divisor_sigma doctest evalf exp factorial "
+              "flatten floor gcdex get_indices groebner interactive_traversal intersection invert jacobi "
+              "jacobi_symbol lambdify lcm legendre legendre_symbol log maximum minimum mobius ordered parse_expr "
+              "partition postorder_traversal preorder_traversal primenu primeomega primepi reduced_totient reshape "
+              "shape sign sin sinh sqrt tan tanh test totient transpose unify use var"),
+    ("sympy.assumptions.lra_satask", "check_satisfiability"),
+    ("sympy.codegen", "Variable"),
+    ("sympy.codegen.abstract_nodes", "List"),
+    ("sympy.codegen.ast", "Token"),
+    ("sympy.codegen.cfunctions", "log10"),
+    ("sympy.codegen.cxxnodes", "using"),
+    ("sympy.codegen.fnodes", "Module"),
+    ("sympy.codegen.futils", "render_as_module"),
+    ("sympy.combinatorics.fp_groups", "invariant_factors rewrite"),
+    ("sympy.combinatorics.homomorphisms", "homomorphism"),
+    ("sympy.combinatorics.rewritingsystem_fsm", "State"),
+    ("sympy.combinatorics.tensor_can", "canonicalize"),
+    ("sympy.concrete.guess", "rationalize"),
+    ("sympy.core.function", "Transform"),
+    ("sympy.core.intfunc", "isqrt"),
+    ("sympy.core.traversal", "walk"),
+    ("sympy.crypto.crypto", "translate"),
+    ("sympy.diffgeom", "Commutator TensorProduct"),
+    ("sympy.external.gmpy", "is_lucas_prp is_square is_strong_lucas_prp"),
+    ("sympy.functions", "udivisor_sigma"),
+    ("sympy.holonomic", "DifferentialOperator"),
+    ("sympy.integrals.meijerint", "timeit"),
+    ("sympy.logic.algorithms.dpll", "dpll_satisfiable"),
+    ("sympy.matrices", "dotprodsimp"),
+    ("sympy.matrices.common", "a2idx classof"),
+    ("sympy.matrices.expressions.hadamard", "validate"),
+    ("sympy.matrices.expressions.matadd", "merge_explicit"),
+    ("sympy.matrices.normalforms", "hermite_normal_form is_smith_normal_form smith_normal_decomp smith_normal_form"),
+    ("sympy.ntheory", "is_palindromic"),
+    ("sympy.parsing.autolev", "parse_autolev"),
+    ("sympy.parsing.autolev._build_autolev_antlr", "build_parser check_antlr_version"),
+    ("sympy.parsing.latex", "parse_latex"),
+    ("sympy.physics.control", "Series"),
+    ("sympy.physics.hydrogen", "E_nl R_nl"),
+    ("sympy.physics.mechanics", "inertia inertia_of_point_mass"),
+    ("sympy.physics.mechanics.functions", "gravity"),
+    ("sympy.physics.quantum", "Dagger InnerProduct Operator"),
+    ("sympy.physics.secondquant", "B apply_operators"),
+    ("sympy.physics.wigner", "Wigner3j"),
+    ("sympy.polys.agca.homomorphisms", "ModuleHomomorphism"),
+    ("sympy.polys.agca.modules", "ModuleElement"),
+    ("sympy.polys.matrices._dfm", "DFM"),
+    ("sympy.polys.polyoptions", "Field"),
+    ("sympy.printing.aesaracode", "dim_handling"),
+    ("sympy.simplify.fu", "identity"),
+    ("sympy.stats", "Bernoulli H entropy"),
+    ("sympy.stats.crv_types", "rv"),
+    ("sympy.stats.frv", "Density"),
+    ("sympy.strategies", "canon chain condition debug distribute do_one exhaust rebuild unpack"),
+    ("sympy.strategies.rl", "subs"),
+    ("sympy.strategies.tools", "top_down"),
+    ("sympy.strategies.traverse", "sall"),
+    ("sympy.strategies.util", "assoc"),
+    ("sympy.tensor.array.expressions", "convert_array_to_indexed convert_array_to_matrix convert_indexed_to_array "
+                                       "convert_matrix_to_array"),
+    ("sympy.tensor.tensor", "get_postprocessor"),
+    ("sympy.testing.pytest", "Skipped"),
+    ("sympy.vector", "Dyadic Vector cross curl divergence dot express gradient is_conservative is_solenoidal "
+                     "scalar_potential scalar_potential_difference"),
+)
+REBUILD_CLASHES: Mapping[str, str] = {name: module for module, names in _KEPT for name in names.split()}
+_REBUILD_BUILTINS = {"set": set, "frozenset": frozenset}  # srepr writes an empty set as set()
+_UNIMPORTED = frozenset({"tests", "benchmarks", "conftest", "this"})  # Test code, and sympy.this, which prints
+_NAMES_LOCK = threading.Lock()
+_NAMES: tuple[Mapping[str, Any], Mapping[str, str]] | None = None
+
+
+def _rebuild_names() -> tuple[Mapping[str, Any], Mapping[str, str]]:
+    """The names that a frozen srepr is evaluated with, read-only, and the clashes resolved on the way (name -> the
+    module whose object is kept); built once per process, under a lock, and cached.
+
+    Every public name of the sympy package itself, then every public class and function that SymPy defines and that a
+    submodule exports: each submodule is imported (in name order, with warnings off: deprecated modules warn) except
+    test code and sympy.this, and one that does not import, for want of an optional dependency (antlr4, pyglet) or as
+    a retired module (galgebra), adds nothing. A name that several different objects share goes to the object of the
+    shallowest exporting module, the first in name order on a tie (REBUILD_CLASHES). Objects that are not classes or
+    functions, such as the symbols of sympy.abc, come from the sympy package only."""
+    global _NAMES
+    with _NAMES_LOCK:
+        if _NAMES is None:
+            namespace, clashes = _walk_names()
+            _NAMES = types.MappingProxyType(namespace), types.MappingProxyType(clashes)
+        return _NAMES
+
+
+def _walk_names() -> tuple[dict[str, Any], dict[str, str]]:
     import sympy
-    return {name: value for name, value in vars(sympy).items() if not name.startswith("_")}
+    modules: dict[str, types.ModuleType] = {"sympy": sympy}
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        found = sorted(info.name for info in pkgutil.walk_packages(sympy.__path__, "sympy.", onerror=lambda name: None))
+        for name in found:
+            if any(part in _UNIMPORTED or part.startswith("test_") for part in name.split(".")):
+                continue
+            try:
+                modules[name] = importlib.import_module(name)
+            except Exception:
+                continue
+    candidates: dict[str, dict[int, tuple[tuple[int, str], Any]]] = {}
+    for module_name, module in modules.items():
+        rank = (0 if module_name == "sympy" else module_name.count("."), module_name)
+        for name, value in vars(module).items():
+            if name.startswith("_") or (module_name != "sympy" and not _defined_by_sympy(value)):
+                continue
+            objects = candidates.setdefault(name, {})
+            if id(value) not in objects or rank < objects[id(value)][0]:
+                objects[id(value)] = (rank, value)
+    namespace: dict[str, Any] = {}
+    clashes: dict[str, str] = {}
+    for name in sorted(candidates):
+        ranked = sorted(candidates[name].values(), key=lambda entry: entry[0])
+        namespace[name] = ranked[0][1]
+        if len(ranked) > 1:
+            clashes[name] = ranked[0][0][1]
+    return namespace, clashes
+
+
+def _defined_by_sympy(value: object) -> bool:
+    """Whether value is a class or a function that SymPy defines, not one that a module imports from elsewhere."""
+    if not (inspect.isclass(value) or inspect.isfunction(value)):
+        return False
+    module = getattr(value, "__module__", None)
+    return isinstance(module, str) and (module == "sympy" or module.startswith("sympy."))
 
 
 def _same(sympy: Any, expected: object, candidate: object, *, simplify: bool = True) -> bool:
@@ -418,28 +620,30 @@ def _same(sympy: Any, expected: object, candidate: object, *, simplify: bool = T
     if isinstance(expected, dict):
         if not isinstance(candidate, dict) or len(candidate) != len(expected):
             return False
-        keyed = {}
-        for key, value in candidate.items():
-            converted = _sympified(sympy, key)
-            if converted is None:
-                return False
-            keyed[converted] = value
+        keyed = {_key(sympy, key): value for key, value in candidate.items()}
         for key, value in expected.items():
-            converted = _sympified(sympy, key)
-            if (converted is None or converted not in keyed
-                    or not _same(sympy, value, keyed[converted], simplify=simplify)):
+            converted = _key(sympy, key)
+            if converted not in keyed or not _same(sympy, value, keyed[converted], simplify=simplify):
                 return False
         return True
     if expected is None or isinstance(expected, str):
         return type(candidate) is type(expected) and candidate == expected
     value, reference = _sympified(sympy, candidate), _sympified(sympy, expected)
-    if value is None or reference is None:
+    if reference is None:  # A domain, a ring, a function class: what SymPy does not convert is compared as it is.
+        return type(candidate) is type(expected) and bool(candidate == expected)
+    if value is None:
         return False
     if value == reference:
         return True
     if simplify and isinstance(value, sympy.Expr) and isinstance(reference, sympy.Expr):
         return bool(sympy.simplify(reference - value) == 0)
     return False
+
+
+def _key(sympy: Any, key: object) -> object:
+    """A dict key as dicts are compared: as SymPy converts it, or as it is (a string, a domain) when SymPy does not."""
+    converted = _sympified(sympy, key)
+    return key if converted is None else converted
 
 
 def _renamings(sympy: Any, expected: object, candidate: object) -> Iterator[object]:

@@ -1,12 +1,14 @@
 """The coverage gate's eight criteria, the adapter protocol and the pilot adapter (row 27.25, continued fractions).
 
 The criteria tests build synthetic rows, examples, Facts and stand-in adapters; the facts tests read this checkout's
-documentation/ and tools/check_sympy.py, or a synthetic documentation directory. None reads the local docs/ inventory or
-examples, which neither CI nor the distribution harness has. The tests of same_value and of the pilot adapter need SymPy
-1.14 and skip without it, as in CI's core job; everything else runs without SymPy.
+documentation/ and tools/check_sympy.py, or a synthetic documentation directory. Only the scan of the frozen records
+reads the local docs/v08/reference_examples.json, and it skips where that file is absent, as in CI and the distribution
+harness. The tests of same_value and of the pilot adapter need SymPy 1.14 and skip without it, as in CI's core job;
+everything else runs without SymPy.
 """
 
 import ast
+import collections
 import dataclasses
 from fractions import Fraction
 import importlib.util
@@ -21,6 +23,7 @@ import threading
 import time
 import unittest
 from unittest import mock
+import warnings
 
 REPOSITORY = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPOSITORY / "tools"))  # The coverage gate is tooling beside the scripts, not a package.
@@ -29,7 +32,7 @@ import check_sympy  # noqa: E402
 from coverage_gate import criteria  # noqa: E402
 from coverage_gate import inventory as model  # noqa: E402
 from coverage_gate.adapters import ntheory as ntheory_adapters  # noqa: E402
-from coverage_gate.examples import Example  # noqa: E402
+from coverage_gate.examples import Example, load_examples  # noqa: E402
 
 import mathforge as mf  # noqa: E402
 from mathforge import registry  # noqa: E402
@@ -39,6 +42,7 @@ from mathforge.registry_v07 import LEGACY_CATALOG  # noqa: E402
 
 SYMPY = importlib.util.find_spec("sympy") is not None
 NO_SYMPY = "SymPy 1.14, a development dependency, is not installed"
+FROZEN_EXAMPLES = REPOSITORY / "docs" / "v08" / "reference_examples.json"  # Local data: CI does not have it.
 
 Outcome = criteria.Outcome
 ROW = "90.01"  # A synthetic row id that no adapter module registers.
@@ -96,6 +100,22 @@ def frozen_srepr(value):
     numbers = {}
     return re.sub(r"dummy_index=(\d+)",
                   lambda match: f"dummy_index={numbers.setdefault(match.group(1), len(numbers))}", sympy.srepr(value))
+
+
+def frozen_example(value):
+    """A synthetic example that records value as the harvester records it: its frozen srepr and its str."""
+    return Example(id=f"{ROW}/01", row=ROW, source="guide:synthetic.rst:1", setup="", code="value",
+                   output=str(value), srepr=frozen_srepr(value), kind="exact")
+
+
+class Printed:
+    """A stand-in candidate that prints as the given text and is nothing else."""
+
+    def __init__(self, text):
+        self.text = text
+
+    def __str__(self):
+        return self.text
 
 
 class CriteriaTests(unittest.TestCase):
@@ -454,6 +474,71 @@ class SameValueTests(unittest.TestCase):
                 self.assertFalse(criteria.same_value(frozen_srepr(record), value))
         self.assertTrue(criteria.same_value(frozen_srepr(Lambda((a, b), a - b)), Lambda((c, d), c - d)))
 
+    def test_records_of_classes_outside_the_top_level_rebuild(self):
+        import sympy
+        from sympy import MatrixSymbol, Piecewise, Symbol
+        x = Symbol("x")
+        # A Piecewise prints its pieces as ExprCondPair, a MatrixSymbol its name as Str: neither is a top-level name.
+        piecewise, matrix = frozen_example(Piecewise((x, x < 1), (1, True))), frozen_example(MatrixSymbol("A", 2, 2))
+        for record, name in ((piecewise, "ExprCondPair"), (matrix, "Str")):
+            self.assertIn(f"{name}(", record.srepr)
+            self.assertNotIn(name, vars(sympy))
+        self.assertTrue(criteria.same_value(piecewise, Piecewise((x, x < 1), (1, True))))
+        self.assertFalse(criteria.same_value(piecewise, Piecewise((x, x < 2), (1, True))))
+        self.assertFalse(criteria.same_value(piecewise, Printed(piecewise.output)))  # Rebuilt: compared as a value.
+        self.assertTrue(criteria.same_value(matrix, MatrixSymbol("A", 2, 2)))
+        self.assertFalse(criteria.same_value(matrix, MatrixSymbol("B", 2, 2)))
+        self.assertTrue(criteria.same_value(matrix.srepr, MatrixSymbol("A", 2, 2)))  # The srepr alone rebuilds too.
+
+    def test_records_that_do_not_rebuild_compare_their_printed_output_strictly(self):
+        from sympy import QQ, Integer, Mul, Rational, Symbol
+        # A class prints as <'sympy.core.numbers.Integer'>, which is not Python.
+        type_record = frozen_example(type(Integer(2)))
+        self.assertEqual((type_record.srepr, type_record.output),
+                         ("<'sympy.core.numbers.Integer'>", "<class 'sympy.core.numbers.Integer'>"))
+        self.assertTrue(criteria.same_value(type_record, Integer))
+        self.assertFalse(criteria.same_value(type_record, Rational))
+        # A QQ element prints as 5/3, which Python evaluates to a float: the srepr evaluates to something else.
+        element = frozen_example(QQ(5, 3))
+        self.assertEqual((element.srepr, element.output), ("5/3", "5/3"))
+        for candidate, verdict in ((Rational(5, 3), True), (Fraction(5, 3), True), (Rational(10, 6), True),
+                                   (5 / 3, False), (Rational(5, 4), False)):
+            with self.subTest(candidate=candidate):
+                self.assertIs(criteria.same_value(element, candidate), verdict)
+        # Strict: an unevaluated product rebuilds as the evaluated sum, so the record is compared by its output; a
+        # candidate of the same value that prints otherwise does not match.
+        x = Symbol("x")
+        unevaluated = frozen_example(Mul(Rational(1, 2), x + 2, evaluate=False))
+        self.assertEqual(unevaluated.output, "(x + 2)/2")
+        self.assertFalse(criteria.same_value(unevaluated, x / 2 + 1))
+        self.assertTrue(criteria.same_value(unevaluated, Mul(Rational(1, 2), x + 2, evaluate=False)))
+        # An srepr alone has no output to fall back on.
+        with self.assertRaises(ValueError) as raised:
+            criteria.same_value(element.srepr, Rational(5, 3))
+        self.assertIn("srepr prints other text", str(raised.exception))
+
+    def test_the_rebuild_namespace_keeps_the_shallowest_object_and_pins_its_clashes(self):
+        import sympy
+        from sympy.diffgeom import Point as DiffgeomPoint
+        from sympy.physics.vector import Vector as PhysicsVector
+        names, clashes = criteria._rebuild_names()
+        self.assertIs(criteria._rebuild_names(), criteria._rebuild_names())  # Built once.
+        self.assertEqual(dict(clashes), dict(criteria.REBUILD_CLASHES))
+        # The package's own names first, then the shallowest module: geometry's Point, not diffgeom's; sympy.vector's
+        # Vector, not physics.vector's.
+        self.assertEqual((clashes["Point"], clashes["Vector"]), ("sympy", "sympy.vector"))
+        self.assertIs(names["Point"], sympy.Point)
+        self.assertIsNot(names["Point"], DiffgeomPoint)
+        self.assertIs(names["Vector"], sympy.vector.Vector)
+        self.assertIsNot(names["Vector"], PhysicsVector)
+        for name, module in (("Str", "sympy.core.symbol"), ("ExprCondPair", "sympy.functions.elementary.piecewise"),
+                             ("VectorAdd", "sympy.vector.vector"),
+                             ("DomainMatrix", "sympy.polys.matrices.domainmatrix")):
+            with self.subTest(name):
+                self.assertNotIn(name, vars(sympy))
+                self.assertEqual((names[name].__name__, names[name].__module__), (name, module))
+        self.assertNotIn("x", names)  # The symbols of sympy.abc are objects, not classes or functions.
+
     def test_every_renaming_is_tried_when_an_order_follows_the_dummies(self):
         from sympy import Dummy, Tuple, sin
         # The Add sorts sin(_a) + sin(_a) by the Dummies' indices: the record's first Dummy is created first, the
@@ -466,6 +551,29 @@ class SameValueTests(unittest.TestCase):
         with mock.patch.object(criteria, "_RENAMINGS", 0):  # Only the renaming in order of first appearance
             self.assertFalse(criteria.same_value(record, twin))
         self.assertTrue(criteria.same_value(record, twin))
+
+
+@unittest.skipUnless(SYMPY, NO_SYMPY)
+class FrozenRecordTests(unittest.TestCase):
+    def test_every_frozen_record_is_rebuilt_or_compared_by_its_output(self):
+        """Every record of the local examples file either rebuilds SymPy's value from its srepr or falls back to its
+        printed output, and either way compares equal to what it records; the counts are printed."""
+        if not FROZEN_EXAMPLES.is_file():
+            self.skipTest(f"{FROZEN_EXAMPLES} is local data that is never committed")
+        import sympy
+        examples = [example for items in load_examples(FROZEN_EXAMPLES).values() for example in items]
+        reasons = collections.Counter()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # Some records rebuild deprecated forms, such as non-Expr matrix entries.
+            for example in examples:
+                value, problem = criteria._reference(sympy, example.srepr, example.output)
+                reasons[problem or "rebuilt"] += 1
+                with self.subTest(example.id, problem=problem):
+                    self.assertTrue(criteria.same_value(example, Printed(example.output) if problem else value))
+        rebuilt = reasons.pop("rebuilt", 0)
+        self.assertEqual(rebuilt + sum(reasons.values()), len(examples))
+        print(f"\nfrozen records: {rebuilt} of {len(examples)} rebuilt from their srepr; compared by their output: "
+              + ", ".join(f"{count} {reason}" for reason, count in sorted(reasons.items())), flush=True)
 
 
 @unittest.skipUnless(SYMPY, NO_SYMPY)
@@ -508,7 +616,7 @@ class PilotAdapterTests(unittest.TestCase):
                 self.assertIsNone(result)
         # A recorded answer that differs is a mismatch: the comparison is real.
         wrong = dataclasses.replace(self.record("continued_fraction(Rational(415, 93))"),
-                                    srepr="[Integer(4), Integer(2), Integer(6), Integer(6)]")
+                                    srepr="[Integer(4), Integer(2), Integer(6), Integer(6)]", output="[4, 2, 6, 6]")
         outcome, result = criteria.ADAPTERS["27.25"](wrong)
         self.assertIs(outcome, Outcome.MISMATCH)
         self.assertEqual(result.value.terms, (4, 2, 6, 7))

@@ -916,7 +916,8 @@ def _surd_div(left, right):
     real = field.mul(field.add(field.mul(a, c), field.mul(b, d)), inverse)
     imag = field.mul(field.sub(field.mul(b, c), field.mul(a, d)), inverse)
     # The answer times the divisor is the dividend.
-    if (field.sub(field.mul(real, c), field.mul(imag, d)) != a or field.add(field.mul(real, d), field.mul(imag, c)) != b):
+    if (field.sub(field.mul(real, c), field.mul(imag, d)) != a
+            or field.add(field.mul(real, d), field.mul(imag, c)) != b):
         raise _Decline
     return _surd_value(field, real, imag)
 

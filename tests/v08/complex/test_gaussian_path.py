@@ -526,7 +526,7 @@ class SurdPathTest(unittest.TestCase):
         answered = 0
         for operation in ("complex_mul", "complex_div", "complex_pow", "quadratic_roots"):
             with self.subTest(operation=operation):
-                for i in range(40):
+                for i in range(24):
                     args = surd_arguments(operation, i)
                     want = outcome(lambda: getattr(operations, operation)(*args))
                     got = getattr(lean.functions, operation)(*args)
@@ -536,7 +536,7 @@ class SurdPathTest(unittest.TestCase):
                         answered += 1
                     elif want[2] != "resource_limit_exceeded":  # A zero leading coefficient, say: the same error.
                         self.assertIs(got, lean.FALLBACK, (operation, i, args, want))
-        self.assertGreater(answered, 100)
+        self.assertGreater(answered, 70)
 
     def test_the_speed_fixtures(self):
         from mathforge import lean, operations

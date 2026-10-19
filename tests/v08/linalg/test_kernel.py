@@ -2,6 +2,7 @@
 
 import math
 import unittest
+import unittest.mock
 
 import mathforge as mf
 from mathforge import lean, operations
@@ -98,6 +99,37 @@ class LeanValuesTest(unittest.TestCase):
             for operation in ("trace", "det", "inverse"):
                 with self.subTest(operation=operation, matrix=matrix):
                     self.assertLeanEqualsStructured(operation, matrix)
+
+    def test_values_equal_v07(self):
+        """500 seeded rational matrices (shapes 0..8 x 0..8, every rank, denominators up to 12, zero rows and
+        columns): the echelon operations and lu equal the reduce_with_trace-based v0.7 values."""
+        for matrix in matrices(14, 500):
+            for operation in ("rref", "rank", "nullspace", "rowspace", "columnspace", "lu"):
+                with self.subTest(operation=operation, matrix=matrix):
+                    self.assertLeanEqualsStructured(operation, matrix)
+
+    def test_full_rank_shortcut(self):
+        """An invertible 16x16 is certified by the minor test alone: the elimination kernel never runs."""
+        from mathforge.lean import linalg_matrices
+        matrix = mf.Matrix(tuple(tuple(17 if i == j else (i * 7 + j * 3) % 5 - 2 for j in range(16))
+                                 for i in range(16)))
+        with unittest.mock.patch.object(linalg_matrices, "integer_echelon",
+                                        side_effect=AssertionError("eliminated")):
+            for operation in ("rref", "rank", "nullspace", "rowspace", "columnspace"):
+                self.assertLeanEqualsStructured(operation, matrix)
+        singular = mf.Matrix(((1, 2, 3), (2, 4, 6), (1, 0, 1)))
+        self.assertLeanEqualsStructured("rref", singular)  # The claim fails; the kernel produces the certificate.
+
+    def test_echelon_certificate_is_checked(self):
+        from mathforge.lean import linalg_matrices
+        matrix = mf.Matrix(((1, 2, 3, 4), (2, 4, 6, 8), (1, 0, 1, 0)))
+        honest = kernel.echelon(clear_row_denominators(matrix.rows)[0], 4)
+        forged = honest._replace(numerators=(honest.numerators[0], tuple(v + 1 for v in honest.numerators[1])))
+        with unittest.mock.patch.object(linalg_matrices, "integer_echelon", return_value=forged):
+            for operation in ("rref", "rank", "nullspace", "rowspace", "columnspace"):
+                self.assertIs(getattr(lean.functions, operation)(matrix), lean.FALLBACK)
+        with unittest.mock.patch.object(linalg_matrices, "check_echelon", return_value=1):
+            self.assertIs(lean.functions.rank(matrix), lean.FALLBACK)  # Only True is acceptance.
 
     def test_inputs_that_fall_back(self):
         from mathforge.limits import ComputationLimits, computation

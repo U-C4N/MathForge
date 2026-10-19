@@ -20,7 +20,7 @@ from typing import NamedTuple
 
 from ..limits import current_budget
 from ..model import Rational
-from ..trusted.intmatrix import clear_row_denominators, ratio
+from ..trusted.intmatrix import ONE, ZERO, clear_row_denominators, ratio
 from ..trusted.primes import moduli
 
 
@@ -125,6 +125,42 @@ def echelon(rows: Sequence[Sequence[int]], ncols: int) -> Echelon:
     if r == 0:
         return Echelon((), (), (), 1, 2)
     return Echelon(tuple(pivots), tuple(order[:r]), numerators, previous, _modulus(previous))
+
+
+def lu(rows: Sequence[Sequence[Rational]]) -> tuple[tuple[tuple[Rational, ...], ...], ...]:
+    """(P, L, U) with P A = L U for a square rational matrix, by v0.7's elimination: column k takes the first row at or
+    below k with a nonzero entry as its pivot (no pivot: the column is skipped), so the factors are v0.7's."""
+    budget = current_budget()
+    n = len(rows)
+    U = [list(row) for row in rows]
+    L = [[ONE if i == j else ZERO for j in range(n)] for i in range(n)]
+    P = [[ONE if i == j else ZERO for j in range(n)] for i in range(n)]
+    for k in range(n):
+        candidate = k
+        while not U[candidate][k].numerator:
+            candidate += 1
+            if candidate == n:
+                break
+        if candidate == n:
+            continue
+        if candidate != k:
+            U[k], U[candidate] = U[candidate], U[k]
+            P[k], P[candidate] = P[candidate], P[k]
+            L[k][:k], L[candidate][:k] = L[candidate][:k], L[k][:k]
+        pivot_row = U[k]
+        pivot = pivot_row[k]
+        start = k + 1
+        tail = pivot_row[start:]
+        if budget is not None:
+            budget.tick(1 + (n - start) * (n - start))
+        for i in range(start, n):
+            row = U[i]
+            multiplier = row[k] / pivot
+            L[i][k] = multiplier
+            row[k] = ZERO
+            if multiplier.numerator:
+                row[start:] = [u - multiplier * v for u, v in zip(row[start:], tail)]
+    return (tuple(tuple(row) for row in P), tuple(tuple(row) for row in L), tuple(tuple(row) for row in U))
 
 
 def inverse(rows: Sequence[Sequence[Rational]]) -> tuple[tuple[Rational, ...], ...] | None:

@@ -6,6 +6,8 @@ import unittest
 import mathforge as mf
 from mathforge.certify.linalg import determinant as det_checker, inverse as inverse_checker
 from mathforge.certify.linalg._modular import det_mod, nonsingular_mod
+from mathforge.certify.linalg.echelon import check_echelon
+from mathforge.certify.linalg.lu import check_lu
 from mathforge.certify.linalg.trace import check_trace
 from mathforge.kernels import linalg as kernel
 from mathforge.trusted.intmatrix import clear_row_denominators
@@ -88,6 +90,69 @@ class InverseCertificateTest(unittest.TestCase):
             self.assertFalse(inverse_checker.check_inverse(matrix, inverse[:-1]))
         self.assertGreater(checked, 100)
         self.assertFalse(inverse_checker.check_inverse(mf.Matrix(((1, 2), (3, 4))), ((R(1), R(0)), (R(0), 1))))
+
+
+class EchelonCertificateTest(unittest.TestCase):
+    def certify(self, int_rows, ncols, certificate):
+        return check_echelon(int_rows, ncols, certificate.numerators, certificate.denominator, certificate.pivots,
+                             certificate.basis_rows, certificate.modulus)
+
+    def test_honest_certificates_pass(self):
+        for matrix in matrices(24, 300):
+            int_rows, _ = clear_row_denominators(matrix.rows)
+            with self.subTest(matrix=matrix):
+                self.assertIs(self.certify(int_rows, matrix.ncols, kernel.echelon(int_rows, matrix.ncols)), True)
+
+    def test_forgeries_fail(self):
+        # Rank 2, pivots (0, 2): row 1 is twice row 0.
+        int_rows = ((1, 2, 3, 4), (2, 4, 6, 8), (1, 2, 1, 0))
+        honest = kernel.echelon(int_rows, 4)
+        self.assertEqual(honest.pivots, (0, 2))
+        self.assertTrue(self.certify(int_rows, 4, honest))
+        numerators = [list(row) for row in honest.numerators]
+        numerators[0][3] += 1  # One R entry changed.
+        self.assertFalse(self.certify(int_rows, 4, honest._replace(numerators=tuple(map(tuple, numerators)))))
+        self.assertFalse(self.certify(int_rows, 4, honest._replace(pivots=(0, 3))))  # A pivot moved.
+        self.assertFalse(self.certify(int_rows, 4, honest._replace(pivots=(1, 2))))
+        self.assertFalse(self.certify(int_rows, 4, honest._replace(basis_rows=(0, 1))))  # A dependent row.
+        determinant = honest.denominator
+        divisor = abs(determinant) if abs(determinant) > 1 else None
+        if divisor is not None:  # A modulus dividing the minor's determinant.
+            self.assertFalse(self.certify(int_rows, 4, honest._replace(modulus=divisor)))
+        self.assertFalse(self.certify(int_rows, 4, honest._replace(modulus=1)))
+        # Dropping a row of R: the rank claimed too small fails C2.
+        self.assertFalse(self.certify(int_rows, 4, honest._replace(
+            numerators=honest.numerators[:1], pivots=(0,), basis_rows=(0,))))
+        # The identity claim for a singular square matrix fails C3.
+        square = ((1, 2, 3), (2, 4, 6), (1, 0, 1))
+        self.assertFalse(check_echelon(square, 3, None, 1, (0, 1, 2), (0, 1, 2), MODULI[0]))
+        self.assertTrue(check_echelon(((2, 1), (1, 1)), 2, None, 1, (0, 1), (0, 1), MODULI[0]))
+        self.assertFalse(check_echelon(((2, 1), (1, 1)), 2, ((2, 0), (0, 2.0)), 2, (0, 1), (0, 1), MODULI[0]))
+
+    def test_composite_modulus_is_sound(self):
+        int_rows = ((3, 0), (0, 5))
+        honest = kernel.echelon(int_rows, 2)
+        self.assertTrue(self.certify(int_rows, 2, honest))
+        self.assertFalse(self.certify(int_rows, 2, honest._replace(modulus=15)))  # 15 is no unit modulus here.
+        self.assertTrue(self.certify(int_rows, 2, honest._replace(modulus=7)))
+
+
+class LUCertificateTest(unittest.TestCase):
+    def test_honest_and_forged_factors(self):
+        for matrix in matrices(25, 150, square=True, max_size=7):
+            P, L, U = kernel.lu(matrix.rows)
+            with self.subTest(matrix=matrix):
+                self.assertTrue(check_lu(matrix, P, L, U))
+                if len(P) < 2:
+                    continue
+                if len(set(matrix.rows)) == len(matrix.rows):  # Another permutation then gives another P A.
+                    self.assertFalse(check_lu(matrix, P[::-1], L, U))
+                forged = [list(row) for row in U]
+                forged[0][-1] = forged[0][-1] + R(1, 2)
+                self.assertFalse(check_lu(matrix, P, L, tuple(map(tuple, forged))))
+                lower = [list(row) for row in L]
+                lower[0][1] = R(1)  # Not lower triangular.
+                self.assertFalse(check_lu(matrix, P, tuple(map(tuple, lower)), U))
 
 
 class TraceCertificateTest(unittest.TestCase):

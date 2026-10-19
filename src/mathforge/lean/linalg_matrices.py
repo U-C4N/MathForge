@@ -15,23 +15,23 @@ sum of the row sizes past the integer bound) falls back before any elimination.
 from __future__ import annotations
 
 from math import gcd, prod
-from operator import attrgetter
 
 from ..certify.linalg.determinant import check_integer_determinant
+from ..certify.linalg.echelon import check_echelon
 from ..certify.linalg.inverse import check_inverse
+from ..certify.linalg.lu import check_lu
 from ..certify.linalg.trace import check_trace
-from ..kernels.linalg import determinant, inverse as integer_inverse
+from ..kernels.linalg import Echelon, determinant, echelon as integer_echelon, inverse as integer_inverse, lu as plu
 from ..limits import ComputationLimits, computation, current_budget
-from ..matrices import Matrix, trusted_matrix
+from ..matrices import Matrix, trusted_matrix, trusted_rref
 from ..model import Rational
-from ..trusted.intmatrix import ONE, ZERO, clear_row_denominators, integer, ratio
+from ..trusted.intmatrix import ONE, ZERO, clear_row_denominators, ratio
+from ..trusted.primes import MODULI
 from . import FALLBACK
 
 _LIMITS = ComputationLimits()
 _MAX_ENTRIES = _LIMITS.max_matrix_entries
 _MAX_BITS = _LIMITS.max_integer_bits
-_numerator = attrgetter("numerator")
-_denominator = attrgetter("denominator")
 
 
 def _entries(A):
@@ -141,4 +141,129 @@ def inverse(A):
         return FALLBACK
 
 
-LEAN = {"trace": trace, "det": det, "inverse": inverse}
+def _certified_echelon(A):
+    """(rows, ncols, certified Echelon) of a validated matrix, else None. A square matrix is first claimed to be
+    nonsingular (R = I, numerators None), which the certificate's minor test alone settles; otherwise, and when that
+    claim fails, kernels.linalg.echelon produces the certificate. certify.linalg.echelon checks it either way."""
+    rows = _entries(A)
+    if rows is None:
+        return None
+    integers = _integer_rows(rows)
+    if integers is None:
+        return None
+    int_rows = integers[0]
+    ncols = A.ncols
+    with computation(fresh=True):
+        if ncols and len(rows) == ncols:
+            full = tuple(range(ncols))
+            if check_echelon(int_rows, ncols, None, 1, full, full, MODULI[0]) is True:
+                return rows, ncols, Echelon(full, full, None, 1, MODULI[0])
+        result = integer_echelon(int_rows, ncols)
+        if check_echelon(int_rows, ncols, result.numerators, result.denominator, result.pivots,
+                         result.basis_rows, result.modulus) is not True:
+            return None
+    return rows, ncols, result
+
+
+def _reduced_rows(certificate, ncols):
+    """The nonzero rows of the RREF as canonical Rationals."""
+    if certificate.numerators is None:
+        return tuple(tuple(ONE if i == j else ZERO for j in range(ncols)) for i in range(ncols))
+    denominator = certificate.denominator
+    return tuple(tuple([ratio(value, denominator) for value in row]) for row in certificate.numerators)
+
+
+def _lean(function):
+    """A lean function: FALLBACK inside an active budget, for a None answer and for any exception."""
+    def lean(A):
+        try:
+            if current_budget() is not None:
+                return FALLBACK
+            value = function(A)
+            return FALLBACK if value is None else value
+        except Exception:
+            return FALLBACK
+    lean.__name__ = lean.__qualname__ = function.__name__.lstrip("_")
+    lean.__doc__ = function.__doc__
+    return lean
+
+
+@_lean
+def _rref(A):
+    """The reduced row echelon form with its zero rows, and the pivot columns: certified by the echelon checker."""
+    certified = _certified_echelon(A)
+    if certified is None:
+        return None
+    rows, ncols, certificate = certified
+    reduced = _reduced_rows(certificate, ncols)
+    zero = (ZERO,) * ncols
+    matrix = trusted_matrix(reduced + (zero,) * (len(rows) - len(reduced)), ncols)
+    return trusted_rref(matrix, certificate.pivots)
+
+
+@_lean
+def _rank(A):
+    """The rank: the number of pivots of the certified echelon form."""
+    certified = _certified_echelon(A)
+    return None if certified is None else len(certified[2].pivots)
+
+
+@_lean
+def _nullspace(A):
+    """The canonical basis read from the certified RREF: for each free column f, 1 at f, 0 at the other free columns
+    and -R_i[f] at pivot i (A v = 0 by the certificate's C2)."""
+    certified = _certified_echelon(A)
+    if certified is None:
+        return None
+    _, ncols, certificate = certified
+    pivots = certificate.pivots
+    if certificate.numerators is None:
+        return ()
+    pivot_set = set(pivots)
+    numerators, denominator = certificate.numerators, certificate.denominator
+    basis = []
+    for free in range(ncols):
+        if free in pivot_set:
+            continue
+        vector = [ZERO] * ncols
+        vector[free] = ONE
+        for row, pivot in zip(numerators, pivots):
+            vector[pivot] = ratio(-row[free], denominator)
+        basis.append(tuple(vector))
+    return tuple(basis)
+
+
+@_lean
+def _rowspace(A):
+    """The nonzero rows of the certified RREF."""
+    certified = _certified_echelon(A)
+    return None if certified is None else _reduced_rows(certified[2], certified[1])
+
+
+@_lean
+def _columnspace(A):
+    """The columns of A at the certified pivot columns."""
+    certified = _certified_echelon(A)
+    if certified is None:
+        return None
+    rows, _, certificate = certified
+    return tuple(tuple([row[column] for row in rows]) for column in certificate.pivots)
+
+
+@_lean
+def _lu(A):
+    """v0.7's PLU elimination (kernels.linalg.lu), checked by v0.7's criterion in integers (certify.linalg.lu)."""
+    rows = _entries(A)
+    if rows is None or len(rows) != A.ncols or _integer_rows(rows) is None:
+        return None
+    from ..linear_extensions import trusted_lu
+    n = A.ncols
+    with computation(fresh=True):
+        P, L, U = plu(rows)
+        if check_lu(rows, P, L, U) is not True:
+            return None
+    return trusted_lu(trusted_matrix(P, n), trusted_matrix(L, n), trusted_matrix(U, n))
+
+
+LEAN = {"trace": trace, "det": det, "inverse": inverse, "rref": _rref, "rank": _rank, "nullspace": _nullspace,
+        "rowspace": _rowspace, "columnspace": _columnspace, "lu": _lu}

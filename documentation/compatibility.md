@@ -1,5 +1,28 @@
 # Compatibility and release checks
 
+## What v0.8 preserves
+
+The dependency-free Python 3.11–3.14 core and the v0.7 public API remain. Every
+v0.7 operation keeps its name, signature, values and errors, and the thirty v0.7
+MCP tools keep their names, order and input schemas; `api_version` stays 1.
+Operations added in v0.8 live in their area module and in `mathforge.operations`,
+not in the plain `mathforge` namespace.
+
+Mathematical JSON v1–v5 documents keep their bytes and content hashes and verify
+unchanged, also in mixed workspaces. The results of the v0.7 operations keep their
+format version and serialize to the same bytes. Only the operations that v0.8 adds
+write JSON v6, which MathForge 0.7 does not read. A v6 request records its format
+version, so a later build's v6 requests keep their content hashes when this build
+loads them, and a v6 result whose operation a build does not know verifies as
+`UNKNOWN`, never as failed.
+
+Exact arithmetic is cheaper in v0.8, so computations charge less work. Computation
+limits remain ceilings, not cost promises: an input just past a limit may now
+succeed where v0.7 reported a resource-limit error. A value function called without
+`limits` may answer through the lean value path described under
+[performance](performance.md); a call that path does not handle takes the structured
+path, so values and errors stay those of the structured operations.
+
 ## What v0.7 preserves
 
 The dependency-free Python 3.11–3.14 core, legacy expression parser and real

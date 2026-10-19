@@ -106,9 +106,13 @@ class AreaToolTests(unittest.TestCase):
         self.assertEqual(current["operations"][:len(frozen["operations"])], frozen["operations"])
 
         def descriptive(document):
-            return {key: value for key, value in document.items() if key not in ("tools", "operations")}
+            # package_version is the one field that every release changes: the frozen file keeps v0.7's.
+            return {key: value for key, value in document.items()
+                    if key not in ("tools", "operations", "package_version")}
 
         self.assertEqual(descriptive(current), descriptive(frozen))
+        self.assertEqual(frozen["package_version"], "0.7.0")
+        self.assertEqual(current["package_version"], m.__version__)
         # v6 operations follow the frozen entries, each naming the area tool that runs it; one that supersedes a
         # v0.7 operation keeps that operation's frozen entry.
         later = current["operations"][len(frozen["operations"]):]

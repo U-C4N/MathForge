@@ -1,4 +1,4 @@
-"""Lean complex scalar operations: the Gaussian-rational path.
+"""Lean complex scalar operations: Gaussian rationals and quadratic surds.
 
 ``mathforge.complex_*`` and ``mathforge.quadratic_roots`` called without ``limits`` first call these functions. An
 operand that is an int, a ``Rational`` or a ``ComplexAlgebraic`` whose two parts are ``Rational`` is a Gaussian
@@ -7,12 +7,17 @@ checks it by a second computation of a different shape and builds the ``ComplexA
 The structured path builds the same value from certified real-algebraic arithmetic, which for Gaussian operands
 only ever meets rational numbers, so the two values are equal (``tests/v08/complex``).
 
-Everything else, an operand with an irrational part or a call that is no valid Gaussian one, is the generic runner's
+A product, quotient or power of operands whose irrational parts are quadratic surds (a ``RealAlgebraicRoot`` of
+degree two), the roots of a rational quadratic with irrational roots, and ``complex_algebraic`` of expressions of
+square roots take the second path, described in front of ``_Field``: exact arithmetic in a field Q(sqrt b_1, ...,
+sqrt b_t), each irrational part named as the structured path names it and checked against its element.
+
+Everything else, an operand with another irrational part or a call that is no valid one, is the generic runner's
 (``run_value``: the family's producer and its v0.7 checker, as before) or, for a call that the structured path
 refuses, ``FALLBACK``.
 
-The checks, one per operation, recompute the answer another way and compare by cross-multiplication, so that no
-reduced fraction is compared with a fraction produced by the same code:
+The checks of the Gaussian path, one per operation, recompute the answer another way and compare by
+cross-multiplication, so that no reduced fraction is compared with a fraction produced by the same code:
 
 * add and subtract: the other operand subtracted from, or added to, the answer gives the first operand back;
 * multiply: the three-multiplication (Karatsuba) expansion of the product of the two numerators;
@@ -40,7 +45,7 @@ from math import gcd, isqrt, lcm
 from ..algebraic import RealAlgebraicRoot
 from ..complex_numbers import ComplexAlgebraic, ComplexRoot
 from ..limits import ComputationLimits, current_budget
-from ..model import Rational, trusted_rational
+from ..model import Add, Mul, Pow, Rational, Sqrt, trusted_rational
 from . import FALLBACK, run_value
 
 _BITS = ComputationLimits().max_integer_bits
@@ -143,7 +148,7 @@ def complex_algebraic(real, imag):
             return _complex(real, 1, imag, 1)
         a, b = _scalar(real, _BITS), _scalar(imag, _BITS)
         if a is None or b is None:
-            return _generic("complex_algebraic", {"real": real, "imag": imag})
+            return _surd(_surd_algebraic, "complex_algebraic", {"real": real, "imag": imag}, real, imag)
         return _complex(a[0], a[1], b[0], b[1])  # _scalar has checked both parts to be canonical rationals.
     except Exception:
         return FALLBACK
@@ -952,6 +957,200 @@ def _surd_pow(base, n):
             raise _Decline
         result = answer
     return _surd_value(field, *result)
+
+
+# The parts of complex_algebraic are expressions. The lean path reads those built from Rationals, Sqrt, quadratic
+# RealAlgebraicRoots, Add, Mul and Pow with a small exponent; the limits keep it far below the depth and the node
+# count at which the structured path's records refuse an expression, so that an expression of the structured path's
+# limits is never answered here.
+_EXPRESSION_NODES = 200
+_EXPRESSION_DEPTH = 16
+_EXPRESSION_POWER = 256
+
+
+def _rational_root(r):
+    """(g, q, n) with sqrt(r) = (g/q) sqrt(n) for a canonical Rational r >= 0: n = 1 for a rational root, else
+    squarefree; _Decline when the squarefree part cannot be found."""
+    product = r.numerator * r.denominator
+    if product == 0:
+        return 0, 1, 1
+    root = isqrt(product)
+    if root * root == product:
+        return root, r.denominator, 1
+    split = _squarefree(product)
+    if split is None:
+        raise _Decline
+    return split[0], r.denominator, split[1]
+
+
+def _scan(expression):
+    """The squarefree radicands of the square roots and quadratic roots of an expression; _Decline for a shape that
+    the lean path does not read, or one that is large."""
+    radicands, pending, nodes = [], [(expression, 0)], 0
+    while pending:
+        node, depth = pending.pop()
+        nodes += 1
+        kind = type(node)
+        if nodes > _EXPRESSION_NODES or depth > _EXPRESSION_DEPTH:
+            raise _Decline
+        if kind is Rational:
+            if not _valid(node.numerator, node.denominator, _SMALL):
+                raise _Decline
+        elif kind is Sqrt:
+            radicand = node.radicand
+            if (type(radicand) is not Rational or radicand.numerator < 0
+                    or not _valid(radicand.numerator, radicand.denominator, _SMALL)):
+                raise _Decline
+            n = _rational_root(radicand)[2]
+            if n > 1:
+                radicands.append(n)
+        elif kind is RealAlgebraicRoot:
+            radicands.append(_quadratic_data(node)[3])
+        elif kind is Add:
+            pending.extend((term, depth + 1) for term in node.terms)
+        elif kind is Mul:
+            pending.extend((factor, depth + 1) for factor in node.factors)
+        elif kind is Pow:
+            if type(node.exponent) is not int or not 0 <= node.exponent <= _EXPRESSION_POWER:
+                raise _Decline
+            pending.append((node.base, depth + 1))
+        else:
+            raise _Decline
+    return radicands
+
+
+def _element(field, node):
+    """The value of a scanned expression as an element of the field: sums and products folded from the left, powers
+    by repeated squaring."""
+    kind = type(node)
+    if kind is Rational:
+        return field.constant(node)
+    if kind is Sqrt:
+        g, q, n = _rational_root(node.radicand)
+        x = [_ZERO] * field.size
+        x[field.mask(n) if n > 1 else 0] = Rational(g, q)
+        return tuple(x)
+    if kind is RealAlgebraicRoot:
+        return field.quadratic(*_quadratic_data(node))
+    if kind is Add:
+        total = field.zero
+        for term in node.terms:
+            total = field.add(total, _element(field, term))
+        return total
+    if kind is Mul:
+        product = field.one
+        for factor in node.factors:
+            product = field.mul(product, _element(field, factor))
+        return product
+    base, result = _element(field, node.base), field.one
+    for bit in bin(node.exponent)[2:]:
+        result = field.mul(result, result)
+        if bit == "1":
+            result = field.mul(result, base)
+    return result
+
+
+def _recompute(field, node):
+    """The value again, as the check: every square root squares to its radicand and is not negative, every
+    quadratic root is checked against its descriptor, sums and products are folded from the right and powers are
+    repeated products."""
+    kind = type(node)
+    if kind is Rational:
+        return field.constant(node)
+    if kind is Sqrt:
+        x = _element(field, node)
+        order = field.compare(x, field.zero)
+        if field.mul(x, x) != field.constant(node.radicand) or order is None or order < 0:
+            raise _Decline
+        return x
+    if kind is RealAlgebraicRoot:
+        x = field.quadratic(*_quadratic_data(node))
+        if not _represents(field, x, node):
+            raise _Decline
+        return x
+    if kind is Add:
+        total = field.zero
+        for term in reversed(node.terms):
+            total = field.add(_recompute(field, term), total)
+        return total
+    if kind is Mul:
+        product = field.one
+        for factor in reversed(node.factors):
+            product = field.mul(_recompute(field, factor), product)
+        return product
+    base, result = _recompute(field, node.base), field.one
+    for _ in range(node.exponent):
+        result = field.mul(base, result)
+    return result
+
+
+def _sqrt_interval(r):
+    """Rational (low, high) around sqrt(r) for a Rational r >= 0, within 2**-64."""
+    scale = 1 << 64
+    low = isqrt(r.numerator * scale * scale // r.denominator)
+    return Rational(low, scale), Rational(low + 1, scale)
+
+
+def _interval(node):
+    """A rational interval around the value of a scanned expression, by interval arithmetic on the expression alone."""
+    kind = type(node)
+    if kind is Rational:
+        return node, node
+    if kind is Sqrt:
+        return _sqrt_interval(node.radicand)
+    if kind is RealAlgebraicRoot:
+        c0, c1, c2 = node.integer_coefficients
+        low, high = _sqrt_interval(Rational(c1 * c1 - 4 * c0 * c2))
+        shift, half = Rational(-c1, 2 * c2), Rational(1, 2 * c2)
+        if node.real_index:
+            return shift + low * half, shift + high * half
+        return shift - high * half, shift - low * half
+    if kind is Add:
+        low = high = _ZERO
+        for term in node.terms:
+            term_low, term_high = _interval(term)
+            low, high = low + term_low, high + term_high
+        return low, high
+    if kind is Mul:
+        low = high = _ONE
+        for factor in node.factors:
+            factor_low, factor_high = _interval(factor)
+            products = low * factor_low, low * factor_high, high * factor_low, high * factor_high
+            low, high = min(products), max(products)
+        return low, high
+    base_low, base_high = _interval(node.base)
+    low = high = _ONE
+    for _ in range(node.exponent):
+        products = low * base_low, low * base_high, high * base_low, high * base_high
+        low, high = min(products), max(products)
+    return low, high
+
+
+def _surd_algebraic(real, imag):
+    parts = []
+    for part in (real, imag):
+        if type(part) is int:
+            if part.bit_length() > _SMALL:
+                raise _Decline
+            part = trusted_rational(part, 1)
+        parts.append(part)
+    radicands = []
+    for part in parts:
+        radicands += _scan(part)
+    base = _coprime_base(radicands)
+    if len(base) > _ROOTS:
+        raise _Decline
+    field = _Field(base)
+    elements = [_element(field, part) for part in parts]
+    for part, x in zip(parts, elements):
+        # The value read again another way, and consistent with the interval arithmetic of the expression.
+        if _recompute(field, part) != x:
+            raise _Decline
+        low, high = _interval(part)
+        x_low, x_high = field.enclosure(x, 64)
+        if max(low, x_low) > min(high, x_high):
+            raise _Decline
+    return _surd_value(field, *elements)
 
 
 def _surd_quadratic(qa, qb, disc, an, ad, bn, bd, cn, cd):

@@ -561,6 +561,58 @@ class SurdPathTest(unittest.TestCase):
             with self.subTest(operation=operation):
                 self.assertEqual(getattr(mf, operation)(*args), getattr(mf.operations, operation)(*args).unwrap())
 
+    def test_complex_algebraic_of_expressions(self):
+        """complex_algebraic of expressions of square roots, from the fixtures and the shapes the lean path reads."""
+        from mathforge import lean, operations
+        from mathforge.model import Add, Mul, Pow, Sqrt
+        r2, r3, r5 = mf.sqrt(2), mf.sqrt(3), mf.sqrt(5)
+        root = mf.RealAlgebraicRoot((-2, 0, 1), 0)  # -sqrt(2)
+        cases = [(r2, 1), (1 + r2, r3), (r2 * r3, r2 - r2), (Pow(r2 + r3, 3), Mul((r2, r3, r5))),
+                 (Sqrt(mf.Rational(4)), Sqrt(mf.Rational(1, 2))), (mf.sqrt(8), mf.sqrt(18)), (Pow(r2, 2), Pow(r3, 0)),
+                 (mf.Rational(1, 3) * r2 + 5, root), (Sqrt(mf.Rational(0)), r2 * r2), (3, r5 * root),
+                 (Add((r2, mf.sqrt(50), mf.Rational(1, 2))), Mul((root, root, root)))]
+        for p, q in ((2, 3), (5, 7), (3, 11)):  # The speed fixture.
+            cases.append((1 + mf.sqrt(p), mf.sqrt(q)))
+        for real, imag in cases:
+            with self.subTest(real=real, imag=imag):
+                want = operations.complex_algebraic(real, imag).unwrap()
+                got = lean.functions.complex_algebraic(real, imag)
+                self.assertIsNot(got, lean.FALLBACK)
+                self.assertSameValue(got, want)
+        # Shapes that it leaves to the generic runner: a symbol, a long sum, a deep one and a float.
+        x = mf.Symbol("x")
+        deep = r2
+        for _ in range(20):
+            deep = Add((deep, mf.Rational(1)))
+        for real, imag in ((x, 1), (Add((r2,) * 300), 0), (deep, r3), (1.5, 1), (True, 1)):
+            with self.subTest(real=real):
+                want = outcome(lambda: operations.complex_algebraic(real, imag))
+                got = lean.functions.complex_algebraic(real, imag)
+                if want[0] == "value":
+                    self.assertIsNot(got, lean.FALLBACK)
+                    self.assertSameValue(got, want[1])
+                else:
+                    self.assertIs(got, lean.FALLBACK)
+
+    def test_complex_algebraic_expression_values_equal_structured(self):
+        """Seeded products and cubes of surd parts: the lean value is the structured one."""
+        from mathforge import lean, operations
+        from mathforge.model import Pow
+        answered = 0
+        for i in range(60):
+            real, imag = _surd_part(7, i, 0), _surd_part(7, i, 1)
+            if i % 3 == 1:
+                real = real * _surd_part(8, i, 0)
+            if i % 5 == 2 and type(real) not in (int, mf.Rational):
+                real = Pow(real, 3)
+            want = outcome(lambda: operations.complex_algebraic(real, imag))
+            got = lean.functions.complex_algebraic(real, imag)
+            if want[0] == "value":
+                self.assertIsNot(got, lean.FALLBACK, (i, real, imag))
+                self.assertSameValue(got, want[1], (i, real, imag))
+                answered += 1
+        self.assertGreater(answered, 50)
+
     def test_operands_beyond_quadratic_surds_take_the_generic_runner(self):
         from mathforge import lean, operations
         cube = mf.RealAlgebraicRoot((-2, 0, 0, 1), 0)
@@ -646,7 +698,8 @@ class SurdPathTest(unittest.TestCase):
         z = number(((1, 2, 1),), ((1, 2, 3),))
         attempts = {"mul": lambda: module._surd_mul(left, right), "div": lambda: module._surd_div(left, right),
                     "pow": lambda: module._surd_pow(z, 7), "negative power": lambda: module._surd_pow(z, -5),
-                    "quadratic": lambda: module._surd_quadratic(1, 1, -3, 1, 1, 1, 1, 1, 1)}
+                    "quadratic": lambda: module._surd_quadratic(1, 1, -3, 1, 1, 1, 1, 1, 1),
+                    "algebraic": lambda: module._surd_algebraic(1 + mf.sqrt(2), mf.sqrt(3))}
         for label, attempt in attempts.items():
             self.assertIsNotNone(attempt(), label)
 
@@ -680,6 +733,14 @@ class SurdPathTest(unittest.TestCase):
         compare = module._Field.compare
         refused("quadratic: roots in the wrong order", patch.object(
             module._Field, "compare", lambda self, x, y: compare(self, y, x)))
+        # An expression read wrongly (its square roots no longer square to their radicands), and one whose
+        # interval arithmetic disagrees with the element.
+        element = module._element
+        refused("algebraic: an element that is wrong", patch.object(
+            module, "_element", lambda field, node: field.add(element(field, node), field.one)))
+        interval = module._interval
+        refused("algebraic: an interval that is off", patch.object(
+            module, "_interval", lambda node: (lambda r: (r[0] + 1, r[1] + 1))(interval(node))))
 
     def test_surd_fallbacks_stay_the_generic_runners(self):
         """When an attempt declines, the generic runner answers as before: here with every attempt broken."""

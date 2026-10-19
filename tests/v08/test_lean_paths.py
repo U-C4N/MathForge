@@ -455,11 +455,14 @@ class LeanPathTest(unittest.TestCase):
         # Where a budget runs out, the lean path answers exactly as long as the structured path does: just below the
         # first refused size it gives the structured value, at that size FALLBACK. The sizes are located on the
         # structured path, because they move when the arithmetic gets cheaper; the hints are the last ones measured.
+        # The hand-written median answers only for samples within stats_descriptive.SAMPLE_CAP: below the first
+        # refused size it gives the structured value or FALLBACK, never another value (the refused size lies far above
+        # the cap, now that the structured median check is one counting pass).
         sum_of = lambda terms: Add(tuple(mf.Rational(i, 7) * _x for i in range(1, terms)))  # noqa: E731
         sample = lambda count: tuple(mf.Rational(i, 7) for i in range(1, count + 1))  # noqa: E731
-        cases = (("simplify", sum_of, lambda e: dict(expression=e), 2500),  # The verifier reaches max_evidence_items.
-                 ("median", sample, lambda d: dict(data=d), 1000))  # The quadratic median checker reaches max_work.
-        for operation, build, arguments_of, hint in cases:
+        cases = (("simplify", sum_of, lambda e: dict(expression=e), 2500, True),  # The verifier reaches max_evidence_items.
+                 ("median", sample, lambda d: dict(data=d), 16659, False))  # So does the verifier, for a sample.
+        for operation, build, arguments_of, hint, exact in cases:
             refused = first_refused(lambda size: structured_function(operation)(**arguments_of(build(size))), hint)
             for size, fits in ((refused - 1, True), (refused, False)):
                 arguments = arguments_of(build(size))
@@ -467,9 +470,9 @@ class LeanPathTest(unittest.TestCase):
                 with self.subTest(operation=operation, size=size):
                     self.assertEqual(expected[0], "value" if fits else "error")
                     value = getattr(lean.functions, operation)(*positional(operation, arguments))
-                    if fits:
+                    if fits and (exact or value is not lean.FALLBACK):
                         self.assertSameValue(value, expected[1])
-                    else:
+                    elif not fits:
                         self.assertIs(value, lean.FALLBACK)
 
     def test_record_checks_fall_back(self):

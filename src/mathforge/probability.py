@@ -95,6 +95,19 @@ class FiniteDistribution:
             object.__setattr__(self, "probabilities", tuple(mass[outcome] for outcome in support))
 
 
+def _trusted_distribution(outcomes, probabilities):
+    """A FiniteDistribution from two tuples that are already canonical: no validation and no budget charge.
+
+    The caller guarantees what ``FiniteDistribution(outcomes, probabilities)`` establishes: equal nonzero lengths,
+    canonical Rationals, strictly increasing outcomes, positive probabilities that sum to one. The result is then
+    equal to the constructor's, with the same hash and repr.
+    """
+    value = object.__new__(FiniteDistribution)
+    object.__setattr__(value, "outcomes", outcomes)
+    object.__setattr__(value, "probabilities", probabilities)
+    return value
+
+
 def _distribution(value):
     if type(value) is not FiniteDistribution:
         raise InvalidInput("Expected a FiniteDistribution")

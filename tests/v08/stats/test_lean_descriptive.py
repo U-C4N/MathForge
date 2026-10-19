@@ -301,6 +301,16 @@ class BoundsTest(LeanStatisticsCase):
                                      ("stddev", (entries, 1)), ("covariance", (entries, other, 1))):
             with self.subTest(operation=operation):
                 self.assertAnswers(operation, *arguments)
+        # Six distinct denominators of 1,361 bits (a common denominator of about 8,160 bits), entries of 8,100 bits:
+        # the structured intermediates are larger here (about 45% of max_integer_bits), and it still answers.
+        denominators = [(1 << 1360) + 2 * k + 1 for k in range(1, 7)]
+        entries = tuple(R(rng.getrandbits(8100) | 1, d) for d in denominators)
+        other = tuple(R(rng.getrandbits(8100) | 1, d) for d in reversed(denominators))
+        self.assertLessEqual(sd._scale(*sd._prepare(entries)[1:])[0].bit_length(), sd.COMMON_BITS)
+        for operation, arguments in (("mean", (entries,)), ("median", (entries,)), ("variance", (entries, 1)),
+                                     ("stddev", (entries, 1)), ("covariance", (entries, other, 1))):
+            with self.subTest(operation=operation, denominators="distinct"):
+                self.assertAnswers(operation, *arguments)
 
     def test_the_common_denominator(self):
         # Distinct large denominators whose lcm has too many bits: the lean path steps aside, the structured path

@@ -8,11 +8,13 @@ that ``mathforge.operations.<operation>(...).unwrap()`` returns; anything else i
 denominator of at most ``COMMON_BITS`` bits; for the operations with a ddof, an exact int below the sample size. A
 call made while a computation budget is active is FALLBACK, and so is anything else: a one-shot iterator (nothing
 iterates it), a set or a range (the structured path's records refuse them), a float, a bool, a forged Rational, an
-empty sample, a ddof that v0.7 rejects. These bounds sit far inside the default limits: with them no structured
-intermediate (a deviation, a square, a product of two sums) gets near ``max_integer_bits``, and the records of the
-structured path stay far below ``max_nodes``, ``max_evidence_items`` and ``max_work``. Where the lean path answers,
-the structured path therefore answers too, with the same value (the median's structured check no longer costs
-quadratic work either).
+empty sample, a ddof that v0.7 rejects. The bounds sit inside the default limits, so that where the lean path answers
+the structured path answers too, with the same value: at 4,096 Rational entries the structured path needs at most 2%
+of ``max_work``, 33% of ``max_nodes`` and 49% of ``max_evidence_items`` (74% of it for a distribution of that many
+outcomes), and for entries and a common denominator at the bit bounds no structured intermediate (a deviation, a
+square, a product of two sums) needs more than about 45% of ``max_integer_bits``; tests/v08/stats/
+test_lean_descriptive.py (BoundsTest) pins these at the bounds. The median's structured check no longer costs quadratic
+work either.
 
 **The producer** works on integers: the sample is scaled to the least common denominator, so that every entry is an
 integer over one denominator; sums, sorting and the squared deviations from the mean are integer arithmetic, and the

@@ -83,6 +83,9 @@ DEFINITION_NAMES = (*KIND_NAMES, "envelope")
 # to one of them would shadow it; the generator checks that its wrappers use no other name.
 WRAPPER_NAMES = ("limits", "dict", "run", "run_v6", "structured")
 
+# A value wrapper also uses the lean functions, their FALLBACK answer and its local _value (mathforge.lean).
+WRAPPER_NAMES += ("_LEAN", "FALLBACK", "_value")  # type: ignore[assignment]  # The tuple grows by three names.
+
 # v0.7 producer modules. Their ARGUMENTS must match the v0.7 specs; their TYPES are the v5 records.
 V5_FAMILIES = tuple("mathforge." + name for name in (
     "number_theory", "combinatorics", "complex_numbers", "probability", "statistics",

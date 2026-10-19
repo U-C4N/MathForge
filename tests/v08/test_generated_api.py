@@ -270,6 +270,10 @@ class GeneratedApiTests(unittest.TestCase):
                       '    return run_v6("demo_triple", dict(n=n), limits=limits)\n', structured)
         self.assertIn('    return run("integer_gcd", dict(a=a, b=b), limits=limits)\n', structured)
         self.assertIn("def demo_triple(n: int, *, limits: ComputationLimits | None = None) -> DemoBox:\n"
+                      "    if limits is None:\n"
+                      "        _value = _LEAN.demo_triple(n)\n"
+                      "        if _value is not FALLBACK:\n"
+                      "            return _value\n"
                       "    return structured.demo_triple(n, limits=limits).unwrap()\n",
                       self.rendered("_generated/values.py"))
         discrete = self.rendered("discrete.py")

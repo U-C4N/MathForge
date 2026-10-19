@@ -5,7 +5,9 @@ so that type checkers see real signatures:
 
 - mathforge/_generated/structured.py: one Result-returning wrapper per operation. It calls the run
   function of the operation's result format version: operations_v5.run or operations_v6.run.
-- mathforge/_generated/values.py: the same signatures, returning the unwrapped value.
+- mathforge/_generated/values.py: the same signatures, returning the value. Without limits, a value wrapper
+  first calls the operation's lean function (mathforge.lean.functions), which answers the independently checked
+  value or FALLBACK; on FALLBACK, and whenever limits are given, it unwraps the structured wrapper's Result.
 - mathforge/<area>.py for each of the 18 registry.AREAS: the value functions of the area's operations
   and the record classes of its families.
 
@@ -60,6 +62,10 @@ LIMITS = "limits: ComputationLimits | None = None"
 # Result format version -> (module, imported name, local name) of the run function structured.py calls.
 RUNNERS = {5: ("mathforge.operations_v5", "run", "run"),
            6: ("mathforge.operations_v6", "run as run_v6", "run_v6")}
+# values.py imports the lean functions and their FALLBACK answer under these names (registry.WRAPPER_NAMES reserves
+# them, with the wrappers' local _value).
+LEAN_IMPORT = "from ..lean import FALLBACK, functions as _LEAN"
+LEAN_NAMES = ("FALLBACK", "_LEAN")
 
 # Annotation name -> the module of its import line, copied in order from the import block of the
 # v0.7 api_v7.py. Builtins need no entry; record classes of registered families are found on their own.
@@ -249,12 +255,19 @@ def _structured(specs: Sequence[OperationSpec], names: _Names) -> str:
 
 
 def _values(specs: Sequence[OperationSpec], names: _Names) -> str:
-    blocks, bound = _import_blocks(names, specs, ("ComputationLimits",), ["from . import structured"])
-    _check_unique("values.py", [*bound, "structured", *(spec.public_name for spec in specs)])
+    """Each value wrapper tries the operation's lean function when no limits are given (mathforge.lean), and takes
+    the structured wrapper when the lean function answers FALLBACK or limits are given."""
+    blocks, bound = _import_blocks(names, specs, ("ComputationLimits",), [LEAN_IMPORT, "from . import structured"])
+    _check_unique("values.py", [*bound, *LEAN_NAMES, "structured", *(spec.public_name for spec in specs)])
     functions = []
     for spec in specs:
+        lean_arguments = ", ".join(argument.name for argument in spec.arguments)
         arguments = ", ".join([*(argument.name for argument in spec.arguments), "limits=limits"])
         functions.append(f"def {spec.public_name}({_parameters(spec)}) -> {spec.returns}:\n"
+                         f"    if limits is None:\n"
+                         f"        _value = _LEAN.{spec.name}({lean_arguments})\n"
+                         f"        if _value is not FALLBACK:\n"
+                         f"            return _value\n"
                          f"    return structured.{spec.public_name}({arguments}).unwrap()\n")
     return _module([_all([spec.public_name for spec in specs]), *blocks], functions)
 

@@ -11,14 +11,15 @@ in turn across the row's APIs, and each of them runs again at PYTHONHASHSEED=1 a
 worker process started for it alone: an example whose record differs is excluded as unstable, so that no record
 depends on the hash seed or on the examples that ran before it. The curation file (default
 docs/v08/harvest/curation.json; absent means none) then drops and adds examples per row (an addition is verified the
-same way); the final ids are <row>/01, <row>/02, ... in that order.
+same way; a drop for the reason sympy-incorrect, because the output SymPy 1.14 recorded is mathematically wrong, must
+carry an evidence string); the final ids are <row>/01, <row>/02, ... in that order.
 
 EXAMPLES keeps every row this run did not harvest and gets the harvested ones replaced. The report (default
 docs/v08/harvest/report.md) gives per row the candidate, selected and excluded counts, every selected and excluded
-example, the curation applied, the short rows (fewer than ten examples) and the API paths that do not resolve. Neither
-file holds a time or a thread or process detail, and no record depends on the number of workers; which examples are
-selected is decided by the runs at PYTHONHASHSEED=0 in long-lived workers (coverage_gate.examples states what is and
-is not guaranteed).
+example, the curation applied (each drop with its reason, a sympy-incorrect drop with its evidence too), the short rows
+(fewer than ten examples) and the API paths that do not resolve. Neither file holds a time or a thread or process
+detail, and no record depends on the number of workers; which examples are selected is decided by the runs at
+PYTHONHASHSEED=0 in long-lived workers (coverage_gate.examples states what is and is not guaranteed).
 
 Exit status 0 when both files are written; 2 for a usage, input or curation error, or when the harvester's SymPy is not
 1.14; 1 when the harvest fails (a traceback and a message go to stderr); 130 when interrupted. Only status 0 means the
@@ -60,7 +61,7 @@ class RowResult:
     candidates: int                                  # Every candidate the harvest examined
     examples: tuple[harvesting.Example, ...]         # Final, numbered
     excluded: tuple[harvesting.Excluded, ...]
-    notes: tuple[tuple[str, str, str, str], ...]     # Curation: (action, source, code, reason or output)
+    notes: tuple[tuple[str, str, str, str, str], ...]  # Curation: (action, source, code, reason or output, evidence)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -258,8 +259,8 @@ def _progress(done: int, total: int, row: Row, result: "RowResult | harvesting.C
 def render_report(*, inventory: Path, out: Path, doc_src: Path | None, curation: str, sympy: str,
                   results: Sequence[RowResult]) -> str:
     """The harvest report as Markdown. It prints no time and no thread or process detail, so runs that make the same
-    decisions give the same report. Codes and outputs appear as JSON strings, ready to be copied into a curation
-    file."""
+    decisions give the same report. Codes, outputs and evidence appear as JSON strings, ready to be copied into a
+    curation file."""
     lines = ["# SymPy reference example harvest", "",
              f"- Inventory: `{inventory.as_posix()}`",
              f"- Examples file: `{out.as_posix()}` (the rows of this report were replaced; other rows were kept)",
@@ -308,13 +309,20 @@ def render_report(*, inventory: Path, out: Path, doc_src: Path | None, curation:
             lines += [f"- {item.reason}: `{item.source}` {_code(item.code)}" for item in result.excluded]
         if result.notes:
             lines += ["", "Curation:", ""]
-            lines += [f"- dropped ({detail}): `{source}` {_code(code)}" if action == "drop"
-                      else f"- added: `{source}` {_code(code)} → {_code(_shortened(detail))}"
-                      for action, source, code, detail in result.notes]
+            lines += [_curation_line(*note) for note in result.notes]
         if result.unresolved:
             lines += ["", "Unresolved API paths:", ""]
             lines += [f"- `{path}`: {reason}" if path else f"- {reason}" for path, reason in result.unresolved]
     return "\n".join(lines) + "\n"
+
+
+def _curation_line(action: str, source: str, code: str, detail: str, evidence: str) -> str:
+    """One applied curation: a drop with its reason, and with its evidence when it has one (shown whole: it is what
+    justifies the drop), an addition with the output SymPy recorded for it."""
+    if action != "drop":
+        return f"- added: `{source}` {_code(code)} → {_code(_shortened(detail))}"
+    line = f"- dropped ({detail}): `{source}` {_code(code)}"
+    return f"{line}; evidence: {_code(evidence)}" if evidence else line
 
 
 def _cell(text: str) -> str:

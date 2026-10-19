@@ -56,16 +56,19 @@ from pathlib import Path
 
 from .inventory import Row
 
-__all__ = ["EXCLUSION_REASONS", "DROP_REASONS", "SOURCE_PREFIXES", "PROBE_PREFIX", "KINDS", "LOW", "HIGH",
-           "SYMPY_SERIES", "Example", "Excluded", "Record", "CurationError", "require_sympy", "resolve_api",
+__all__ = ["EXCLUSION_REASONS", "EVIDENCE_REASON", "DROP_REASONS", "SOURCE_PREFIXES", "PROBE_PREFIX", "KINDS", "LOW",
+           "HIGH", "SYMPY_SERIES", "Example", "Excluded", "Record", "CurationError", "require_sympy", "resolve_api",
            "unresolved_apis", "resolvable_api_paths", "ExampleRunner", "FreshRunner", "harvest", "examine", "select",
            "curate", "number", "load_curation", "load_examples", "write_examples"]
 
 # Why a candidate cannot serve as a reference. The harvest report counts them in this order.
 EXCLUSION_REASONS = ("printing", "plotting", "random", "optional-dependency", "raises", "timeout", "unstable",
                      "duplicate")
+# SymPy 1.14 records a mathematically wrong output for the example. Only a curator can tell (never an exclusion), and a
+# drop for it must say why: its "evidence" string names the correct value and where that is documented.
+EVIDENCE_REASON = "sympy-incorrect"
 # The only reasons a curator may give for dropping a selected example. Difficulty is never one of them.
-DROP_REASONS = ("not-the-subject",) + EXCLUSION_REASONS
+DROP_REASONS = ("not-the-subject", EVIDENCE_REASON) + EXCLUSION_REASONS
 SOURCE_PREFIXES = ("docstring:", "guide:", "tests:")  # Where harvested examples come from, in priority order.
 PROBE_PREFIX = "probe:"  # probe:<row id>, a curated addition: the row's own sympy_probe, with an empty setup.
 _RECORD_PREFIXES = SOURCE_PREFIXES + (PROBE_PREFIX,)
@@ -1745,7 +1748,9 @@ def _rotate(groups: Sequence[Sequence[Example]], limit: int) -> list[Example]:
 def load_curation(path: Path) -> dict[str, dict[str, list[dict[str, str]]]]:
     """Read a curation file: an object keyed by row id whose values hold "drop" ([{"source", "code", "reason"}], the
     reason one of DROP_REASONS) and "add" ([{"source", "setup", "code"}]) lists; an addition's source may also be
-    probe:<row id>, the row's own sympy_probe. CurationError names the file and the problem."""
+    probe:<row id>, the row's own sympy_probe. A drop for the reason EVIDENCE_REASON (sympy-incorrect) also has a
+    non-empty "evidence" string, and no other drop has an "evidence" field. CurationError names the file and the
+    problem."""
     path = Path(path)
     try:
         document = json.loads(path.read_bytes().decode("utf-8-sig"))
@@ -1763,12 +1768,13 @@ def _checked_curation(document: object) -> dict[str, dict[str, list[dict[str, st
             raise CurationError(f"{row_id!r} is not a row id")
         if not isinstance(entry, dict) or not set(entry) <= {"drop", "add"}:
             raise CurationError(f"{row_id}: an entry holds only 'drop' and 'add' lists")
-        drops = _curation_items(row_id, "drop", entry.get("drop", []), ("source", "code", "reason"))
+        drops = _curation_items(row_id, "drop", entry.get("drop", []), ("source", "code", "reason"), ("evidence",))
         adds = _curation_items(row_id, "add", entry.get("add", []), ("source", "setup", "code"))
         for drop in drops:
             if drop["reason"] not in DROP_REASONS:
                 raise CurationError(f"{row_id}: drop reason {drop['reason']!r} is not allowed; the reasons are "
                                     f"{', '.join(DROP_REASONS)}")
+            _check_evidence(row_id, drop)
         for item in drops + adds:
             if not item["source"].startswith(_RECORD_PREFIXES):
                 raise CurationError(f"{row_id}: source {item['source']!r} does not start with "
@@ -1786,28 +1792,46 @@ def _checked_curation(document: object) -> dict[str, dict[str, list[dict[str, st
     return entries
 
 
-def _curation_items(row_id: str, name: str, items: object, fields: tuple[str, ...]) -> list[dict[str, str]]:
+def _curation_items(row_id: str, name: str, items: object, fields: tuple[str, ...],
+                    optional: tuple[str, ...] = ()) -> list[dict[str, str]]:
+    """The entries of a list, each with the string fields and no field besides them and the optional ones (whose
+    values the caller checks)."""
     if not isinstance(items, list):
         raise CurationError(f"{row_id}: {name} must be a list")
     for item in items:
-        if not isinstance(item, dict) or set(item) != set(fields) or not all(isinstance(item[key], str)
-                                                                             for key in fields):
-            raise CurationError(f"{row_id}: each {name} entry has exactly the string fields {', '.join(fields)}")
+        if (not isinstance(item, dict) or not set(fields) <= set(item) <= set(fields) | set(optional)
+                or not all(isinstance(item[key], str) for key in fields)):
+            expected = ", ".join(fields) + (f" (and {', '.join(optional)} for a reason that takes it)" if optional
+                                            else "")
+            raise CurationError(f"{row_id}: each {name} entry has exactly the string fields {expected}")
     return [dict(item) for item in items]
+
+
+def _check_evidence(row_id: str, drop: Mapping[str, object]) -> None:
+    """A drop for EVIDENCE_REASON has a non-empty evidence string, a drop for any other reason none: the loader refuses
+    a field its entry is not defined to hold, and only the drops for this reason show evidence in the report."""
+    where = f"{row_id}: drop {drop['source']} {drop['code']!r}"
+    if drop["reason"] != EVIDENCE_REASON:
+        if "evidence" in drop:
+            raise CurationError(f"{where} has an 'evidence' field; only the reason {EVIDENCE_REASON!r} takes evidence")
+    elif not isinstance(drop.get("evidence"), str) or not drop["evidence"].strip():
+        raise CurationError(f"{where} has the reason {EVIDENCE_REASON!r}, which needs a non-empty 'evidence' string: "
+                            "the correct value and where it is documented")
 
 
 def curate(row: Row, selected: Sequence[Example], entry: Mapping[str, Sequence[Mapping[str, str]]] | None,
            runner: ExampleRunner | None, check_runner: "Verifiers | None", *,
-           high: int = HIGH) -> tuple[list[Example], list[tuple[str, str, str, str]]]:
+           high: int = HIGH) -> tuple[list[Example], list[tuple[str, str, str, str, str]]]:
     """Apply a curation entry to the row's selection and number the result.
 
     Each drop removes the selected example with its source and code (formatting aside); sources carry their line, so
     one drop names one example, and a drop that matches none or several is an error. Each addition goes through
     examine() and is appended; an addition that would be excluded, or that repeats the code and record of a kept
     example, is an error, and so is a result above high. The runners are needed only for additions. Returns the
-    numbered examples and the notes (action, source, code, reason or output) for the report."""
+    numbered examples and the notes (action, source, code, reason or output, evidence) for the report; the evidence
+    is that of a drop for EVIDENCE_REASON and empty in every other note."""
     kept = list(selected)
-    notes: list[tuple[str, str, str, str]] = []
+    notes: list[tuple[str, str, str, str, str]] = []
     entry = entry or {}
     for drop in entry.get("drop", ()):
         matches = [item for item in kept
@@ -1816,7 +1840,7 @@ def curate(row: Row, selected: Sequence[Example], entry: Mapping[str, Sequence[M
             found = "no selected example" if not matches else f"{len(matches)} selected examples"
             raise CurationError(f"{row.id}: drop {drop['source']} {drop['code']!r} matches {found}")
         kept.remove(matches[0])
-        notes.append(("drop", drop["source"], drop["code"], drop["reason"]))
+        notes.append(("drop", drop["source"], drop["code"], drop["reason"], drop.get("evidence", "")))
     for add in entry.get("add", ()):
         if runner is None or check_runner is None:
             raise ValueError("curation additions need the runners")
@@ -1833,7 +1857,7 @@ def curate(row: Row, selected: Sequence[Example], entry: Mapping[str, Sequence[M
             raise CurationError(f"{row.id}: added example {add['code']!r} repeats the code and record of a kept "
                                 "example")
         kept.append(result)
-        notes.append(("add", add["source"], add["code"], result.output))
+        notes.append(("add", add["source"], add["code"], result.output, ""))
     if len(kept) > high:
         raise CurationError(f"{row.id}: {len(kept)} examples after curation; at most {high}")
     return number(row.id, kept), notes

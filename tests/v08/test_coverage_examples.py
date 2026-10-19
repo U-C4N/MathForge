@@ -689,7 +689,7 @@ class HarvestTests(RunnerTestCase):
             examples, notes = harvesting.curate(row, [], {"add": [add]}, self.first, (self.second, third))
             self.assertEqual([(item.id, item.source, item.setup, item.code, item.output) for item in examples],
                              [("27.25/01", "probe:27.25", "", row.sympy_probe, "[4, 2, 6, 7]")])
-            self.assertEqual(notes, [("add", "probe:27.25", row.sympy_probe, "[4, 2, 6, 7]")])
+            self.assertEqual(notes, [("add", "probe:27.25", row.sympy_probe, "[4, 2, 6, 7]", "")])
             for wrong in ({**add, "source": "probe:27.24"}, {**add, "setup": "x = 1"},
                           {**add, "code": "continued_fraction(2)"}):
                 with self.subTest(wrong), self.assertRaises(harvesting.CurationError):
@@ -1053,6 +1053,8 @@ class FileTests(TemporaryDirectoryTestCase):
             ("unknown key", {"27.14": {"replace": []}}),
             ("difficulty is never a reason", {"27.14": {"drop": [{**drop, "reason": "too-hard"}]}}),
             ("missing drop field", {"27.14": {"drop": [{"source": drop["source"], "code": drop["code"]}]}}),
+            ("unknown drop field", {"27.14": {"drop": [{**drop, "note": "see OEIS"}]}}),
+            ("evidence is for drops", {"27.14": {"add": [{**add, "evidence": "see OEIS"}]}}),
             ("unknown source kind", {"27.14": {"add": [{**add, "source": "web:sympy.org"}]}}),
             ("code is not one expression", {"27.14": {"add": [{**add, "code": "y = factorint(12)"}]}}),
             ("setup does not parse", {"27.14": {"add": [{**add, "setup": "from sympy import ("}]}}),
@@ -1070,7 +1072,82 @@ class FileTests(TemporaryDirectoryTestCase):
         path.write_text(json.dumps({"27.14": {"add": [probe]}}), encoding="utf-8")
         self.assertEqual(harvesting.load_curation(path), {"27.14": {"drop": [], "add": [probe]}})
         self.assertEqual(set(harvesting.DROP_REASONS),
-                         {"not-the-subject", "duplicate"} | set(harvesting.EXCLUSION_REASONS))
+                         {"not-the-subject", "sympy-incorrect", "duplicate"} | set(harvesting.EXCLUSION_REASONS))
+
+    def test_curation_drops_sympy_incorrect_examples_only_with_evidence(self):
+        self.assertEqual(harvesting.EVIDENCE_REASON, "sympy-incorrect")
+        self.assertNotIn("sympy-incorrect", harvesting.EXCLUSION_REASONS)  # Only a curator can tell, never the harvest.
+        evidence = "motzkin(10) is 2188 (OEIS A001006); SymPy 1.14 returns 835"
+        drop = {"source": "docstring:sympy.motzkin:26", "code": "motzkin(10)", "reason": "sympy-incorrect",
+                "evidence": evidence}
+        path = self.directory / "curation.json"
+
+        def load(entry):
+            path.write_text(json.dumps({"22.07": entry}), encoding="utf-8")
+            return harvesting.load_curation(path)
+
+        # With evidence the drop is accepted, and the evidence is kept as written.
+        self.assertEqual(load({"drop": [drop]}), {"22.07": {"drop": [drop], "add": []}})
+        # Without it (missing, empty, blank, not a string) the file is refused. The message names the file, the row and
+        # the drop: here the second of two, so it has to say which.
+        later = {"source": "docstring:sympy.catalan:40", "code": "catalan(10)", "reason": "sympy-incorrect"}
+        for name, bad in (("missing", later), ("empty", {**later, "evidence": ""}),
+                          ("blank", {**later, "evidence": " \t\n"}), ("not a string", {**later, "evidence": None})):
+            with self.subTest(name), self.assertRaises(harvesting.CurationError) as raised:
+                load({"drop": [drop, bad]})
+            message = str(raised.exception)
+            for named in (str(path), "22.07", later["source"], repr(later["code"]), "'evidence'"):
+                self.assertIn(named, message)
+            self.assertNotIn(drop["source"], message)
+        # Only that reason takes evidence: every other keeps its shape, and the field is refused on it like any field
+        # an entry is not defined to hold.
+        for reason in (reason for reason in harvesting.DROP_REASONS if reason != "sympy-incorrect"):
+            plain = {"source": drop["source"], "code": drop["code"], "reason": reason}
+            with self.subTest(reason):
+                self.assertEqual(load({"drop": [plain]}), {"22.07": {"drop": [plain], "add": []}})
+                with self.assertRaises(harvesting.CurationError) as raised:
+                    load({"drop": [{**plain, "evidence": evidence}]})
+                for named in (str(path), "22.07", plain["source"], repr(plain["code"]), "'evidence'"):
+                    self.assertIn(named, str(raised.exception))
+
+    def test_report_lists_each_drop_with_its_reason_and_the_evidence_of_a_sympy_incorrect_one(self):
+        import harvest_examples
+        row = make_row("22.07", "sympy.catalan", "sympy.motzkin", subtopic="Catalan & Motzkin",
+                       area="Combinatorial numbers")
+        kept = harvesting.Example("", "22.07", "docstring:sympy.catalan:12", "", "catalan(5)", "42", "Integer(42)",
+                                  "exact")
+        wrong = dataclasses.replace(kept, source="docstring:sympy.motzkin:26", code="motzkin(10)", output="835",
+                                    srepr="Integer(835)")
+        other = dataclasses.replace(kept, source="docstring:sympy.catalan:30", code="catalan(10)", output="16796",
+                                    srepr="Integer(16796)")
+        awkward = dataclasses.replace(wrong, source="docstring:sympy.motzkin:28", code="motzkin(11)", output="2188",
+                                      srepr="Integer(2188)")
+        evidence = "motzkin(10) is 2188 (OEIS A001006); SymPy 1.14 returns 835"
+        long_evidence = ('motzkin(11) is 5798 (OEIS A001006, "a(11)").\nSymPy 1.14 returns 2188, which is `a(10)` | '
+                         'one off — not a rounding matter.')
+        entry = {"drop": [{"source": wrong.source, "code": wrong.code, "reason": "sympy-incorrect",
+                           "evidence": evidence},
+                          {"source": other.source, "code": other.code, "reason": "not-the-subject"},
+                          {"source": awkward.source, "code": awkward.code, "reason": "sympy-incorrect",
+                           "evidence": long_evidence}]}
+        examples, notes = harvesting.curate(row, [kept, wrong, other, awkward], entry, None, None)
+        self.assertEqual([item.code for item in examples], ["catalan(5)"])
+        self.assertEqual(notes, [("drop", wrong.source, wrong.code, "sympy-incorrect", evidence),
+                                 ("drop", other.source, other.code, "not-the-subject", ""),
+                                 ("drop", awkward.source, awkward.code, "sympy-incorrect", long_evidence)])
+
+        text = harvest_examples.render_report(
+            inventory=Path("inventory.json"), out=Path("examples.json"), doc_src=None,
+            curation="`curation.json` (1 rows)", sympy="1.14.0",
+            results=[harvest_examples.RowResult(row, (), 4, tuple(examples), (), tuple(notes))])
+        lines = text.splitlines()
+        self.assertIn(f'- dropped (sympy-incorrect): `{wrong.source}` `"motzkin(10)"`; '
+                      f'evidence: `{json.dumps(evidence)}`', lines)
+        self.assertIn(f'- dropped (not-the-subject): `{other.source}` `"catalan(10)"`', lines)  # No evidence to show.
+        # The evidence is shown whole, on one line, as a JSON string that can be pasted back into a curation file.
+        shown = [line for line in lines if line.startswith(f"- dropped (sympy-incorrect): `{awkward.source}`")]
+        self.assertEqual(len(shown), 1)
+        self.assertEqual(json.loads(shown[0].partition("; evidence: ")[2].strip("` ")), long_evidence)
 
     def test_curation_drops_one_of_two_same_code_examples_by_its_line(self):
         code = "log(x**2*y).expand(log=True)"
@@ -1084,7 +1161,7 @@ class FileTests(TemporaryDirectoryTestCase):
         entry = {"drop": [{"source": positive.source, "code": code, "reason": "not-the-subject"}], "add": []}
         examples, notes = harvesting.curate(row, [plain, positive], entry, None, None)  # No additions: no runners.
         self.assertEqual(examples, [dataclasses.replace(plain, id="16.01/01")])
-        self.assertEqual(notes, [("drop", positive.source, code, "not-the-subject")])
+        self.assertEqual(notes, [("drop", positive.source, code, "not-the-subject", "")])
         # A drop that cannot name exactly one selected example is an error, never a guess.
         for selected, found in (([plain], "no selected example"),
                                 ([positive, dataclasses.replace(positive, srepr="other")], "2 selected examples")):

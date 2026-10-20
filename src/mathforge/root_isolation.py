@@ -1,18 +1,19 @@
 """Exact real root isolation over Q, with signed Sturm chains.
 
-The producer and the membership/completeness checkers share exact primitives,
-but the checkers never call ``real_roots``.
+The producers run on dense integer polynomials (mathforge.kernels.upoly): v0.7's signed primitive Sturm chain of the
+square-free part, its bisection from the root bound and its refinements, so that chains, isolating intervals and
+root records are those of v0.7. The membership and completeness checkers (verify_root_records, verify_isolator)
+count roots with the independent Sturm chains of mathforge.certify.upoly and never call ``real_roots``.
 """
 
 from contextlib import contextmanager
 from contextvars import ContextVar
-from functools import cmp_to_key
 from math import gcd
 
 from .errors import InvalidInput, UnsupportedOperation
 from .limits import computation
-from .model import Rational, Reals, Symbol, sqrt
-from .polynomial import Polynomial
+from .model import Rational, Reals, Symbol, sqrt, trusted_rational
+from .polynomial import Polynomial, trusted_polynomial
 
 
 ROOT_VARIABLE = Symbol("_root", uid="00000000-0000-4000-8000-000000000002")
@@ -73,13 +74,54 @@ def primitive_integer_coefficients(poly, *, positive_leading=True):
         return tuple(sign * value // content for value in values)
 
 
-def _square_free_part(poly):
+# ---------------------------------------------------------------------------------------------------------------
+# The integer forms the kernels work on
+
+def _integer(poly):
+    """The primitive integer coefficients (positive leading coefficient) of a nonzero Polynomial."""
+    from .trusted import upoly as tp
+    return tp.primitive(tp.from_rationals(poly.coefficients)[0])
+
+
+def _chain(poly):
+    """The integer Sturm chain (v0.7's normalization) of a Polynomial's square-free part, kept for the work."""
+    from .kernels import upoly as kernels
+    cache = _CACHE.get()
+    key = ("chain", poly)
+    if cache is not None and key in cache:
+        return cache[key]
     if poly.is_zero:
         raise InvalidInput("The zero polynomial has no finite root set", code="non_finite_root_set")
-    if poly.degree <= 0:
-        return Polynomial((1,), poly.variable)
-    return poly.exact_div(poly.gcd(poly.derivative())).monic()
+    chain = kernels.sturm_chain(kernels.squarefree_part(_integer(poly)))
+    if cache is not None:
+        cache[key] = chain
+    return chain
 
+
+def _as_polynomial(values, variable):
+    return trusted_polynomial(tuple(trusted_rational(value, 1) for value in values), variable)
+
+
+def _as_monic(values, variable):
+    from .trusted import upoly as tp
+    return trusted_polynomial(tp.monic_rationals(values), variable)
+
+
+def _point(value):
+    return value.numerator, value.denominator
+
+
+def _rational_pair(point):
+    return trusted_rational(point[0], point[1])
+
+
+def _is_root(chain, value):
+    from .kernels import upoly as kernels
+    return kernels._value(chain[0], value.numerator, value.denominator) == 0
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Sturm chains, counts and isolation
 
 def sturm_sequence(poly, *, limits=None):
     """Return a signed primitive Sturm chain for the square-free part."""
@@ -90,46 +132,24 @@ def sturm_sequence(poly, *, limits=None):
         cache = _CACHE.get()
         if key in cache:
             return cache[key]
-        part = _square_free_part(poly)
-        first = Polynomial(primitive_integer_coefficients(part), poly.variable)
-        if first.degree <= 0:
-            result = (first,)
-        else:
-            chain = [first, first.derivative()]
-            while not chain[-1].is_zero:
-                remainder = -chain[-2].divmod(chain[-1])[1]
-                if remainder.is_zero:
-                    break
-                # Positive rescaling only: making a negative-leading remainder
-                # monic would invalidate Sturm sign variations.
-                chain.append(Polynomial(primitive_integer_coefficients(
-                    remainder, positive_leading=False), poly.variable))
-            result = tuple(chain)
+        result = tuple(_as_polynomial(member, poly.variable) for member in _chain(poly))
         cache[key] = result
         return result
 
 
 def _variations(chain, at=None, *, positive_infinity=False):
-    signs = []
-    for polynomial in chain:
-        if at is None:
-            sign = 1 if polynomial.leading_coefficient.numerator > 0 else -1
-            if not positive_infinity and polynomial.degree % 2:
-                sign = -sign
-        else:
-            value = evaluate_rational(polynomial, at).numerator
-            sign = (value > 0) - (value < 0)
-        if sign:
-            signs.append(sign)
-    return sum(a != b for a, b in zip(signs, signs[1:]))
+    """Sign variations of an integer chain at a Rational, or at -infinity / +infinity for at=None."""
+    from .kernels import upoly as kernels
+    if at is None:
+        return kernels.variations_at_infinity(chain, positive_infinity)
+    return kernels.endpoint(chain, at.numerator, at.denominator)[0]
 
 
 def _count_open(chain, lower, upper):
-    count = _variations(chain, lower) - _variations(
-        chain, upper, positive_infinity=upper is None)
-    if upper is not None and evaluate_rational(chain[0], upper).numerator == 0:
-        count -= 1
-    return count
+    """Roots of an integer chain's first member in the open interval (lower, upper); None is infinite."""
+    from .kernels import upoly as kernels
+    return kernels.count_open(chain, None if lower is None else _point(lower),
+                              None if upper is None else _point(upper))
 
 
 def count_real_roots(poly, lower=None, upper=None, *, include_lower=False,
@@ -147,14 +167,13 @@ def count_real_roots(poly, lower=None, upper=None, *, include_lower=False,
         raise InvalidInput("Root-count bounds are reversed")
     with root_work(limits) as budget:
         budget.inspect(poly)
-        chain = sturm_sequence(poly)
+        chain = _chain(poly)
         if lower is not None and lower == upper:
-            return int(include_lower and include_upper and
-                       evaluate_rational(chain[0], lower).numerator == 0)
+            return int(include_lower and include_upper and _is_root(chain, lower))
         count = _count_open(chain, lower, upper)
-        if include_lower and evaluate_rational(chain[0], lower).numerator == 0:
+        if include_lower and _is_root(chain, lower):
             count += 1
-        if include_upper and evaluate_rational(chain[0], upper).numerator == 0:
+        if include_upper and _is_root(chain, upper):
             count += 1
         return count
 
@@ -169,77 +188,33 @@ def _root_bound(poly):
 
 def isolate_real_roots(poly, *, limits=None):
     """Disjoint sorted rational points/open intervals for all distinct roots."""
+    from .kernels import upoly as kernels
     if type(poly) is not Polynomial:
         raise InvalidInput("Root isolation requires a Polynomial")
-    with root_work(limits) as budget:
+    with root_work(limits):
         cache = _CACHE.get()
         key = ("isolate", poly)
         if key in cache:
             return cache[key]
-        chain = sturm_sequence(poly)
-        polynomial = chain[0]
-        if polynomial.degree <= 0:
+        chain = _chain(poly)
+        if len(chain[0]) <= 1:
             return ()
-
-        def endpoint(point):
-            # Each subdivision point is evaluated once by the producer. Keep
-            # both the variation count and endpoint-root flag with its interval;
-            # the independent counting/checking path remains unchanged.
-            first = evaluate_rational(polynomial, point).numerator
-            previous_sign = (first > 0) - (first < 0)
-            variations = 0
-            for member in chain[1:]:
-                value = evaluate_rational(member, point).numerator
-                sign = (value > 0) - (value < 0)
-                if sign:
-                    variations += int(previous_sign != 0 and previous_sign != sign)
-                    previous_sign = sign
-            return point, variations, first == 0
-
-        bound = _root_bound(polynomial)
-        pending = [(endpoint(-bound), endpoint(bound))]
-        intervals = []
-        while pending:
-            budget.refine()
-            lower_state, upper_state = pending.pop()
-            lower, lower_variations, lower_zero = lower_state
-            upper, upper_variations, upper_zero = upper_state
-            count = lower_variations - upper_variations - int(upper_zero)
-            if not count:
-                continue
-            if count == 1 and not lower_zero and not upper_zero:
-                intervals.append((lower, upper))
-                continue
-            middle_state = endpoint((lower + upper) / 2)
-            middle, middle_variations, middle_zero = middle_state
-            if middle_zero:
-                intervals.append((middle, middle))
-            left_count = lower_variations - middle_variations - int(middle_zero)
-            right_count = middle_variations - upper_variations - int(upper_zero)
-            if left_count + right_count + int(middle_zero) != count:
-                raise ArithmeticError("Sturm subdivision did not preserve the root count")
-            if right_count:
-                pending.append((middle_state, upper_state))
-            if left_count:
-                pending.append((lower_state, middle_state))
-        intervals.sort(key=lambda interval: interval[0])
-        result = tuple(intervals)
+        result = tuple((_rational_pair(lower), _rational_pair(upper))
+                       for lower, upper in kernels.isolate(chain[0]))
         cache[key] = result
         return result
 
 
 def refine_interval(poly, interval, *, limits=None):
     """Bisect a certified isolator once; exact rational roots become points."""
+    from .kernels import upoly as kernels
     with root_work(limits) as budget:
-        budget.refine()
         lower, upper = interval
         if lower == upper:
+            budget.refine()
             return interval
-        middle = (lower + upper) / 2
-        chain = sturm_sequence(poly)
-        if evaluate_rational(chain[0], middle).numerator == 0:
-            return middle, middle
-        return (lower, middle) if _count_open(chain, lower, middle) else (middle, upper)
+        refined = kernels.refine(_chain(poly), _point(lower), _point(upper))
+        return _rational_pair(refined[0]), _rational_pair(refined[1])
 
 
 def _simplest_open_fraction(lower, upper):
@@ -274,26 +249,38 @@ def _simplest_open_fraction(lower, upper):
         return candidate
 
 
+def _rational_root(integer, chain, interval):
+    """reconstruct_rational_root on integers: (rational root or None, refined isolator as integer pairs) for the
+    square-free primitive integer polynomial whose chain is given, over an isolating interval of one of its roots:
+    refine below width 1 / (2 lc**2), then test the simplest fraction inside."""
+    from .kernels import upoly as kernels
+    lower, upper = interval
+    if lower == upper:
+        return _rational_pair(lower), interval
+    bound = abs(integer[-1])
+    limit = 2 * bound * bound
+    while lower != upper and (upper[0] * lower[1] - lower[0] * upper[1]) * limit >= upper[1] * lower[1]:
+        lower, upper = kernels.refine(chain, lower, upper)
+    if lower == upper:
+        return _rational_pair(lower), (lower, upper)
+    candidate = _simplest_open_fraction(_rational_pair(lower), _rational_pair(upper))
+    if candidate.denominator <= bound and not kernels._value(integer, candidate.numerator, candidate.denominator):
+        return candidate, ((candidate.numerator, candidate.denominator),) * 2
+    return None, (lower, upper)
+
+
 def reconstruct_rational_root(poly, interval, *, limits=None):
     """Return (rational root or None, refined isolator), without heuristics."""
-    with root_work(limits) as budget:
+    with root_work(limits):
         lower, upper = interval
         if lower == upper:
             if evaluate_rational(poly, lower).numerator != 0:
                 raise InvalidInput("A point isolator must be an exact root")
             return lower, (lower, upper)
-        coefficients = primitive_integer_coefficients(poly)
-        bound = abs(coefficients[-1])
-        budget.product(2, bound, bound)
-        width = Rational(1, 2 * bound * bound)
-        while lower != upper and upper - lower >= width:
-            lower, upper = refine_interval(poly, (lower, upper))
-        if lower == upper:
-            return lower, (lower, upper)
-        candidate = _simplest_open_fraction(lower, upper)
-        if candidate.denominator <= bound and evaluate_rational(poly, candidate).numerator == 0:
-            return candidate, (candidate, candidate)
-        return None, (lower, upper)
+        root, refined = _rational_root(_integer(poly), _chain(poly), (_point(lower), _point(upper)))
+        if root is not None:
+            return root, (root, root)
+        return None, (_rational_pair(refined[0]), _rational_pair(refined[1]))
 
 
 def _small_roots(poly):
@@ -313,8 +300,14 @@ def _small_roots(poly):
 
 
 def real_roots(poly, *, limits=None):
-    """All real roots with multiplicities; rational roots are always recognized."""
-    from .algebraic import RealAlgebraicRoot, RootRecord, compare_real
+    """All real roots with multiplicities; rational roots are always recognized.
+
+    The roots of all square-free factors are isolated together, as the roots of the square-free part, so that the
+    records come out in increasing order. Each factor of degree at most two gives its closed forms; a larger one
+    gives its rational roots, then its residual's closed forms or root descriptors, as in v0.7."""
+    from .algebraic import trusted_real_algebraic_root, trusted_root_record
+    from .kernels import upoly as kernels
+    from .trusted import upoly as tp
     if type(poly) is not Polynomial:
         raise InvalidInput("real_roots requires a Polynomial")
     if poly.variable.domain is not Reals or poly.variable.assumptions:
@@ -323,63 +316,79 @@ def real_roots(poly, *, limits=None):
         budget.inspect(poly)
         if poly.is_zero:
             raise InvalidInput("The zero polynomial has no finite root set", code="non_finite_root_set")
-        records = []
-        for factor in poly.square_free().factors:
-            polynomial, multiplicity = factor.polynomial, factor.multiplicity
-            if polynomial.degree <= 2:
-                records.extend(RootRecord(root, multiplicity) for root in _small_roots(polynomial))
-                continue
-            intervals = isolate_real_roots(polynomial)
-            rationals, irrational_intervals = [], []
-            for interval in intervals:
-                root, refined = reconstruct_rational_root(polynomial, interval)
-                if root is None:
-                    irrational_intervals.append(refined)
-                else:
-                    rationals.append(root)
-            residual = polynomial
-            for root in rationals:
-                residual = residual.exact_div(Polynomial((-root, 1), polynomial.variable))
-                records.append(RootRecord(root, multiplicity))
-            if residual.degree <= 2:
-                records.extend(RootRecord(root, multiplicity) for root in _small_roots(residual))
+        integer = _integer(poly)
+        if len(integer) <= 1:
+            budget.evidence(0)
+            return ()
+        factors = kernels.square_free_integer(integer)
+        part = (1,)
+        for factor, _ in factors:
+            part = tp.mul(part, factor)
+        intervals = kernels.isolate(part)
+        owners = []
+        for lower, upper in intervals:
+            for position, (factor, _) in enumerate(factors):
+                if lower == upper:
+                    if not kernels._value(factor, *lower):
+                        break
+                elif (kernels._sign(kernels._value(factor, *lower))
+                      != kernels._sign(kernels._value(factor, *upper))):
+                    break
             else:
-                coefficients = primitive_integer_coefficients(residual)
-                for index in range(len(irrational_intervals)):
-                    records.append(RootRecord(RealAlgebraicRoot(coefficients, index), multiplicity))
-        records.sort(key=cmp_to_key(lambda a, b: compare_real(a.root, b.root)))
+                raise ArithmeticError("An isolated root belongs to no square-free factor")
+            owners.append(position)
+        values = [None] * len(intervals)
+        for position, (factor, multiplicity) in enumerate(factors):
+            places = [index for index, owner in enumerate(owners) if owner == position]
+            if len(factor) <= 3:
+                for place, root in zip(places, _small_roots(_as_monic(factor, poly.variable))):
+                    values[place] = root
+                continue
+            chain = kernels.sturm_chain(factor)
+            irrational = []
+            residual = factor
+            for place in places:
+                root, _ = _rational_root(factor, chain, intervals[place])
+                if root is None:
+                    irrational.append(place)
+                else:
+                    values[place] = root
+                    residual = tp.exact_quotient(residual, (-root.numerator, root.denominator))
+            residual = tp.primitive(residual)
+            if len(residual) <= 3:
+                for place, root in zip(irrational, _small_roots(_as_monic(residual, poly.variable))):
+                    values[place] = root
+            else:
+                for index, place in enumerate(irrational):
+                    values[place] = trusted_real_algebraic_root(residual, index)
+        if any(value is None for value in values):
+            raise ArithmeticError("A real root was left without a value")
+        records = tuple(trusted_root_record(value, factors[owner][1]) for value, owner in zip(values, owners))
         budget.evidence(len(records))
-        return tuple(records)
+        return records
 
+
+# ---------------------------------------------------------------------------------------------------------------
+# Checkers (mathforge.certify.upoly)
 
 def verify_root_records(poly, records, *, limits=None):
     """Independent membership, multiplicity, ordering and completeness check."""
-    from .algebraic import RootRecord, compare_real, sign_at
+    from .algebraic import RootRecord
+    from .certify import upoly as certify
     with root_work(limits):
         if type(poly) is not Polynomial or poly.is_zero:
             return False
         records = tuple(records)
         if any(type(record) is not RootRecord for record in records):
             return False
-        if len(records) != count_real_roots(poly):
-            return False
-        for left, right in zip(records, records[1:]):
-            if compare_real(left.root, right.root) >= 0:
-                return False
-        for record in records:
-            derivative = poly
-            multiplicity = 0
-            while derivative.degree >= 0 and sign_at(derivative, record.root) == 0:
-                multiplicity += 1
-                derivative = derivative.derivative()
-            if multiplicity != record.multiplicity:
-                return False
-        return True
+        return certify.check_root_records(_integer(poly), records)
 
 
 def verify_isolator(value, interval, *, limits=None):
     """Bind a point/open isolator to the actual descriptor's root index."""
     from .algebraic import RealAlgebraicRoot, as_endpoint
+    from .certify import upoly as certify
+    from .trusted import upoly as tp
     with root_work(limits):
         value = as_endpoint(value)
         if type(interval) is not tuple or len(interval) != 2:
@@ -391,11 +400,11 @@ def verify_isolator(value, interval, *, limits=None):
             return lower == upper == value
         if type(value) is not RealAlgebraicRoot:
             return False
-        polynomial = Polynomial(value.integer_coefficients, ROOT_VARIABLE)
+        polynomial = certify.squarefree_part(tp.primitive(value.integer_coefficients))
         if lower == upper:
-            return (evaluate_rational(polynomial, lower).numerator == 0 and
-                    count_real_roots(polynomial, upper=lower) == value.real_index)
-        return (evaluate_rational(polynomial, lower).numerator != 0 and
-                evaluate_rational(polynomial, upper).numerator != 0 and
-                count_real_roots(polynomial, upper=lower) == value.real_index and
-                count_real_roots(polynomial, lower, upper) == 1)
+            return (tp.sign_at(polynomial, lower.numerator, lower.denominator) == 0 and
+                    certify.count_roots(polynomial, None, lower) - 1 == value.real_index)
+        return (tp.sign_at(polynomial, lower.numerator, lower.denominator) != 0 and
+                tp.sign_at(polynomial, upper.numerator, upper.denominator) != 0 and
+                certify.count_roots(polynomial, None, lower) == value.real_index and
+                certify.count_roots(polynomial, lower, upper) == 1)

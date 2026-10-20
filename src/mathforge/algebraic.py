@@ -32,8 +32,10 @@ class RealAlgebraicRoot(Expression):
             polynomial = Polynomial(coefficients, ROOT_VARIABLE)
             if polynomial.degree <= 0:
                 raise InvalidInput("An algebraic root requires a nonconstant polynomial")
-            polynomial = polynomial.exact_div(polynomial.gcd(polynomial.derivative()))
-            coefficients = primitive_integer_coefficients(polynomial)
+            # The primitive square-free part with a positive leading coefficient, as v0.7's
+            # primitive_integer_coefficients(p / gcd(p, p')) gives it, on integers.
+            from .kernels import upoly as kernels
+            coefficients = kernels.squarefree_part(tuple(c.numerator for c in polynomial.coefficients))
             polynomial = Polynomial(coefficients, ROOT_VARIABLE)
             if self.real_index >= count_real_roots(polynomial):
                 raise InvalidInput("Algebraic root index does not identify a real root")
@@ -55,6 +57,27 @@ class RootRecord:
         if type(self.multiplicity) is not int or self.multiplicity <= 0:
             raise InvalidInput("Root multiplicity must be a positive integer")
         object.__setattr__(self, "root", root)
+
+
+def trusted_real_algebraic_root(coefficients, index):
+    """A RealAlgebraicRoot built without validation: the caller guarantees primitive square-free integer
+    coefficients with a positive leading coefficient and an index below their number of real roots, which makes it
+    equal to RealAlgebraicRoot(coefficients, index)."""
+    value = object.__new__(RealAlgebraicRoot)
+    fields = value.__dict__
+    fields["integer_coefficients"] = tuple(coefficients)
+    fields["real_index"] = index
+    return value
+
+
+def trusted_root_record(root, multiplicity):
+    """A RootRecord built without validation: the caller guarantees a Rational, a RealAlgebraicRoot or a closed
+    quadratic-field expression as the root, and a positive int multiplicity."""
+    value = object.__new__(RootRecord)
+    fields = value.__dict__
+    fields["root"] = root
+    fields["multiplicity"] = multiplicity
+    return value
 
 
 def _exact_sqrt(value):

@@ -303,6 +303,37 @@ class Polynomial:
         return str(self.to_expression())
 
 
+def trusted_polynomial(coefficients, variable):
+    """A Polynomial from canonical Rational coefficients, built without validation and without a budget charge.
+
+    The caller guarantees what ``Polynomial.__post_init__`` would establish: a tuple of Rationals in lowest terms
+    with no trailing zero (``(Rational(0),)`` for the zero polynomial), at most MAX_POLYNOMIAL_DEGREE + 1 of them, and
+    a Symbol. The result is then equal to ``Polynomial(coefficients, variable)``, with the same hash.
+    """
+    value = object.__new__(Polynomial)
+    fields = value.__dict__
+    fields["coefficients"] = coefficients
+    fields["variable"] = variable
+    return value
+
+
+def trusted_square_free(coefficient, factors):
+    """A SquareFreeDecomposition from a Rational coefficient and a tuple of (monic square-free Polynomial,
+    multiplicity) pairs with strictly increasing multiplicities, built without validation."""
+    entries = []
+    for polynomial, multiplicity in factors:
+        entry = object.__new__(SquareFreeFactor)
+        fields = entry.__dict__
+        fields["polynomial"] = polynomial
+        fields["multiplicity"] = multiplicity
+        entries.append(entry)
+    value = object.__new__(SquareFreeDecomposition)
+    fields = value.__dict__
+    fields["coefficient"] = coefficient
+    fields["factors"] = tuple(entries)
+    return value
+
+
 @dataclass(frozen=True)
 class SquareFreeFactor:
     polynomial: Polynomial

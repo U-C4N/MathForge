@@ -28,8 +28,25 @@ def root_certificate(polynomial, records):
         return evidence
 
 
+def _signed_primitive(values):
+    """Integer coefficients divided by their positive content (the sign kept); () for zero."""
+    from math import gcd
+    if not values:
+        return ()
+    divisor = gcd(*values)
+    return tuple(value // divisor for value in values)
+
+
 def check_root_certificate(polynomial, records, evidence):
-    """Check the chain recurrence, source, isolator index and all multiplicities."""
+    """Check the chain recurrence, source, isolator index and all multiplicities.
+
+    v0.7's predicate, decided on integers by mathforge.certify.upoly: the first member is a positive multiple of the
+    square-free part, the second its derivative, each further member a positive multiple of minus the remainder of
+    the two before it (pseudo-remainders with the sign of lc**k undone), the last remainder zero; then the records
+    (verify_root_records) and each isolator (verify_isolator, the source polynomial nonzero at open ends and with one
+    root inside)."""
+    from .certify import upoly as certify
+    from .trusted import upoly as tp
     with computation():
         if type(evidence) is not tuple or len(evidence) != 2:
             return False
@@ -39,23 +56,33 @@ def check_root_certificate(polynomial, records, evidence):
                 or any(type(p) is not Polynomial or p.variable != polynomial.variable for p in chain)
                 or polynomial.is_zero):
             return False
-        square_free = polynomial.exact_div(polynomial.gcd(polynomial.derivative())).monic()
-        if chain[0].is_zero or chain[0].leading_coefficient <= 0 or chain[0].monic() != square_free:
+        source = tp.primitive(tp.from_rationals(polynomial.coefficients)[0])
+        square_free = certify.squarefree_part(source)
+        if chain[0].is_zero or chain[0].leading_coefficient <= 0:
+            return False
+        members = [tp.from_rationals(member.coefficients)[0] for member in chain]
+        if tp.primitive(members[0]) != square_free:
             return False
         if chain[0].degree == 0:
             if len(chain) != 1:
                 return False
         else:
-            if len(chain) < 2 or chain[1] != chain[0].derivative():
+            first = chain[0].coefficients
+            if len(chain) < 2 or chain[1].coefficients != (tuple(value * index for index, value in enumerate(first)
+                                                                    if index) or (Rational(0),)):
                 return False
             for index in range(2, len(chain)):
-                remainder = -chain[index - 2].divmod(chain[index - 1])[1]
-                if remainder.is_zero or chain[index].is_zero:
+                a, b, c = members[index - 2], members[index - 1], members[index]
+                if not b or not c:
                     return False
-                scale = chain[index].leading_coefficient / remainder.leading_coefficient
-                if scale <= 0 or chain[index] != remainder * scale:
+                remainder = tp.pseudo_remainder(a, b)
+                if not remainder:
                     return False
-            if not chain[-2].divmod(chain[-1])[1].is_zero:
+                if b[-1] > 0 or (len(a) - len(b) + 1) % 2 == 0:
+                    remainder = tp.neg(remainder)
+                if _signed_primitive(c) != _signed_primitive(remainder):
+                    return False
+            if not members[-1] or tp.pseudo_remainder(members[-2], members[-1]):
                 return False
         if not verify_root_records(polynomial, records):
             return False
@@ -64,10 +91,10 @@ def check_root_certificate(polynomial, records, evidence):
                 return False
             lower, upper = interval
             if lower == upper:
-                if evaluate_rational(polynomial, lower).numerator != 0:
+                if tp.sign_at(source, lower.numerator, lower.denominator) != 0:
                     return False
-            elif (evaluate_rational(polynomial, lower).numerator == 0
-                  or evaluate_rational(polynomial, upper).numerator == 0
-                  or count_real_roots(polynomial, lower, upper) != 1):
+            elif (tp.sign_at(source, lower.numerator, lower.denominator) == 0
+                  or tp.sign_at(source, upper.numerator, upper.denominator) == 0
+                  or certify.count_roots(square_free, lower, upper) != 1):
                 return False
         return True

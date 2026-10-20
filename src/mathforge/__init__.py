@@ -420,18 +420,7 @@ __all__ = [
 
 from . import functions
 from .functions import (RealExpr, RealFunction, DomainPredicate, UnevaluatedIntegral,
-                        UnevaluatedLimit, real_function)
-
-
-def parse_function(text, *, symbols, variables=None, limits=None) -> RealFunction:
-    """Parse a bounded arithmetic grammar without executing Python code."""
-    if limits is None:
-        _value = _LEAN.parse_function(text, symbols, variables)
-        if _value is not _FALLBACK:
-            return _value
-    return functions.parse_function(text, symbols=symbols, variables=variables, limits=limits)
-
-
+                        UnevaluatedLimit, real_function, parse_function)
 from .function_calculus import TaylorPolynomial, FunctionLimitValue
 from .values_v7 import *
 from .values_v7 import __all__ as _v7_names

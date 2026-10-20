@@ -61,16 +61,25 @@ def _register_rational(cls):
 
 
 def _kind(cls):
-    """Classify a type once, by v0.7's tests in v0.7's order; each of them depends on the type alone."""
+    """Classify a type once, by v0.7's tests in v0.7's order; each of them depends on the type alone.
+
+    A seeded type keeps its seeded kind, whatever the cache holds. A full cache is replaced by a fresh copy of the
+    seeds, never cleared in place: an inspect running in another thread meanwhile reads the table it started with,
+    which still holds every seeded type, so it never classifies an int or a tuple as a leaf.
+    """
+    global _KINDS
+    kind = _SEED_KINDS.get(cls)
+    if kind is not None:
+        return kind
     if issubclass(cls, Enum) or issubclass(cls, type) or not is_dataclass(cls):
         kind = _LEAF
     else:
         # A marked field, such as OperationRequest.version, names a format, not content.
         kind = tuple(f.name for f in fields(cls) if f.metadata.get("budget") != "skip")
-    if len(_KINDS) >= _KIND_CACHE_LIMIT:
-        _KINDS.clear()
-        _KINDS.update(_SEED_KINDS)
-    _KINDS[cls] = kind
+    kinds = _KINDS
+    if len(kinds) >= _KIND_CACHE_LIMIT:
+        kinds = _KINDS = dict(_SEED_KINDS)
+    kinds[cls] = kind
     return kind
 
 

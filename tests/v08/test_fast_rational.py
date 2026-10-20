@@ -10,6 +10,7 @@ import operator
 import pickle
 import random
 import unittest
+import weakref
 
 from mathforge.errors import UnsupportedOperation
 from mathforge.limits import ComputationLimits, ResourceLimitError, computation
@@ -204,6 +205,12 @@ class FastRationalTest(unittest.TestCase):
         self.assertSameRational(copy.deepcopy([value])[0], Fraction(-2**70, 3))
         self.assertSameRational(copy.copy(value), Fraction(-2**70, 3))
 
+    def test_weak_references_work_as_in_v07(self):
+        value = Rational(3, 4)
+        self.assertIs(weakref.ref(value)(), value)
+        with self.assertRaises(TypeError):  # Slots: no attribute dict, unlike v0.7 (noted in the CHANGELOG).
+            vars(value)
+
     def test_trusted_rational_is_the_public_object(self):
         self.assertEqual(trusted_rational(3, 4), Rational(3, 4))
         self.assertEqual(hash(trusted_rational(3, 4)), hash(Rational(3, 4)))
@@ -226,7 +233,7 @@ class FastRationalTest(unittest.TestCase):
     def test_every_fast_operation_charges_one_unit(self):
         a, b = Rational(1, 2), Rational(1, 3)
         operations = (lambda: a + 1, lambda: 1 + a, lambda: a - 1, lambda: 1 - a, lambda: a * 2, lambda: 2 * a,
-                      lambda: a / 2, lambda: 2 / a, lambda: -a, lambda: abs(a), lambda: a ** 0, lambda: a ** 1,
+                      lambda: a / 2, lambda: 2 / a, lambda: -a, lambda: abs(a), lambda: a ** 0,
                       lambda: a ** 3, lambda: a < b, lambda: a <= 1, lambda: 1 < a, lambda: a >= b, lambda: a > 2,
                       lambda: add(a, b), lambda: mul(a, b), lambda: add(a), lambda: mul(), lambda: Rational(3, 4))
         for index, thunk in enumerate(operations):
@@ -237,6 +244,10 @@ class FastRationalTest(unittest.TestCase):
             add(a, b, 1)
             mul(a, b, 2, a)
             self.assertEqual(budget.work, 5)
+        with computation(ComputationLimits(max_work=1), fresh=True) as budget:
+            budget.tick()
+            self.assertIs(a ** 1, a)  # As v0.7's power() returned the base: no charge, even at the work limit.
+            self.assertEqual(budget.work, 1)
 
     def test_integer_bits_enforced(self):
         with computation(ComputationLimits(max_integer_bits=64)):

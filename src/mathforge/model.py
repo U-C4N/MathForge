@@ -123,13 +123,17 @@ class Expression:
         return substitute_expression(self, mapping)
 
 
-@dataclass(frozen=True, slots=True, init=False)
+@dataclass(frozen=True, slots=True, weakref_slot=True, init=False)
 class Rational(Expression):
     """An exact rational number in lowest terms with a positive denominator.
 
     Arithmetic and ordering with another Rational or an int work on the integers directly: each result charges the
-    active budget one work unit and keeps its integers within max_integer_bits. Any other operand, and a subclass
-    receiver, take v0.7's generic Expression path unchanged.
+    active budget one work unit (a first power returns the Rational itself and charges nothing, as in v0.7) and keeps
+    its integers within max_integer_bits. Any other operand, and a subclass receiver, take v0.7's generic Expression
+    path unchanged.
+
+    The instance has slots: weak references work as in v0.7, but it has no ``__dict__``, so ``vars()`` of it raises
+    TypeError.
     """
 
     numerator: int
@@ -295,6 +299,8 @@ class Rational(Expression):
             return Expression.__pow__(self, exponent)
         if exponent < 0:
             raise UnsupportedOperation("Negative powers and symbolic denominators are unsupported")
+        if exponent == 1:
+            return self  # Free, as v0.7's power() returned the base itself.
         numerator, denominator = self.numerator, self.denominator
         budget = _active_budget()
         if budget is not None:
@@ -305,8 +311,6 @@ class Rational(Expression):
                 for value in (numerator, denominator):
                     if abs(value) > 1 and value.bit_length() * exponent > bound:
                         raise ResourceLimitError("Computation limit exceeded: power integer bits")
-        if exponent == 1:
-            return self
         return trusted_rational(numerator ** exponent, denominator ** exponent)
 
     def __lt__(self, other):

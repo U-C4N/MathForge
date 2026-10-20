@@ -984,35 +984,42 @@ def _rational_root(r):
 
 def _scan(expression):
     """The squarefree radicands of the square roots and quadratic roots of an expression; _Decline for a shape that
-    the lean path does not read, or one that is large."""
-    radicands, pending, nodes = [], [(expression, 0)], 0
+    the lean path does not read, or one that is large. Large includes a leaf whose length (bits), times the product
+    of the exponents of the powers above it, passes _SMALL: its power alone would hold integers of about that length,
+    past what _surd_value accepts, and nested powers would reach millions of bits before any check."""
+    radicands, pending, nodes = [], [(expression, 0, 1)], 0
     while pending:
-        node, depth = pending.pop()
+        node, depth, weight = pending.pop()
         nodes += 1
         kind = type(node)
         if nodes > _EXPRESSION_NODES or depth > _EXPRESSION_DEPTH:
             raise _Decline
         if kind is Rational:
-            if not _valid(node.numerator, node.denominator, _SMALL):
+            if (not _valid(node.numerator, node.denominator, _SMALL)
+                    or weight * max(node.numerator.bit_length(), node.denominator.bit_length()) > _SMALL):
                 raise _Decline
         elif kind is Sqrt:
             radicand = node.radicand
             if (type(radicand) is not Rational or radicand.numerator < 0
-                    or not _valid(radicand.numerator, radicand.denominator, _SMALL)):
+                    or not _valid(radicand.numerator, radicand.denominator, _SMALL)
+                    or weight * max(radicand.numerator.bit_length(), radicand.denominator.bit_length()) > _SMALL):
                 raise _Decline
             n = _rational_root(radicand)[2]
             if n > 1:
                 radicands.append(n)
         elif kind is RealAlgebraicRoot:
-            radicands.append(_quadratic_data(node)[3])
+            data = _quadratic_data(node)
+            if weight * (1 + max(c.bit_length() for c in data[0])) > _SMALL:
+                raise _Decline
+            radicands.append(data[3])
         elif kind is Add:
-            pending.extend((term, depth + 1) for term in node.terms)
+            pending.extend((term, depth + 1, weight) for term in node.terms)
         elif kind is Mul:
-            pending.extend((factor, depth + 1) for factor in node.factors)
+            pending.extend((factor, depth + 1, weight) for factor in node.factors)
         elif kind is Pow:
             if type(node.exponent) is not int or not 0 <= node.exponent <= _EXPRESSION_POWER:
                 raise _Decline
-            pending.append((node.base, depth + 1))
+            pending.append((node.base, depth + 1, weight * max(node.exponent, 1)))
         else:
             raise _Decline
     return radicands

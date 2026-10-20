@@ -7,6 +7,10 @@ matrices need D**2 <= H2 = prod_i |row_i(A_int)|**2 (Hadamard: det(A_int)**2 <= 
 trusted.primes whose product P satisfies P**2 > 4 H2: then |D - det(A_int)| <= 2 sqrt(H2) < P, so D = det(A_int). The
 residues come from this package's own lazy elimination, modulo the product of those primes at once (a composite
 modulus whose pivots must be units), or, when a pivot is not a unit there, modulo each prime alone.
+
+A matrix with a row whose denominators' lcm passes max_integer_bits has no integer form within the bound; its
+determinant is checked by v0.7's criterion instead, Gaussian elimination over Q (every Rational kept within the
+bound by the active budget), so that such a claim gets v0.7's verdict.
 """
 
 from __future__ import annotations
@@ -14,8 +18,9 @@ from __future__ import annotations
 from math import prod
 from operator import mul
 
+from mathforge.limits import ResourceLimitError, current_budget
 from mathforge.model import Rational
-from mathforge.trusted.intmatrix import clear_row_denominators
+from mathforge.trusted.intmatrix import ONE, ZERO, clear_row_denominators
 from mathforge.trusted.primes import moduli
 
 from . import square_rows
@@ -71,12 +76,39 @@ def check_integer_determinant(int_rows, target) -> bool:
     return True
 
 
+def _rational_determinant(rows) -> Rational:
+    """det of a square rational matrix by v0.7's check: Gaussian elimination over Q, the product of the pivots."""
+    budget = current_budget()
+    n = len(rows)
+    rows = [list(row) for row in rows]
+    product = ONE
+    for column in range(n):
+        if budget is not None:
+            budget.tick()
+        pivot_index = next((i for i in range(column, n) if rows[i][column].numerator), None)
+        if pivot_index is None:
+            return ZERO
+        if pivot_index != column:
+            rows[column], rows[pivot_index] = rows[pivot_index], rows[column]
+            product = -product
+        pivot = rows[column][column]
+        product = product * pivot
+        for i in range(column + 1, n):
+            factor = rows[i][column] / pivot
+            for j in range(column + 1, n):
+                rows[i][j] = rows[i][j] - factor * rows[column][j]
+    return product
+
+
 def check_determinant(A, value) -> bool:
     """Whether value = det(A), for a square rational matrix A (a Matrix or a tuple of row tuples)."""
     rows = square_rows(A)
     if rows is None or type(value) is not Rational:
         return False
-    int_rows, scales = clear_row_denominators(rows)
+    try:
+        int_rows, scales = clear_row_denominators(rows)
+    except ResourceLimitError:  # A row scale past the integer bound: v0.7's elimination over Q decides.
+        return _rational_determinant(rows) == value
     scale = prod(scales)
     if scale % value.denominator:
         return False

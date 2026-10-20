@@ -8,8 +8,13 @@ polynomial identity into one integer comparison. tests/v08/algebra/test_upoly.py
 
 Work is charged to the active budget, when there is one, in batches: one ``tick`` per call, proportional to the
 number of coefficient operations, so that a runaway computation stops at ``max_work`` without a charge per
-multiplication. Results whose integers outgrow ``max_integer_bits`` are refused by the callers that can create them
-(``check_bits``).
+multiplication. A coefficient operation on long integers costs more than one on short ones: ``size_factor`` scales the
+charge of an operation by the size of its integers (one unit up to about 1,000 bits, so that short coefficients cost
+what they always did; ``evaluation_factor`` does so for an evaluation at a long point, and ``kronecker`` charges a
+long evaluation of its own), and ``charge_product``, ``charge_power`` and ``charge_gcd`` charge what a big-integer
+product, power or gcd costs beyond that, before it runs, so that a computation with explosive integers stops at
+``max_work`` instead of running for minutes. Results whose integers outgrow ``max_integer_bits`` are refused by the
+callers that can create them (``check_bits``).
 
 The module also builds the two exact objects that the lean value path returns from coefficient lists without
 re-validating them: Rationals in lowest terms (``rationals``) and the expression tree that
@@ -28,9 +33,10 @@ _active = _ACTIVE.get  # The active Budget or None.
 
 __all__ = [
     "trim", "add", "sub", "mul", "scale", "neg", "derivative", "pseudo_remainder", "divmod_exact", "exact_quotient",
-    "content", "primitive", "sign_at", "value_at", "mod", "mul_mod", "divmod_mod", "gcd_mod", "pow_mod",
-    "monic_mod", "max_bits", "norm1_bits", "kronecker_bits", "kronecker", "check_bits", "charge",
-    "from_rationals", "rationals", "monic_rationals", "expression",
+    "content", "primitive", "evaluation_factor", "sign_at", "value_at", "mod", "mul_mod", "divmod_mod", "gcd_mod",
+    "pow_mod", "monic_mod", "max_bits", "norm1_bits", "kronecker_bits", "kronecker", "check_bits", "charge",
+    "size_factor", "charge_product", "charge_power", "charge_gcd", "from_rationals", "rationals", "monic_rationals",
+    "expression",
 ]
 
 _new = object.__new__
@@ -47,6 +53,44 @@ def charge(n: int) -> None:
     budget = _active()
     if budget is not None and n:
         budget.tick(n)
+
+
+def size_factor(left_bits: int, right_bits: int, products: int = 1) -> int:
+    """The work units of one coefficient operation that forms the given number of products (or division steps) of
+    integers of the given bit lengths: 1, and for each product one more per 256 pairs of their 64-bit words (the
+    schoolbook count; Karatsuba makes long products cheaper, so this overestimates them). Up to about 1,000 bits on
+    both sides an operation costs the one unit that the batched coefficient charges assume; a product of two
+    65,536-bit integers costs 4,096 more, and the default max_work (2,000,000) is about half a second of them."""
+    return 1 + products * ((left_bits >> 6) * (right_bits >> 6) >> 8)
+
+
+def charge_product(left_bits: int, right_bits: int, count: int = 1) -> None:
+    """Charge, before they run, what count products or divisions of integers of the given bit lengths cost beyond
+    one unit each (size_factor - 1): nothing below about 1,000 bits, where the caller's own count covers them."""
+    extra = (left_bits >> 6) * (right_bits >> 6) >> 8
+    if extra:
+        budget = _active()
+        if budget is not None:
+            budget.tick(count * extra)
+
+
+def charge_power(base_bits: int, exponent: int) -> None:
+    """Charge, before it runs, a power of an integer of base_bits bits: about its last squaring, of two integers of
+    half the power's length (charge_product; nothing for a power of fewer than 2,048 bits)."""
+    half = base_bits * exponent >> 1
+    if half >= 1024:
+        charge_product(half, half)
+
+
+def charge_gcd(bits: int, count: int = 1) -> None:
+    """Charge, before they run, count gcds or lcms of integers of at most the given bit length: quadratic in the length
+    (Lehmer's algorithm), one unit per 64 squared 64-bit words, 16,384 units at 65,536 bits and nothing below 512."""
+    words = bits >> 6
+    extra = words * words >> 6
+    if extra:
+        budget = _active()
+        if budget is not None:
+            budget.tick(count * extra)
 
 
 def scaled_rational(integer: int, numerator: int, denominator: int) -> Rational:
@@ -121,7 +165,13 @@ def mul(p: tuple[int, ...], q: tuple[int, ...]) -> tuple[int, ...]:
         return ()
     if len(p) < len(q):
         p, q = q, p
-    charge(len(p) * len(q))
+    bits_q = max_bits(q)
+    if bits_q < 64:  # The size factor is 1 whatever p holds.
+        bits_p = None
+        charge(len(p) * len(q))
+    else:
+        bits_p = max_bits(p)
+        charge(len(p) * len(q) * size_factor(bits_p, bits_q))
     if len(q) <= 12:
         result = [0] * (len(p) + len(q) - 1)
         for j, b in enumerate(q):
@@ -129,7 +179,7 @@ def mul(p: tuple[int, ...], q: tuple[int, ...]) -> tuple[int, ...]:
                 for i, a in enumerate(p, j):
                     result[i] += a * b
         return tuple(result)
-    bits = max_bits(p) + max_bits(q) + len(q).bit_length() + 1
+    bits = (max_bits(p) if bits_p is None else bits_p) + bits_q + len(q).bit_length() + 1
     return _unpack(kronecker(p, bits) * kronecker(q, bits), bits, len(p) + len(q) - 1)
 
 
@@ -149,7 +199,14 @@ def pseudo_remainder(p: tuple[int, ...], q: tuple[int, ...]) -> tuple[int, ...]:
     exponent = len(p) - m + 1
     remainder = list(p)
     lower = q[:-1]
-    charge((len(p) - m + 1) * len(p))
+    # Each round multiplies the remainder by lc(q), so its integers grow by up to max_bits(q) bits a round; a
+    # coefficient takes two products a round (by lc(q), and the top coefficient by one of q's). Below 64 bits in q
+    # the factor is 1 whatever p holds.
+    bits_q = max_bits(q)
+    if bits_q < 64:
+        charge(exponent * len(p))
+    else:  # size_factor(max_bits(p) + exponent * bits_q, bits_q, 2), inline: this runs once per pseudo-remainder.
+        charge(exponent * len(p) * (1 + 2 * (((max_bits(p) + exponent * bits_q) >> 6) * (bits_q >> 6) >> 8)))
     while len(remainder) >= m:
         top = remainder.pop()  # lead * top - top * lead cancels the leading term
         shift = len(remainder) - m + 1
@@ -177,7 +234,8 @@ def divmod_exact(p: tuple[int, ...], q: tuple[int, ...]) -> tuple[tuple[int, ...
     lead = q[-1]
     remainder = list(p)
     quotient = [0] * (len(p) - m + 1)
-    charge(len(quotient) * m)
+    bits_q = max_bits(q)
+    charge(len(quotient) * m * (1 if bits_q < 64 else size_factor(max_bits(p), bits_q)))
     for shift in range(len(p) - m, -1, -1):
         top = remainder[shift + m - 1]
         if top:
@@ -222,11 +280,19 @@ def primitive(p: tuple[int, ...]) -> tuple[int, ...]:
 # ---------------------------------------------------------------------------------------------------------------
 # Evaluation
 
+def evaluation_factor(length: int, num: int, den: int) -> int:
+    """The size_factor of one Horner step of a polynomial of `length` coefficients at num/den: two products of the
+    running value, which grows to about length times the point's bits, by an integer of the point's bits (1 below
+    64 bits)."""
+    bits = max(num.bit_length(), den.bit_length())
+    return 1 if bits < 64 else size_factor(length * bits, bits, 2)
+
+
 def sign_at(p: tuple[int, ...], num: int, den: int) -> int:
     """The sign of p(num/den) for den > 0: Horner on the homogenized form sum c_i num**i den**(n-i)."""
     if not p:
         return 0
-    charge(len(p))
+    charge(len(p) * evaluation_factor(len(p), num, den))
     if den == 1:
         value = 0
         for coefficient in reversed(p):
@@ -244,7 +310,7 @@ def value_at(p: tuple[int, ...], x: Rational) -> Rational:
     num, den = x.numerator, x.denominator
     if not p:
         return trusted_rational(0, 1)
-    charge(len(p))
+    charge(len(p) * evaluation_factor(len(p), num, den))
     value, power = 0, 1
     for coefficient in reversed(p):
         value = value * num + coefficient * power
@@ -358,7 +424,13 @@ def norm1_bits(p: tuple[int, ...]) -> int:
 
 
 def kronecker(p: tuple[int, ...], bits: int) -> int:
-    """p(2**bits), by Horner with shifts."""
+    """p(2**bits), by Horner with shifts. Each step copies the value formed so far, so the evaluation costs about
+    len(p)**2 * bits / 64 word operations: one unit of work is charged per 16,384 of len(p)**2 * bits, nothing for
+    short polynomials, so that a long polynomial with a long coefficient does not form an integer of millions of
+    bits unmetered."""
+    extra = len(p) * len(p) * bits >> 14
+    if extra:
+        charge(extra)
     value = 0
     for coefficient in reversed(p):
         value = (value << bits) + coefficient

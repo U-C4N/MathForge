@@ -11,6 +11,10 @@ Every routine works on integer rows (mathforge.trusted.intmatrix.clear_row_denom
 They charge an active budget one batched tick per row rewrite (its length) and check each pivot against the integer
 bound, so runaway work stops; with no active budget they charge nothing. The results are certified by
 mathforge.certify.linalg, never by rerunning these routines.
+
+A row whose denominators' lcm passes max_integer_bits has no integer form (clear_row_denominators refuses it, as
+v0.7's determinant did); ``inverse`` then runs v0.7's own Gauss-Jordan elimination over Q, which keeps every Rational
+within the bound and so gives v0.7's answer or v0.7's error for such a matrix.
 """
 
 from __future__ import annotations
@@ -19,7 +23,7 @@ from collections.abc import Sequence
 from operator import mul
 from typing import NamedTuple
 
-from ..limits import current_budget
+from ..limits import ResourceLimitError, current_budget
 from ..model import Rational
 from ..trusted.intmatrix import ONE, ZERO, clear_row_denominators, ratio
 from ..trusted.primes import moduli
@@ -189,10 +193,25 @@ def lu(rows: Sequence[Sequence[Rational]]) -> tuple[tuple[tuple[Rational, ...], 
     return (tuple(tuple(row) for row in P), tuple(tuple(row) for row in L), tuple(tuple(row) for row in U))
 
 
+def _rational_inverse(rows: Sequence[Sequence[Rational]]) -> tuple[tuple[Rational, ...], ...] | None:
+    """v0.7's inverse: Gauss-Jordan elimination over Q of [A | I] (matrices.reduce_with_trace), None when singular."""
+    from ..matrices import Matrix, reduce_with_trace
+    n = len(rows)
+    augmented = Matrix((tuple(row) + tuple(ONE if i == j else ZERO for j in range(n)) for i, row in enumerate(rows)),
+                       ncols=2 * n)
+    reduction, _ = reduce_with_trace(augmented)
+    if reduction.pivot_columns[:n] != tuple(range(n)):
+        return None
+    return tuple(tuple(row[n:]) for row in reduction.matrix.rows)
+
+
 def inverse(rows: Sequence[Sequence[Rational]]) -> tuple[tuple[Rational, ...], ...] | None:
     """The inverse of a square rational matrix, or None when it is singular."""
     budget = current_budget()
-    int_rows, scales = clear_row_denominators(rows)
+    try:
+        int_rows, scales = clear_row_denominators(rows)
+    except ResourceLimitError:
+        return _rational_inverse(rows)  # A row scale past the integer bound: v0.7's elimination decides.
     n = len(int_rows)
     a = [list(row) + [0] * n for row in int_rows]
     for i in range(n):

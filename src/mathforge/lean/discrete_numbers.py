@@ -10,7 +10,8 @@ comes back only when its check accepts it.
 Each function falls back for an argument that is not an exact int (bools included), for an index over the default
 max_integer_bits, while a computation budget is active and wherever v0.7 raises: its producers and checks keep every
 product within max_integer_bits, and the functions below refuse the inputs whose largest such product (computed or
-bounded here) would not fit.
+bounded here) would not fit. Where a value can be millions of bits long (C(n, k), P(n, k) and the Catalan numbers
+for a large index), a lower bound on its length refuses the input before math.comb or math.perm computes it.
 """
 
 from __future__ import annotations
@@ -38,6 +39,16 @@ _STEPS = _MAX_WORK // 2
 _MAX_COUNTS = 10_000
 # Up to this n, S(n, c) <= n**n and C(k, j) j**n <= 2**k n**n have fewer than 2**15 bits: no limit is in reach.
 _STIRLING_SMALL = 2_000
+# The largest n for which n * C(2n, n), the product that v0.7's binomial forms for catalan(n), has at most
+# max_integer_bits bits (_over(C(2n, n), n) is false up to 32,764 and true from 32,765 on; C(2n, n) increases).
+_CATALAN_MAX = 32_764
+
+
+def _choose_too_long(n: int, k: int) -> bool:
+    """Whether C(n, k), for 0 < k <= n / 2, surely has more than max_integer_bits bits, by its lower bounds
+    C(n, k) >= (n / k)**k >= 2**k: log2 C(n, k) >= k (bitlen(n) - bitlen(k) - 1) and >= k. Then v0.7's product
+    k * C(n, k) passes the bound as well (_over), so the answer is FALLBACK either way."""
+    return k * max(1, n.bit_length() - k.bit_length() - 1) > _MAX_BITS
 
 
 def _over(x: int, y: int) -> bool:
@@ -96,7 +107,7 @@ def binomial(n: object, k: object) -> object:
         if k > n:
             return 0
         smaller = min(k, n - k)
-        if smaller > _STEPS:
+        if smaller > _STEPS or (smaller and _choose_too_long(n, smaller)):
             return FALLBACK
         value = comb(n, smaller)
         # v0.7 forms smaller * C(n, smaller) before its last division, and its check the same product.
@@ -119,7 +130,7 @@ def multinomial(counts: object) -> object:
             total += count
             smaller = min(count, total - count)
             steps += smaller
-            if total.bit_length() > _MAX_BITS or steps > _STEPS:
+            if total.bit_length() > _MAX_BITS or steps > _STEPS or (smaller and _choose_too_long(total, smaller)):
                 return FALLBACK
             coefficient = comb(total, count)
             if smaller and _over(coefficient, smaller):
@@ -145,7 +156,9 @@ def permutations_count(n: object, k: object) -> object:
     try:
         if k > n:
             return 0
-        if k > _STEPS:
+        # P(n, k) >= k! (past the bound from k = 5,911 on) and P(n, k) >= (n - k + 1)**k: a value surely past
+        # max_integer_bits, which the check below would refuse, is refused before math.perm computes it.
+        if k > _FACTORIAL_MAX or k * ((n - k + 1).bit_length() - 1) > _MAX_BITS:
             return FALLBACK
         value = perm(n, k)
         if value.bit_length() > _MAX_BITS:  # v0.7's running product reaches the value itself.
@@ -198,7 +211,7 @@ def fibonacci(n: object) -> object:
 
 
 def catalan(n: object) -> object:
-    if not _index(n) or n > _STEPS or _active() is not None:
+    if not _index(n) or n > _CATALAN_MAX or _active() is not None:
         return FALLBACK
     try:
         central = comb(2 * n, n)

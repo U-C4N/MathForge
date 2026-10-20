@@ -149,14 +149,22 @@ def heuristic_gcd(f: tuple[int, ...], g: tuple[int, ...]):
 
     The heuristic gcd of Char, Geddes and Gonnet at the points 2**k: the integer gcd of f(2**k) and g(2**k), read as
     a polynomial in balanced base 2**k, is the polynomial gcd once 2**k is large enough; the cofactors follow from
-    the quotients. Each candidate is kept only if both product identities hold."""
+    the quotients. Each candidate is kept only if both product identities hold.
+
+    The evaluations have about max(len f, len g) * k bits. Past max_integer_bits the heuristic gives up (None) before
+    evaluating, so that Euclid decides under its own bit guard: an integer gcd of millions of bits would run for
+    minutes. Each integer gcd is charged by its size (trusted.upoly.charge_gcd)."""
     norm_f = max(max(f), -min(f))
     norm_g = max(max(g), -min(g))
     bound = 2 * min(norm_f, norm_g) + 29
     start = max(min(bound, 99 * isqrt(bound)), 2 * min(norm_f // f[-1], norm_g // g[-1]) + 4)
     bits = start.bit_length() + 1
+    longest, limit = max(len(f), len(g)), _max_bits()
     for _ in range(6):
+        if longest * bits > limit:
+            return None
         tp.charge(len(f) + len(g))
+        tp.charge_gcd(longest * bits)
         value_f, value_g = tp.kronecker(f, bits), tp.kronecker(g, bits)
         if value_f and value_g:
             common = gcd(value_f, value_g)
@@ -175,16 +183,18 @@ def heuristic_gcd(f: tuple[int, ...], g: tuple[int, ...]):
 
 def euclid_gcd(f: tuple[int, ...], g: tuple[int, ...]) -> tuple[int, ...]:
     """The primitive gcd (positive leading coefficient) of nonzero integer polynomials, by the primitive
-    pseudo-remainder sequence."""
+    pseudo-remainder sequence. A divisor whose leading coefficient passes max_integer_bits is refused before it divides
+    (the pseudo-remainders, and the gcds of their contents, are charged by the size of their integers)."""
     a, b = tp.primitive(f), tp.primitive(g)
     if len(a) < len(b):
         a, b = b, a
+    limit = _max_bits()
     while b:
+        if b[-1].bit_length() > limit:
+            raise _too_long()
         remainder = tp.pseudo_remainder(a, b)
+        tp.charge_gcd(tp.max_bits(remainder), len(remainder))  # Its content: up to one gcd per coefficient.
         a, b = b, tp.primitive(remainder)
-        for value in (a[-1] if a else 0,):
-            if value.bit_length() > _max_bits():
-                raise _too_long()
     return tp.primitive(a)
 
 
@@ -283,6 +293,7 @@ def subresultant(f: tuple[int, ...], g: tuple[int, ...]) -> int:
         f, g, n, m = g, f, m, n
         sign = -1 if n * m % 2 else 1
     if m == 0:
+        tp.charge_power(g[0].bit_length(), n)
         return sign * g[0] ** n
     limit = _max_bits()
     drop = n - m
@@ -290,10 +301,13 @@ def subresultant(f: tuple[int, ...], g: tuple[int, ...]) -> int:
     if (drop + 1) % 2:
         remainder = tp.neg(remainder)
     leading = g[-1]
+    tp.charge_power(leading.bit_length(), drop)
     previous = -(leading ** drop)
     while remainder:
         next_degree = len(remainder) - 1
         f, g, m, drop = g, remainder, next_degree, m - next_degree
+        if previous.bit_length() * drop >= 2048:  # Each power is charged by its size before it is formed.
+            tp.charge_power(previous.bit_length(), drop)
         divisor = -leading * previous ** drop
         remainder = tp.pseudo_remainder(f, g)
         if divisor != 1:
@@ -305,6 +319,7 @@ def subresultant(f: tuple[int, ...], g: tuple[int, ...]) -> int:
         if leading.bit_length() > limit:
             raise _too_long()
         if drop > 1:
+            tp.charge_power(max(leading.bit_length(), previous.bit_length()), drop)
             numerator = (-leading) ** drop
             denominator = previous ** (drop - 1)
             previous, rest = divmod(numerator, denominator)
@@ -388,6 +403,7 @@ def _sturm_chain(p):
             break
         if b[-1] > 0 or (len(a) - len(b) + 1) % 2 == 0:
             remainder = tp.neg(remainder)  # -rem up to the positive factor lc(b)**k
+        tp.charge_gcd(tp.max_bits(remainder), len(remainder))  # The content: up to one gcd per coefficient.
         divisor = gcd(*remainder)
         if divisor != 1:
             remainder = tuple([value // divisor for value in remainder])
@@ -419,8 +435,10 @@ def _value(p: tuple[int, ...], numerator: int, denominator: int) -> int:
 
 def endpoint(chain, numerator: int, denominator: int) -> tuple[int, bool]:
     """(sign variations of the chain at the point, whether the point is a root of chain[0]), zeros skipped and the
-    first member's zero not counted, as root_isolation's endpoint and _variations count them."""
-    tp.charge(sum(len(member) for member in chain))
+    first member's zero not counted, as root_isolation's endpoint and _variations count them. The evaluations are
+    charged by the size of the point (trusted.upoly.evaluation_factor): a root bound of 60,000 bits makes them
+    millions of bits long."""
+    tp.charge(sum(len(member) for member in chain) * tp.evaluation_factor(len(chain[0]), numerator, denominator))
     first = _sign(_value(chain[0], numerator, denominator))
     previous, variations = first, 0
     for member in chain[1:]:
@@ -765,10 +783,24 @@ class OutOfScope(Exception):
     """An expression node the interval evaluator does not handle."""
 
 
-def _enclosure(expression, bits: int):
+def _scaled_products(low, high, a, b, bits: int, cap: int):
+    """The outward-rounded enclosure of [low, high] * [a, b] / 2**bits, its four products charged by their size;
+    OutOfScope when an end passes cap bits."""
+    tp.charge_product(max(low.bit_length(), high.bit_length()), max(a.bit_length(), b.bit_length()), 4)
+    products = (low * a, low * b, high * a, high * b)
+    low, high = min(products) >> bits, -((-max(products)) >> bits)
+    if max(low.bit_length(), high.bit_length()) > cap:
+        raise OutOfScope("integer bits")
+    return low, high
+
+
+def _enclosure(expression, bits: int, cap: int | None = None):
     """Integers (lo, hi) with lo <= expression * 2**bits <= hi, for a tree of Rational, Sqrt, Add, Mul and Pow
-    nodes (outward rounding at every step)."""
+    nodes (outward rounding at every step). An end past cap bits (max_integer_bits + bits by default: a value past
+    2**max_integer_bits, which the structured path refuses as well) raises OutOfScope before it grows further."""
     from ..model import Add, Mul, Pow, Sqrt
+    if cap is None:
+        cap = _max_bits() + bits
     kind = type(expression)
     if kind is Rational:
         scaled = expression.numerator << bits
@@ -783,33 +815,34 @@ def _enclosure(expression, bits: int):
     if kind is Add:
         low = high = 0
         for term in expression.terms:
-            a, b = _enclosure(term, bits)
+            a, b = _enclosure(term, bits, cap)
             low += a
             high += b
+        if max(low.bit_length(), high.bit_length()) > cap:
+            raise OutOfScope("integer bits")
         return low, high
     if kind is Mul:
         low = high = 1 << bits
         for factor in expression.factors:
-            a, b = _enclosure(factor, bits)
-            products = (low * a, low * b, high * a, high * b)
-            low, high = min(products) >> bits, -((-max(products)) >> bits)
+            a, b = _enclosure(factor, bits, cap)
+            low, high = _scaled_products(low, high, a, b, bits, cap)
         return low, high
     if kind is Pow:
         exponent = expression.exponent
         if type(exponent) is not int or exponent < 0 or exponent > 4096:
             raise OutOfScope("exponent")
-        a, b = _enclosure(expression.base, bits)
+        a, b = _enclosure(expression.base, bits, cap)
         low = high = 1 << bits
         for _ in range(exponent):
-            products = (low * a, low * b, high * a, high * b)
-            low, high = min(products) >> bits, -((-max(products)) >> bits)
+            low, high = _scaled_products(low, high, a, b, bits, cap)
         return low, high
     raise OutOfScope(kind.__name__)
 
 
 def separate(left, right, *, start: int = 64, limit: int = 4096):
     """(sign of left - right, the precision in bits that separates their enclosures), doubling the precision from
-    start; None when the enclosures still overlap at the limit (the numbers may be equal)."""
+    start; None when the enclosures still overlap at the limit (the numbers may be equal). OutOfScope for an
+    expression past the evaluator's shapes or past max_integer_bits."""
     bits = start
     while bits <= limit:
         tp.charge(bits)
@@ -835,7 +868,9 @@ def pseudo_divmod(p: tuple[int, ...], q: tuple[int, ...]) -> tuple[tuple[int, ..
     remainder = list(p)
     quotient = [0] * exponent
     lower = q[:-1]
-    tp.charge(exponent * len(p))
+    bits_q = tp.max_bits(q)  # Each round multiplies by lc(q): the integers grow by up to bits_q a round.
+    factor = 1 if bits_q < 64 else tp.size_factor(tp.max_bits(p) + exponent * bits_q, bits_q, 2)
+    tp.charge(exponent * len(p) * factor)
     for shift in range(len(p) - m, -1, -1):
         top = remainder.pop()
         if lead != 1:

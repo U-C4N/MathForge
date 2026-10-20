@@ -516,7 +516,8 @@ def _sturm_chain(p):
             break  # A nonzero constant ends the chain: every remainder by it vanishes.
         k = len(h) - 1
         f, g, drop = g, h, len(g) - 1 - k
-        tp.charge_power(c.bit_length(), drop)
+        if c.bit_length() * drop >= 2048:  # trusted.upoly.charge_power charges nothing below.
+            tp.charge_power(c.bit_length(), drop)
         b = -lead * c ** drop
         remainder = tp.pseudo_remainder(f, g)
         exponent = len(f) - len(g) + 1

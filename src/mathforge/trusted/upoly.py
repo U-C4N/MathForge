@@ -76,9 +76,10 @@ def charge_product(left_bits: int, right_bits: int, count: int = 1) -> None:
 
 def charge_power(base_bits: int, exponent: int) -> None:
     """Charge, before it runs, a power of an integer of base_bits bits: about its last squaring, of two integers of
-    half the power's length (charge_product)."""
+    half the power's length (charge_product; nothing for a power of fewer than 2,048 bits)."""
     half = base_bits * exponent >> 1
-    charge_product(half, half)
+    if half >= 1024:
+        charge_product(half, half)
 
 
 def charge_gcd(bits: int, count: int = 1) -> None:
@@ -164,8 +165,13 @@ def mul(p: tuple[int, ...], q: tuple[int, ...]) -> tuple[int, ...]:
         return ()
     if len(p) < len(q):
         p, q = q, p
-    bits_p, bits_q = max_bits(p), max_bits(q)
-    charge(len(p) * len(q) * size_factor(bits_p, bits_q))
+    bits_q = max_bits(q)
+    if bits_q < 64:  # The size factor is 1 whatever p holds.
+        bits_p = None
+        charge(len(p) * len(q))
+    else:
+        bits_p = max_bits(p)
+        charge(len(p) * len(q) * size_factor(bits_p, bits_q))
     if len(q) <= 12:
         result = [0] * (len(p) + len(q) - 1)
         for j, b in enumerate(q):
@@ -173,7 +179,7 @@ def mul(p: tuple[int, ...], q: tuple[int, ...]) -> tuple[int, ...]:
                 for i, a in enumerate(p, j):
                     result[i] += a * b
         return tuple(result)
-    bits = bits_p + bits_q + len(q).bit_length() + 1
+    bits = (max_bits(p) if bits_p is None else bits_p) + bits_q + len(q).bit_length() + 1
     return _unpack(kronecker(p, bits) * kronecker(q, bits), bits, len(p) + len(q) - 1)
 
 
@@ -194,9 +200,13 @@ def pseudo_remainder(p: tuple[int, ...], q: tuple[int, ...]) -> tuple[int, ...]:
     remainder = list(p)
     lower = q[:-1]
     # Each round multiplies the remainder by lc(q), so its integers grow by up to max_bits(q) bits a round; a
-    # coefficient takes two products a round (by lc(q), and the top coefficient by one of q's).
+    # coefficient takes two products a round (by lc(q), and the top coefficient by one of q's). Below 64 bits in q
+    # the factor is 1 whatever p holds.
     bits_q = max_bits(q)
-    charge(exponent * len(p) * size_factor(max_bits(p) + exponent * bits_q, bits_q, 2))
+    if bits_q < 64:
+        charge(exponent * len(p))
+    else:  # size_factor(max_bits(p) + exponent * bits_q, bits_q, 2), inline: this runs once per pseudo-remainder.
+        charge(exponent * len(p) * (1 + 2 * (((max_bits(p) + exponent * bits_q) >> 6) * (bits_q >> 6) >> 8)))
     while len(remainder) >= m:
         top = remainder.pop()  # lead * top - top * lead cancels the leading term
         shift = len(remainder) - m + 1
@@ -224,7 +234,8 @@ def divmod_exact(p: tuple[int, ...], q: tuple[int, ...]) -> tuple[tuple[int, ...
     lead = q[-1]
     remainder = list(p)
     quotient = [0] * (len(p) - m + 1)
-    charge(len(quotient) * m * size_factor(max_bits(p), max_bits(q)))
+    bits_q = max_bits(q)
+    charge(len(quotient) * m * (1 if bits_q < 64 else size_factor(max_bits(p), bits_q)))
     for shift in range(len(p) - m, -1, -1):
         top = remainder[shift + m - 1]
         if top:
@@ -271,9 +282,10 @@ def primitive(p: tuple[int, ...]) -> tuple[int, ...]:
 
 def evaluation_factor(length: int, num: int, den: int) -> int:
     """The size_factor of one Horner step of a polynomial of `length` coefficients at num/den: two products of the
-    running value, which grows to about length times the point's bits, by an integer of the point's bits."""
+    running value, which grows to about length times the point's bits, by an integer of the point's bits (1 below
+    64 bits)."""
     bits = max(num.bit_length(), den.bit_length())
-    return size_factor(length * bits, bits, 2)
+    return 1 if bits < 64 else size_factor(length * bits, bits, 2)
 
 
 def sign_at(p: tuple[int, ...], num: int, den: int) -> int:

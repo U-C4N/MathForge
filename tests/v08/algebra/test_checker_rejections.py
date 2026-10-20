@@ -131,7 +131,8 @@ def forgeries(entries, rng):
         forged.append([(moved, first_multiplicity, first_evidence)] + entries[1:])
     for index, (values, multiplicity, evidence) in enumerate(entries):
         if evidence == ("linear",):
-            forged.append(entries[:index] + [(values, multiplicity, ("modular", 3, 1, ((1, 1),)))] + entries[index + 1:])
+            wrong = ("modular", 3, 1, ((1, 1),))
+            forged.append(entries[:index] + [(values, multiplicity, wrong)] + entries[index + 1:])
         else:
             _, prime, exponent, factors = evidence
             # (A lower exponent may still make a valid certificate; exponent 0 never does.)

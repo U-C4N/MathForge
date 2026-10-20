@@ -306,7 +306,8 @@ def subresultant(f: tuple[int, ...], g: tuple[int, ...]) -> int:
     while remainder:
         next_degree = len(remainder) - 1
         f, g, m, drop = g, remainder, next_degree, m - next_degree
-        tp.charge_power(previous.bit_length(), drop)  # Each power is charged by its size before it is formed.
+        if previous.bit_length() * drop >= 2048:  # Each power is charged by its size before it is formed.
+            tp.charge_power(previous.bit_length(), drop)
         divisor = -leading * previous ** drop
         remainder = tp.pseudo_remainder(f, g)
         if divisor != 1:
@@ -868,7 +869,8 @@ def pseudo_divmod(p: tuple[int, ...], q: tuple[int, ...]) -> tuple[tuple[int, ..
     quotient = [0] * exponent
     lower = q[:-1]
     bits_q = tp.max_bits(q)  # Each round multiplies by lc(q): the integers grow by up to bits_q a round.
-    tp.charge(exponent * len(p) * tp.size_factor(tp.max_bits(p) + exponent * bits_q, bits_q, 2))
+    factor = 1 if bits_q < 64 else tp.size_factor(tp.max_bits(p) + exponent * bits_q, bits_q, 2)
+    tp.charge(exponent * len(p) * factor)
     for shift in range(len(p) - m, -1, -1):
         top = remainder.pop()
         if lead != 1:

@@ -289,48 +289,71 @@ def recompute(field, node):
     raise ValueError(kind.__name__)
 
 
-def _sqrt_interval(r):
-    """Rational (low, high) around sqrt(r) for a Rational r >= 0, within 2**-64."""
-    scale = 1 << 64
-    low = isqrt(r.numerator * scale * scale // r.denominator)
-    return Rational(low, scale), Rational(low + 1, scale)
+_INTERVAL_BITS = _BITS + _FRACTION  # A fixed-point end this long holds a value past 2**max_integer_bits.
+
+
+def _bounded(low: int, high: int):
+    """The fixed-point interval (low, high); ValueError when an end holds a value past 2**max_integer_bits."""
+    if max(abs(low), abs(high)).bit_length() > _INTERVAL_BITS:
+        raise ValueError("interval bits")
+    return low, high
+
+
+def _fixed_sqrt(r):
+    """Integers (lo, lo + 1) around sqrt(r) * 2**64 for a Rational r >= 0."""
+    if type(r) is not Rational or r.numerator < 0:
+        raise ValueError("radicand")
+    low = isqrt((r.numerator << 2 * _FRACTION) // r.denominator)
+    return low, low + 1
+
+
+def _fixed_interval(node):
+    """Integers (lo, hi) with lo <= value * 2**64 <= hi for an expression, by fixed-point interval arithmetic,
+    rounded outward at every product, on the expression alone. Fixed point keeps the denominators at 2**64 however
+    many factors meet (exact rational ends would multiply theirs); an end past 2**max_integer_bits raises ValueError."""
+    kind = type(node)
+    if kind is Rational:
+        scaled = node.numerator << _FRACTION
+        low = scaled // node.denominator
+        return _bounded(low, low + (1 if scaled % node.denominator else 0))
+    if kind is Sqrt:
+        return _bounded(*_fixed_sqrt(node.radicand))
+    if _is_root(node):
+        c0, c1, c2 = node.integer_coefficients
+        if type(c2) is not int or c2 <= 0:
+            raise ValueError("leading coefficient")
+        root_low, root_high = _fixed_sqrt(Rational(c1 * c1 - 4 * c0 * c2))
+        shift, divisor = -c1 << _FRACTION, 2 * c2  # (-c1 +- sqrt(disc)) / (2 c2)
+        if node.real_index:
+            low, high = shift + root_low, shift + root_high
+        else:
+            low, high = shift - root_high, shift - root_low
+        return _bounded(low // divisor, -(-high // divisor))
+    if kind is Add:
+        low = high = 0
+        for term in node.terms:
+            term_low, term_high = _fixed_interval(term)
+            low, high = low + term_low, high + term_high
+        return _bounded(low, high)
+    if kind is Mul:
+        result = (1 << _FRACTION, 1 << _FRACTION)
+        for factor in node.factors:
+            result = _bounded(*_times(result, _fixed_interval(factor)))
+        return result
+    if kind is Pow and type(node.exponent) is int and node.exponent >= 0:
+        base, result = _fixed_interval(node.base), (1 << _FRACTION, 1 << _FRACTION)
+        for _ in range(node.exponent):
+            result = _bounded(*_times(result, base))
+        return result
+    raise ValueError(kind.__name__)
 
 
 def interval(node):
-    """A rational interval around the value of an expression, by interval arithmetic on the expression alone."""
-    kind = type(node)
-    if kind is Rational:
-        return node, node
-    if kind is Sqrt:
-        return _sqrt_interval(node.radicand)
-    if _is_root(node):
-        c0, c1, c2 = node.integer_coefficients
-        low, high = _sqrt_interval(Rational(c1 * c1 - 4 * c0 * c2))
-        shift, half = Rational(-c1, 2 * c2), Rational(1, 2 * c2)
-        if node.real_index:
-            return shift + low * half, shift + high * half
-        return shift - high * half, shift - low * half
-    if kind is Add:
-        low = high = Rational(0)
-        for term in node.terms:
-            term_low, term_high = interval(term)
-            low, high = low + term_low, high + term_high
-        return low, high
-    if kind is Mul:
-        low = high = Rational(1)
-        for factor in node.factors:
-            factor_low, factor_high = interval(factor)
-            products = low * factor_low, low * factor_high, high * factor_low, high * factor_high
-            low, high = min(products), max(products)
-        return low, high
-    if kind is Pow and type(node.exponent) is int and node.exponent >= 0:
-        base_low, base_high = interval(node.base)
-        low = high = Rational(1)
-        for _ in range(node.exponent):
-            products = low * base_low, low * base_high, high * base_low, high * base_high
-            low, high = min(products), max(products)
-        return low, high
-    raise ValueError(kind.__name__)
+    """A rational interval around the value of an expression, by interval arithmetic on the expression alone: its
+    ends are multiples of 2**-64 (_fixed_interval)."""
+    low, high = _fixed_interval(node)
+    scale = 1 << _FRACTION
+    return Rational(low, scale), Rational(high, scale)
 
 
 def check_algebraic(field, node, x) -> bool:

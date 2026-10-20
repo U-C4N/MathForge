@@ -2,9 +2,10 @@
 gives the same to_data value or raises the same exception class with the same code.
 
 The corpus is tests/fixtures/v8/values_v07/<area>.json, written from a v0.7 tree by tools/snapshot_v07_values.py. Its
-entries are rebuilt from benchmarks/speed/fixtures/<area>.py. With no corpus files there is nothing to check. The
-rest of this file tests the snapshot tool and the check itself on throwaway fixture packages, so that both are known
-to work before the first corpus file exists.
+entries are rebuilt from benchmarks/speed/fixtures/<area>.py. The corpus must be there: the ten area files exist and their
+entry ids cover the 101 operations of capabilities_v07.json (every one but verify), so that the check cannot pass
+because it found nothing to check. The rest of this file tests the snapshot tool and the check itself on throwaway
+fixture packages.
 """
 
 import ast
@@ -22,6 +23,7 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import types
 import unittest
 
 import mathforge
@@ -29,11 +31,45 @@ from mathforge.serialization import to_data
 
 REPOSITORY = Path(__file__).resolve().parents[2]
 CORPUS = REPOSITORY / "tests" / "fixtures" / "v8" / "values_v07"
+CAPABILITIES = REPOSITORY / "tests" / "fixtures" / "v8" / "capabilities_v07.json"
 TOOL = REPOSITORY / "tools" / "snapshot_v07_values.py"
 SPEED = REPOSITORY / "benchmarks" / "speed"
 PACKAGE = "benchmarks.speed.fixtures"
+AREAS = ("algebra", "analysis", "discrete", "equations", "expr", "integrals", "linalg", "ntheory", "series", "stats")
 REFERENCE_PACKAGES = ("sympy", "mpmath")  # Fixture modules import these only inside their sympy builders.
 PACKAGE_COUNTER = itertools.count()
+
+# A fresh interpreter that blocks SymPy and mpmath (an import of either raises ImportError), then imports the fixture
+# interface and every named area module of a package: what a module-level call into a builder cannot survive.
+IMPORT_WITHOUT_REFERENCES = """
+    import importlib, sys
+    package_root, repository, package, areas = sys.argv[1:5]
+    sys.path[:0] = [path for path in (repository, package_root, *sys.argv[5:]) if path]
+    for name in ("sympy", "mpmath"):
+        sys.modules[name] = None
+    try:
+        import sympy
+    except ImportError:
+        pass
+    else:
+        raise SystemExit("the block did not hold: sympy imported")
+    import benchmarks.speed.fixture
+    for area in areas.split(","):
+        importlib.import_module(package + "." + area)
+    print("imported", len(areas.split(",")), "modules")
+"""
+
+
+def import_without_references(package, areas, *extra_paths):
+    """Import the area modules of a fixture package in a fresh interpreter in which SymPy and mpmath cannot be imported."""
+    package_root = Path(mathforge.__file__).resolve().parents[1]
+    return subprocess.run([sys.executable, "-I", "-c", textwrap.dedent(IMPORT_WITHOUT_REFERENCES), str(package_root),
+                           str(REPOSITORY), package, ",".join(areas), *map(str, extra_paths)],
+                          capture_output=True, text=True, timeout=300)
+
+
+def capability_names():
+    return [entry["name"] for entry in json.loads(CAPABILITIES.read_text(encoding="utf-8"))["operations"]]
 
 
 def load_tool():
@@ -106,14 +142,43 @@ class StoredValuesTest(unittest.TestCase):
         cls.tool = load_tool()
         cls.tool.repository_importable()
 
+    def test_the_corpus_is_there_the_ten_area_files_covering_the_101_value_operations(self):
+        """Without this, a missing corpus is a pass with nothing checked."""
+        self.assertTrue(CORPUS.is_dir(), f"{CORPUS} is missing: the v0.7 value corpus is part of the tests")
+        self.assertEqual(sorted(path.stem for path in CORPUS.glob("*.json")), sorted(AREAS))
+        modules = sorted(path.stem for path in (SPEED / "fixtures").glob("*.py") if path.stem != "__init__"
+                         and not path.stem.startswith("_"))
+        self.assertEqual(modules, sorted(AREAS), "every fixture module has a corpus file and the other way round")
+        names = capability_names()
+        self.assertEqual(len(names), 102)
+        expected = set(names) - {"verify"}  # verify has no value to store: its fixtures are exempt.
+        self.assertEqual(len(expected), 101)
+        covered = set()
+        for area in AREAS:
+            stored = json.loads((CORPUS / f"{area}.json").read_text(encoding="utf-8"))
+            self.assertTrue(stored, f"{area}.json holds no entries")
+            covered |= {entry_id.partition("/")[0] for entry_id in stored}
+        self.assertEqual(sorted(expected - covered), [], "operations without a stored entry")
+        self.assertEqual(sorted(covered - expected), [], "entries of something that is not one of the 101 operations")
+
     def test_every_stored_entry_still_holds(self):
-        for path in sorted(CORPUS.glob("*.json")) if CORPUS.is_dir() else ():
-            with self.subTest(area=path.stem):
+        for area in AREAS:  # Not whatever files exist: the corpus test above says that all ten do.
+            with self.subTest(area=area):
+                path = CORPUS / f"{area}.json"
+                self.assertTrue(path.is_file(), f"{path} is missing")
                 stored = json.loads(path.read_text(encoding="utf-8"))
                 self.assertIs(type(stored), dict, "a corpus file is one object, entry id -> outcome")
-                problems = problems_in(self.tool, stored, PACKAGE, path.stem)
+                self.assertTrue(stored, f"{area}.json holds no entries")
+                problems = problems_in(self.tool, stored, PACKAGE, area)
                 self.assertFalse(problems, f"{len(problems)} stored entries differ from the current code:\n"
                                  + "\n".join(problems[:20]))
+
+    def test_every_fixture_module_imports_without_sympy_or_mpmath(self):
+        """In a fresh interpreter that blocks both, so that a call into a builder at module level cannot pass for an
+        import inside a function (the analysis module built a SymPy reference at import once)."""
+        done = import_without_references(PACKAGE, AREAS)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("imported 10 modules", done.stdout)
 
     def test_fixture_modules_import_the_references_only_inside_builders(self):
         paths = [SPEED / "fixture.py", *sorted((SPEED / "fixtures").glob("*.py"))]
@@ -317,10 +382,11 @@ class DemoPackages(unittest.TestCase):
 
 class SnapshotToolTest(DemoPackages):
     def snapshot(self, *arguments):
-        """Run main in this process; return (stdout, stderr). A refusal raises SystemExit."""
+        """Run main in this process; return (stdout, stderr). A refusal raises SystemExit. The tree check is skipped:
+        the mathforge of this process is the code under test, not a v0.7 tree."""
         out, err = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-            self.tool.main(list(arguments))
+            self.tool.main([*arguments, "--allow-current-tree"])
         return out.getvalue(), err.getvalue()
 
     def test_a_fixture_contributes_variants_zero_to_two_and_edge_cases_one_entry_each(self):
@@ -342,8 +408,8 @@ class SnapshotToolTest(DemoPackages):
                                             + ([env["PYTHONPATH"]] if env.get("PYTHONPATH") else []))
         with tempfile.TemporaryDirectory() as elsewhere:  # The tool must not depend on the working directory.
             done = subprocess.run([sys.executable, str(TOOL), "--package", package, "--areas", "mini,other",
-                                   "--out-dir", str(out_dir)], capture_output=True, text=True, env=env, cwd=elsewhere,
-                                  timeout=300)
+                                   "--out-dir", str(out_dir), "--allow-current-tree"], capture_output=True, text=True,
+                                  env=env, cwd=elsewhere, timeout=300)
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertIn(f"snapshotting mathforge {mathforge.__version__} from {Path(mathforge.__file__).resolve().parent}",
                       done.stderr)  # The tree that was snapshotted is stated.
@@ -396,6 +462,39 @@ class SnapshotToolTest(DemoPackages):
         self.assertEqual(arguments.package, "benchmarks.speed.fixtures")
         self.assertEqual(arguments.areas, "ntheory")
         self.assertFalse(arguments.force)
+        self.assertFalse(arguments.allow_current_tree)  # The check that mathforge is a v0.7.x tree is on by default.
+
+    def test_a_tree_that_is_not_a_v07_tree_outside_this_repository_is_refused(self):
+        with tempfile.TemporaryDirectory() as elsewhere:
+            def tree(version, directory=None):
+                where = Path(directory or elsewhere) / "mathforge" / "__init__.py"
+                return types.SimpleNamespace(__file__=str(where), __version__=version)
+
+            for version in ("0.7.0", "0.7.9", "0.7.12", "0.7.0rc1"):
+                with self.subTest(accepted=version):
+                    self.tool.check_tree(tree(version))
+            for version in ("0.8.0", "0.7", "0.70.1", "0.6.9", "1.7.0", "", None, 7):
+                with self.subTest(refused=version), self.assertRaises(self.tool.SnapshotError) as refused:
+                    self.tool.check_tree(tree(version))
+                self.assertIn("not a 0.7.x release", str(refused.exception))
+            # Under this repository's src: refused whatever the version says, so that the code the corpus judges
+            # cannot pass for the tree it is a snapshot of.
+            with self.assertRaises(self.tool.SnapshotError) as refused:
+                self.tool.check_tree(tree("0.7.0", REPOSITORY / "src"))
+            self.assertIn("under this repository's src", str(refused.exception))
+
+    def test_the_command_line_refuses_the_mathforge_of_this_repository(self):
+        package, directory = self.make_package(mini=DEMO_AREA)
+        out_dir = directory / "out"
+        env = dict(os.environ)
+        env["PYTHONPATH"] = os.pathsep.join([str(directory), str(Path(mathforge.__file__).resolve().parents[1])]
+                                            + ([env["PYTHONPATH"]] if env.get("PYTHONPATH") else []))
+        done = subprocess.run([sys.executable, str(TOOL), "--package", package, "--areas", "mini", "--out-dir",
+                               str(out_dir)], capture_output=True, text=True, env=env, cwd=directory, timeout=300)
+        self.assertNotEqual(done.returncode, 0, done.stdout)
+        self.assertIn("snapshot_v07_values:", done.stderr)
+        self.assertIn("v0.7", done.stderr)  # This tree's src, or in an installed harness a 0.8 version.
+        self.assertFalse(out_dir.exists())  # Nothing was written.
 
     def test_areas_are_validated(self):
         for text in ("", "a,,b", "a,a", "a b", "../x", "a/b"):
@@ -537,6 +636,57 @@ class CorpusCheckTest(DemoPackages):
         problems = problems_in(self.tool, DEMO_AREA_DOCUMENT, package, "mini")
         self.assertEqual(sorted(problem.partition(":")[0] for problem in problems),
                          ["integer_gcd/micro/small#0", "integer_gcd/micro/small#1", "integer_gcd/micro/small#2"])
+
+
+class ImportWithoutReferencesTest(DemoPackages):
+    """The subprocess check that fixture modules load without SymPy and mpmath, on throwaway packages: it passes a
+    module that imports them inside a builder, and fails one that imports them at module level or calls into a builder
+    that does."""
+
+    def test_an_import_inside_a_builder_is_fine(self):
+        package, directory = self.make_package(lazy="""
+            def builder(i):
+                import sympy
+                return lambda: sympy.Integer(i)
+            FIXTURES = ()
+            EDGE_CASES = ()
+        """)
+        done = import_without_references(package, ["lazy"], directory)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("imported 1 modules", done.stdout)
+
+    def test_an_import_at_module_level_is_refused(self):
+        package, directory = self.make_package(top="""
+            import sympy
+            FIXTURES = ()
+            EDGE_CASES = ()
+        """)
+        done = import_without_references(package, ["top"], directory)
+        self.assertNotEqual(done.returncode, 0)
+        self.assertIn("sympy", done.stderr)
+
+    def test_a_call_into_a_builder_at_module_level_is_refused(self):
+        package, directory = self.make_package(called="""
+            def builder(i):
+                import sympy
+                return lambda: sympy.Integer(i)
+            REFERENCE = builder(0)  # What analysis.py once did: a reference built when the module loads.
+            FIXTURES = ()
+            EDGE_CASES = ()
+        """)
+        done = import_without_references(package, ["called"], directory)
+        self.assertNotEqual(done.returncode, 0)
+        self.assertIn("sympy", done.stderr)
+
+    def test_the_block_holds_for_mpmath_too(self):
+        package, directory = self.make_package(top="""
+            import mpmath
+            FIXTURES = ()
+            EDGE_CASES = ()
+        """)
+        done = import_without_references(package, ["top"], directory)
+        self.assertNotEqual(done.returncode, 0)
+        self.assertIn("mpmath", done.stderr)
 
 
 if __name__ == "__main__":

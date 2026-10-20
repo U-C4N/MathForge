@@ -26,6 +26,9 @@ from .lean_inputs import (LEGACY_NAMES, SMALL_INPUTS, argument_names, operations
 SRC = Path(mf.__file__).resolve().parents[1]
 REPOSITORY = Path(__file__).resolve().parents[2]
 CORPUS = REPOSITORY / "tests" / "fixtures" / "v8" / "values_v07"
+CAPABILITIES = REPOSITORY / "tests" / "fixtures" / "v8" / "capabilities_v07.json"
+CORPUS_AREAS = ("algebra", "analysis", "discrete", "equations", "expr", "integrals", "linalg", "ntheory", "series",
+                "stats")
 TYPE_EDGES = (True, 1.5, "1", None)
 OVER_LIMIT = 2**65536  # 65,537 bits: one more than the default max_integer_bits.
 THREADS = 8
@@ -117,7 +120,8 @@ def value_operations():
 
 def corpus_cases():
     """(operation, arguments) of each v0.7 value corpus entry whose area file exists: fixture variants 0-2 and the
-    edge cases, rebuilt from benchmarks/speed/fixtures/<area>.py."""
+    edge cases, rebuilt from benchmarks/speed/fixtures/<area>.py. A missing corpus gives no cases, which the
+    tests that use them assert against (test_the_value_corpus_is_there_and_every_operation_has_a_case)."""
     cases = []
     if not CORPUS.is_dir():
         return cases
@@ -319,12 +323,27 @@ class LeanPathTest(unittest.TestCase):
                 self.assertLeanAgrees(function_value, expected, operation)
                 if operation not in NO_LEAN_PRODUCER:
                     self.assertIsNot(function_value, lean.FALLBACK, operation)
-        for operation, arguments in corpus_cases():
+        cases = corpus_cases()
+        self.assertTrue(cases, "no corpus cases: the v0.7 value corpus is missing, so nothing was checked against it")
+        for operation, arguments in cases:
             expected = outcome(lambda: structured_function(operation)(**arguments))
             with self.subTest(operation=operation, corpus=True):
                 self.assertLeanAgrees(lean.run_value(operation, dict(arguments)), expected, operation)
                 self.assertLeanAgrees(getattr(lean.functions, operation)(*positional(operation, arguments)),
                                       expected, operation)
+
+    def test_the_value_corpus_is_there_and_every_operation_has_a_case(self):
+        """corpus_cases yields nothing when the corpus is missing: the ten area files must exist, and their cases must
+        cover the 101 operations of capabilities_v07.json (every one but verify), as test_values_v07 asserts of the
+        entries."""
+        self.assertTrue(CORPUS.is_dir(), f"{CORPUS} is missing")
+        self.assertEqual(sorted(path.stem for path in CORPUS.glob("*.json")), sorted(CORPUS_AREAS))
+        names = [entry["name"] for entry in json.loads(CAPABILITIES.read_text(encoding="utf-8"))["operations"]]
+        expected = set(names) - {"verify"}
+        self.assertEqual(len(expected), 101)
+        covered = {operation for operation, _ in corpus_cases()}
+        self.assertEqual(sorted(expected - covered), [], "operations without a corpus case")
+        self.assertEqual(sorted(covered - expected), [])
 
     def test_dispatchers_follow_the_public_routes(self):
         for operation, arguments in (*ROUTED_INPUTS.items(), *ROUTED_FUNCTION_INPUTS.items()):

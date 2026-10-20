@@ -8,6 +8,7 @@ no src). The rest runs in this process: the measuring functions on synthetic fix
 files, the criteria loader on crafted speed files. Nothing needs SymPy; it is used when installed.
 """
 
+import argparse
 import contextlib
 import importlib
 import io
@@ -42,10 +43,13 @@ TOOL = REPOSITORY / "tools" / "check_speed.py"
 CAPABILITIES = REPOSITORY / "tests" / "fixtures" / "v8" / "capabilities_v07.json"
 PACKAGE = "benchmarks.speed.fixtures"
 DEMO_MODULE = "tests.v08.speed_demo_fixtures"
-DEMO = ["--modules", DEMO_MODULE, "--rounds", "1", "--repeat", "2", "--warmups", "1", "--sample-ms", "0.2"]
+DEMO = ["--modules", DEMO_MODULE, "--rounds", "1", "--repeat", "2", "--warmups", "1", "--sample-ms", "0.2",
+        "--allow-quick"]  # One round of two samples is below the protocol of a gate run: the flag says so.
 HAS_SRC = (REPOSITORY / "src" / "mathforge" / "__init__.py").is_file()
 NEEDS_SRC = unittest.skipUnless(HAS_SRC, "needs the repository's src, which the distribution harness does not have")
 HASH = "a" * 64  # A source hash for the crafted details files; check_speed is told it is the working tree's.
+INSTRUMENT = "d" * 64  # The same for the instrument hash (the suite and the fixtures).
+ROUNDS = 3  # The rounds of crafted gate-protocol details.
 
 
 def capability_names():
@@ -121,7 +125,7 @@ def problems_in(module, operations, ids, edges, *, real=True):
 
 
 def fixture_entry(operation, size, ratio=1.5):
-    return {"operation": operation, "size": size, "label": "x", "ratio": ratio,
+    return {"operation": operation, "size": size, "label": "x", "ratio": ratio, "round_ratios": [ratio] * ROUNDS,
             "mathforge": {"median_us": ratio * 2.0}, "sympy_reset": {"median_us": 2.0}}
 
 
@@ -130,28 +134,63 @@ def exempt_entry(operation="verify", size="micro", met=True):
             "timed": {"median_us": 1.0}, "budget": {"median_us": 2.0}}
 
 
+def gate_meta():
+    """The meta of details that meet the measurement protocol: 3 rounds of 9 repeats, a pinned cpu, SymPy 1.14.0."""
+    return {"source_sha256": HASH, "instrument_sha256": INSTRUMENT, "partial": False, "sympy": check_speed.SYMPY_VERSION,
+            "rounds": ROUNDS, "repeat": 9, "cpu": 0, "sample_ms": 2.0, "areas": None, "ops": None}
+
+
 def passing_details():
     """Details that pass: both sizes for every one of the 102 operations, verify through ExemptFixtures."""
     fixtures = {f"{name}/{size}/x": fixture_entry(name, size) for name in capability_names() if name != "verify"
                 for size in speed_suite.SIZES}
     exempt = {f"verify/{size}/x": exempt_entry("verify", size) for size in speed_suite.SIZES}
-    return {"meta": {"source_sha256": HASH, "partial": False}, "fixtures": fixtures, "exempt": exempt}
+    return {"meta": gate_meta(), "fixtures": fixtures, "exempt": exempt}
+
+
+def set_ratios(details, identifier, ratio, rounds=None):
+    """The ratio of a fixture, and its rounds (all equal to it unless given)."""
+    entry = details["fixtures"][identifier]
+    entry["ratio"], entry["round_ratios"] = ratio, list(rounds) if rounds is not None else [ratio] * ROUNDS
+
+
+def set_rounds(details, rounds):
+    """The number of rounds of crafted details: the meta, and one round ratio per round for every fixture."""
+    details["meta"]["rounds"] = rounds
+    for entry in details["fixtures"].values():
+        entry["round_ratios"] = (entry["round_ratios"] * rounds)[:rounds]
 
 
 def with_ratio(identifier, ratio):
     details = passing_details()
-    details["fixtures"][identifier]["ratio"] = ratio
+    set_ratios(details, identifier, ratio)
     return details
 
 
-def run_check(details, *extra, working_hash=HASH):
-    """check_speed.main on a details document: (exit status, stdout, stderr)."""
+def real_details():
+    """Details that pass for this checkout: an entry for every fixture and exemption that its modules define, with its
+    real source and instrument hashes."""
+    fixture_ids, exempt_ids = speed_suite.current_ids()
+    details = {"meta": gate_meta(),
+               "fixtures": {identifier: fixture_entry(*identifier.split("/", 2)[:2]) for identifier in fixture_ids},
+               "exempt": {identifier: exempt_entry(*identifier.split("/", 2)[:2]) for identifier in exempt_ids}}
+    details["meta"].update(source_sha256=speed_suite.source_hash(REPOSITORY),
+                           instrument_sha256=speed_suite.instrument_hash(REPOSITORY))
+    return details
+
+
+def run_check(details, *extra, working_hash=HASH, instrument_hash=INSTRUMENT, current_ids=None):
+    """check_speed.main on a details document: (exit status, stdout, stderr). The current ids are the document's own
+    unless given, so that a crafted document is by default the one that the fixture modules would produce."""
+    if current_ids is None:
+        current_ids = (set(details["fixtures"]), set(details["exempt"]))
     with tempfile.TemporaryDirectory() as directory:
         path = Path(directory) / "details.json"
         path.write_text(json.dumps(details), encoding="utf-8")
         stdout, stderr = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-            status = check_speed.main(["--details", str(path), *extra], working_hash=working_hash)
+            status = check_speed.main(["--details", str(path), *extra], working_hash=working_hash,
+                                      instrument_hash=instrument_hash, current_ids=current_ids)
     return status, stdout.getvalue(), stderr.getvalue()
 
 
@@ -173,6 +212,7 @@ class SpeedSuiteTest(unittest.TestCase):
             completed = run_suite(["--output", output, *DEMO])
             self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
             self.assertIn("worst ratio", completed.stdout)
+            self.assertIn("not a gate run (--allow-quick)", completed.stdout)  # One round of two samples.
             self.assertEqual(sorted(path.name for path in Path(directory).iterdir()),
                              ["latest-details.json", "latest.json"])  # The default details path, and no leftovers.
             details = json.loads((Path(directory) / "latest-details.json").read_text(encoding="utf-8"))
@@ -180,12 +220,13 @@ class SpeedSuiteTest(unittest.TestCase):
 
         meta = details["meta"]
         self.assertEqual(meta["source_sha256"], speed_suite.source_hash(REPOSITORY))
+        self.assertEqual(meta["instrument_sha256"], speed_suite.instrument_hash(REPOSITORY))
         self.assertEqual((meta["rounds"], meta["repeat"], meta["warmups"], meta["sample_ms"]), (1, 2, 1, 0.2))
         self.assertEqual((meta["modules"], meta["areas"], meta["ops"], meta["partial"], meta["cpu"]),
                          ([DEMO_MODULE], None, None, False, None))
         self.assertEqual(meta["sympy_ground_types"], "python" if meta["sympy"] else None)
         self.assertEqual(meta["mathforge_version"], mf.__version__)
-        for key in ("python", "platform", "date", "mpmath", "mpmath_backend"):
+        for key in ("python", "platform", "date", "sympy", "mpmath", "mpmath_backend"):  # The versions are recorded.
             self.assertIn(key, meta)
         self.assertEqual(sorted(details["fixtures"]), ["factorial/realistic/demo", "integer_gcd/micro/demo"])
         for identifier, entry in details["fixtures"].items():
@@ -242,7 +283,7 @@ class SpeedSuiteTest(unittest.TestCase):
 
         def set_ratio(identifier, ratio):
             def change(details):
-                details["fixtures"][identifier]["ratio"] = ratio
+                set_ratios(details, identifier, ratio)
             return change
 
         def add_exempt(details):
@@ -403,6 +444,54 @@ class SourceHashTest(unittest.TestCase):
     @NEEDS_SRC
     def test_the_gate_uses_the_suites_hash(self):
         self.assertEqual(speed_suite.source_hash(REPOSITORY), speed_suite.source_hash())
+
+    def test_the_instrument_hash_covers_the_suite_and_every_file_of_the_speed_package(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "benchmarks" / "speed" / "fixtures").mkdir(parents=True)
+            suite, fixture = root / "benchmarks" / "speed_suite.py", root / "benchmarks" / "speed" / "fixtures" / "a.py"
+            data = root / "benchmarks" / "speed" / "data.json"
+            suite.write_bytes(b"suite = 1\n")
+            fixture.write_bytes(b"FIXTURES = ()\n")
+            first = speed_suite.instrument_hash(root)
+            self.assertEqual(len(first), 64)
+            self.assertEqual(first, speed_suite.instrument_hash(root))
+            (root / "benchmarks" / "speed" / "fixtures" / "__pycache__").mkdir()  # Bytecode is not the instrument.
+            (root / "benchmarks" / "speed" / "fixtures" / "__pycache__" / "a.cpython-314.pyc").write_bytes(b"\0")
+            (root / "benchmarks" / "other.py").write_bytes(b"not part of it")
+            self.assertEqual(speed_suite.instrument_hash(root), first)
+            for what, change in (("the suite", lambda: suite.write_bytes(b"suite = 2\n")),
+                                 ("a fixture module", lambda: fixture.write_bytes(b"FIXTURES = (1,)\n")),
+                                 ("a data file", lambda: data.write_bytes(b"{}")),
+                                 ("a new module", lambda: (root / "benchmarks" / "speed" / "b.py").write_bytes(b""))):
+                before = speed_suite.instrument_hash(root)
+                change()
+                self.assertNotEqual(speed_suite.instrument_hash(root), before, what)
+            with self.assertRaises(speed_suite.SuiteError):
+                speed_suite.instrument_hash(root / "elsewhere")
+
+    @NEEDS_SRC
+    def test_the_real_instrument_hash_is_stable_and_not_the_source_hash(self):
+        self.assertEqual(speed_suite.instrument_hash(REPOSITORY), speed_suite.instrument_hash())
+        self.assertNotEqual(speed_suite.instrument_hash(REPOSITORY), speed_suite.source_hash(REPOSITORY))
+
+    def test_a_change_during_a_round_is_refused_whichever_hash_it_moves(self):
+        with mock.patch.object(speed_suite, "source_hash", return_value="2" * 64), \
+                mock.patch.object(speed_suite, "instrument_hash", return_value="4" * 64):
+            speed_suite.require_unchanged("2" * 64, "4" * 64, "round 1")  # Both as they were: nothing to say.
+            with self.assertRaises(speed_suite.SuiteError) as raised:
+                speed_suite.require_unchanged("1" * 64, "4" * 64, "round 2 of 3")
+            self.assertIn("round 2 of 3", str(raised.exception))
+            self.assertIn("src/mathforge 111111111111 became 222222222222", str(raised.exception))
+            self.assertNotIn("benchmarks", str(raised.exception))
+            with self.assertRaises(speed_suite.SuiteError) as raised:
+                speed_suite.require_unchanged("2" * 64, "3" * 64, "round 1")
+            self.assertIn("benchmarks/speed_suite.py and benchmarks/speed 333333333333 became 444444444444",
+                          str(raised.exception))
+            with self.assertRaises(speed_suite.SuiteError) as raised:
+                speed_suite.require_unchanged("1" * 64, "3" * 64, "round 1")
+            self.assertIn("src/mathforge", str(raised.exception))
+            self.assertIn("benchmarks/speed", str(raised.exception))
 
 
 class FilesTest(unittest.TestCase):
@@ -693,6 +782,54 @@ class MeasurementTest(unittest.TestCase):
         self.assertEqual(speed_suite.build_criteria(details)["operations"]["verify"],
                          {"exempt": "re-verification; another reason", "budget_met": False})
 
+    def test_the_protocol_shortfalls_of_a_run(self):
+        def run(**options):
+            return speed_suite.protocol_shortfalls(argparse.Namespace(**{"rounds": 3, "repeat": 9, "cpu": 0, **options}))
+
+        self.assertEqual((speed_suite.MIN_ROUNDS, speed_suite.MIN_REPEAT), (3, 9))
+        self.assertEqual(run(), [])
+        self.assertEqual(run(rounds=5, repeat=30, cpu=7), [])
+        self.assertEqual(run(rounds=2), ["2 rounds, not 3"])
+        self.assertEqual(run(repeat=8), ["8 repeats, not 9"])
+        self.assertEqual(run(cpu=None), ["no --cpu, so the workers are not pinned"])
+        self.assertEqual(len(run(rounds=1, repeat=1, cpu=None)), 3)
+
+    def test_current_ids_tell_fixtures_from_exempt_fixtures(self):
+        fixtures, exempt = speed_suite.current_ids()
+        self.assertTrue(fixtures and exempt)
+        self.assertEqual(fixtures & exempt, set())
+        self.assertIn("integer_gcd/micro/pairs", fixtures)
+        self.assertTrue(all(identifier.split("/")[0] in criteria.SPEED_EXEMPTIONS for identifier in exempt))
+        discrete, _ = speed_suite.current_ids(["discrete"])
+        self.assertTrue(discrete and discrete < fixtures)
+        self.assertTrue(all(identifier.split("/")[0] in ("factorial", "binomial", "multinomial", "permutations_count",
+                                                         "fibonacci", "catalan", "stirling") for identifier in discrete))
+        with self.assertRaises(speed_suite.SuiteError):
+            speed_suite.current_ids(["no_such_area"])
+
+    @NEEDS_SRC
+    def test_the_worker_hashes_the_source_and_the_instrument_again_at_the_end_of_its_round(self):
+        def worker(result, source_hashes, instrument_hash="3" * 64):
+            arguments = argparse.Namespace(cpu=None, areas=None, modules=DEMO_MODULE, ops="integer_gcd", repeat=2,
+                                           warmups=1, sample_ms=0.2, round_index=0, worker_result=result)
+            with mock.patch.object(speed_suite, "source_hash", side_effect=source_hashes), \
+                    mock.patch.object(speed_suite, "instrument_hash", return_value=instrument_hash), \
+                    mock.patch.object(speed_suite, "reference_versions", return_value={"sympy": None}), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                return speed_suite.run_worker(arguments)
+
+        with tempfile.TemporaryDirectory() as directory:
+            result = Path(directory) / "round.json"
+            self.assertEqual(worker(result, ["1" * 64, "1" * 64]), 0)  # Unchanged at the start and at the end.
+            record = json.loads(result.read_text(encoding="utf-8"))
+            self.assertEqual((record["source_sha256"], record["instrument_sha256"]), ("1" * 64, "3" * 64))
+            result.unlink()
+            with self.assertRaises(speed_suite.SuiteError) as raised:  # Edited while the round was measuring.
+                worker(result, ["1" * 64, "2" * 64])
+            self.assertIn("round 1", str(raised.exception))
+            self.assertIn("src/mathforge 111111111111 became 222222222222", str(raised.exception))
+            self.assertFalse(result.exists())  # Nothing of that round is kept.
+
     def test_options_are_checked(self):
         for arguments in (["--output", "x.json", "--rounds", "0"], ["--output", "x.json", "--repeat", "0"],
                           ["--output", "x.json", "--warmups", "0"], ["--output", "x.json", "--sample-ms", "0"],
@@ -705,7 +842,8 @@ class MeasurementTest(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()) as stderr:  # Refused in this process, before any worker starts.
             self.assertEqual(speed_suite.main(["--output", "x.json", "--areas", "no_such_area"]), 2)
         self.assertIn("no fixture module no_such_area", stderr.getvalue())
-        with tempfile.TemporaryDirectory() as directory, contextlib.redirect_stderr(io.StringIO()) as stderr:
+        with tempfile.TemporaryDirectory() as directory, contextlib.redirect_stderr(io.StringIO()) as stderr, \
+                contextlib.redirect_stdout(io.StringIO()):  # The not-a-gate-run notice of --allow-quick.
             path = Path(directory) / "latest.json"
             self.assertEqual(speed_suite.main(["--output", str(path), "--details", str(path), *DEMO]), 2)
             self.assertIn("name the same file", stderr.getvalue())
@@ -753,6 +891,34 @@ class SuiteRunTest(unittest.TestCase):
             self.assertIn("4096", completed.stderr)
             self.assertEqual(list(Path(directory).iterdir()), [])
 
+    def test_a_run_below_the_protocol_needs_allow_quick_and_says_that_it_is_not_a_gate_run(self):
+        small = ["--modules", DEMO_MODULE, "--rounds", "1", "--repeat", "2", "--warmups", "1", "--sample-ms", "0.2"]
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "latest.json"
+            completed = run_suite(["--output", output, *small])
+            self.assertEqual(completed.returncode, 2, completed.stdout + completed.stderr)
+            for text in ("not a gate run", "1 rounds, not 3", "2 repeats, not 9", "no --cpu", "--allow-quick"):
+                self.assertIn(text, completed.stderr)
+            self.assertEqual(list(Path(directory).iterdir()), [])  # Refused before a worker started.
+            completed = run_suite(["--output", output, *small, "--allow-quick"])
+            self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+            lines = completed.stdout.splitlines()
+            self.assertTrue(lines[0].startswith("not a gate run (--allow-quick): 1 rounds, not 3"), lines[0])
+            self.assertEqual(lines[-1], lines[0])  # Said again after the table, where the numbers are read.
+
+    def test_a_partial_run_that_meets_the_protocol_needs_no_flag(self):
+        cpu = min(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else 0
+        if not (hasattr(os, "sched_setaffinity") or sys.platform == "win32"):
+            self.skipTest(f"no process affinity on {sys.platform}, so a pinned run is impossible")
+        with tempfile.TemporaryDirectory() as directory:
+            completed = run_suite(["--output", Path(directory) / "latest.json", "--ops", "integer_gcd", "--cpu", cpu,
+                                   "--modules", DEMO_MODULE, "--warmups", "1", "--sample-ms", "0.2"])
+            self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+            self.assertNotIn("not a gate run", completed.stdout)
+            details = json.loads((Path(directory) / "latest-details.json").read_text(encoding="utf-8"))
+        self.assertEqual((details["meta"]["rounds"], details["meta"]["repeat"], details["meta"]["partial"]),
+                         (speed_suite.MIN_ROUNDS, speed_suite.MIN_REPEAT, True))  # The defaults are the protocol.
+
     def test_a_disagreeing_fixture_aborts_the_run_and_writes_nothing(self):
         with tempfile.TemporaryDirectory() as directory:
             package = Path(directory) / "speed_demo_disagreeing"
@@ -771,7 +937,7 @@ class SuiteRunTest(unittest.TestCase):
             environment = dict(os.environ, PYTHONPATH=os.pathsep.join(
                 filter(None, [directory, os.environ.get("PYTHONPATH", "")])))
             completed = run_suite(["--output", output, "--modules", "speed_demo_disagreeing.fixtures", "--rounds", "2",
-                                   "--repeat", "1", "--warmups", "1"], environment)
+                                   "--repeat", "1", "--warmups", "1", "--allow-quick"], environment)
             self.assertNotEqual(completed.returncode, 0)
             self.assertIn("integer_gcd/micro/wrong", completed.stderr)
             self.assertIn("disagree", completed.stderr)
@@ -783,7 +949,8 @@ class SuiteRunTest(unittest.TestCase):
         # PYTHONPATH, as an editable or an installed one would), and the worker refuses to measure that.
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / "benchmarks").mkdir()
+            (root / "benchmarks" / "speed").mkdir(parents=True)
+            (root / "benchmarks" / "speed" / "placeholder.py").write_text("")  # Hashed with the suite.
             (root / "src" / "mathforge").mkdir(parents=True)
             (root / "src" / "mathforge" / "placeholder.py").write_text("")  # Hashed, but not a package.
             (root / "benchmarks" / "speed_suite.py").write_bytes(SUITE.read_bytes())
@@ -791,7 +958,8 @@ class SuiteRunTest(unittest.TestCase):
                 [str(REPOSITORY / "src"), str(REPOSITORY)] + ([os.environ["PYTHONPATH"]] if "PYTHONPATH" in os.environ
                                                               else [])))
             completed = subprocess.run([sys.executable, str(root / "benchmarks" / "speed_suite.py"), "--output",
-                                        str(root / "latest.json"), "--modules", DEMO_MODULE, "--rounds", "1"],
+                                        str(root / "latest.json"), "--modules", DEMO_MODULE, "--rounds", "1",
+                                        "--allow-quick"],
                                        cwd=root, env=environment, capture_output=True, text=True, encoding="utf-8",
                                        errors="replace", timeout=300)
             self.assertEqual(completed.returncode, 2, completed.stdout + completed.stderr)
@@ -824,7 +992,7 @@ class CheckSpeedTest(unittest.TestCase):
     def test_the_worst_ratios_are_printed_worst_first(self):
         details = passing_details()
         for index, name in enumerate(capability_names()[:20]):
-            details["fixtures"][f"{name}/micro/x"]["ratio"] = 2.0 + index / 100  # 20 above the others' 1.5.
+            set_ratios(details, f"{name}/micro/x", 2.0 + index / 100)  # 20 above the others' 1.5.
         status, stdout, _ = run_check(details)
         self.assertEqual(status, 0)
         self.assertIn("15 worst ratios", stdout)
@@ -846,7 +1014,7 @@ class CheckSpeedTest(unittest.TestCase):
         details = passing_details()  # A later phase adds operations: they have fixtures, and the same limit.
         details["fixtures"]["new_operation/micro/x"] = fixture_entry("new_operation", "micro", 1.2)
         self.assertEqual(run_check(details)[0], 0)
-        details["fixtures"]["new_operation/micro/x"]["ratio"] = 3.5
+        set_ratios(details, "new_operation/micro/x", 3.5)
         status, _, stderr = run_check(details)
         self.assertEqual(status, 1)
         self.assertIn("new_operation/micro/x", stderr)
@@ -871,7 +1039,7 @@ class CheckSpeedTest(unittest.TestCase):
     def test_several_causes_are_all_named(self):
         details = passing_details()
         details["meta"]["source_sha256"] = "c" * 64
-        details["fixtures"]["rank/micro/x"]["ratio"] = 9.0
+        set_ratios(details, "rank/micro/x", 9.0)
         details["exempt"]["verify/micro/x"]["budget_met"] = False
         status, _, stderr = run_check(details)
         self.assertEqual(status, 1)
@@ -886,7 +1054,18 @@ class CheckSpeedTest(unittest.TestCase):
                          json.dumps({"meta": {"source_sha256": "a"}, "fixtures": {"a/micro/x": {
                              "operation": "a", "size": "micro", "ratio": "fast"}}, "exempt": {}}),
                          json.dumps({"meta": {"source_sha256": "a"}, "fixtures": {}, "exempt": {"a/micro/x": {
-                             "operation": "a", "size": "micro", "budget_met": 1}}})):
+                             "operation": "a", "size": "micro", "budget_met": 1}}}),
+                         # The rounds are what the gate holds to the limit: none, none positive, or not one per round.
+                         json.dumps({"meta": {"source_sha256": "a"}, "fixtures": {"a/micro/x": {
+                             "operation": "a", "size": "micro", "ratio": 1.5}}, "exempt": {}}),
+                         json.dumps({"meta": {"source_sha256": "a"}, "fixtures": {"a/micro/x": {
+                             "operation": "a", "size": "micro", "ratio": 1.5, "round_ratios": [1.5, 0]}},
+                             "exempt": {}}),
+                         json.dumps({"meta": {"source_sha256": "a"}, "fixtures": {"a/micro/x": {
+                             "operation": "a", "size": "micro", "ratio": 1.5, "round_ratios": []}}, "exempt": {}}),
+                         json.dumps({"meta": {"source_sha256": "a", "rounds": 3}, "fixtures": {"a/micro/x": {
+                             "operation": "a", "size": "micro", "ratio": 1.5, "round_ratios": [1.5]}},
+                             "exempt": {}})):
                 with self.subTest(text=text):
                     if text is not None:
                         path.write_text(text, encoding="utf-8")
@@ -903,20 +1082,221 @@ class CheckSpeedTest(unittest.TestCase):
                 self.assertEqual(raised.exception.code, 2)
 
     @NEEDS_SRC
-    def test_the_command_line_with_the_real_hash(self):
-        details = passing_details()
-        details["meta"]["source_sha256"] = speed_suite.source_hash(REPOSITORY)
+    def test_the_command_line_with_the_real_hashes_and_the_real_fixtures(self):
+        details = real_details()
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "details.json"
-            path.write_text(json.dumps(details), encoding="utf-8")
-            command = [sys.executable, str(TOOL), "--details", str(path)]
-            completed = subprocess.run(command, cwd=REPOSITORY, capture_output=True, text=True, timeout=300)
+
+            def run():
+                path.write_text(json.dumps(details), encoding="utf-8")
+                return subprocess.run([sys.executable, str(TOOL), "--details", str(path)], cwd=REPOSITORY,
+                                      capture_output=True, text=True, timeout=300)
+
+            completed = run()
             self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
-            details["meta"]["source_sha256"] = "0" * 64  # What a measurement of other sources looks like.
-            path.write_text(json.dumps(details), encoding="utf-8")
-            completed = subprocess.run(command, cwd=REPOSITORY, capture_output=True, text=True, timeout=300)
-            self.assertEqual(completed.returncode, 1)
-            self.assertIn("stale", completed.stderr)
+            self.assertIn("the speed gate passes", completed.stdout)
+            self.assertIn("waived fixture within the limit", completed.stdout)  # The waived fixtures at 1.5.
+            for what, change, expected in (
+                    ("other sources", lambda: details["meta"].update(source_sha256="0" * 64), "stale details"),
+                    ("another instrument", lambda: details["meta"].update(instrument_sha256="0" * 64),
+                     "stale details: measured with instrument"),
+                    ("a lost fixture", lambda: details["fixtures"].pop(next(iter(details["fixtures"]))),
+                     "the details lack 1 fixture"),
+                    ("an unknown fixture", lambda: details["fixtures"].update(
+                        {"integer_gcd/micro/not_a_fixture": fixture_entry("integer_gcd", "micro")}),
+                     "that no fixture module defines now: integer_gcd/micro/not_a_fixture")):
+                details = real_details()
+                change()
+                with self.subTest(what):
+                    completed = run()
+                    self.assertEqual(completed.returncode, 1, completed.stdout + completed.stderr)
+                    self.assertIn(expected, completed.stderr)
+
+
+class GateChecksTest(unittest.TestCase):
+    """What keeps tools/check_speed.py from passing stale, unpinned or too small details: the instrument hash, the
+    measured ids, SymPy's version, the measurement protocol, the worst round and the waivers."""
+
+    def fails_with(self, change, *expected, extra=(), **kwargs):
+        details = passing_details()
+        change(details)
+        status, stdout, stderr = run_check(details, *extra, **kwargs)
+        self.assertEqual(status, 1, stdout + stderr)
+        for text in expected:
+            self.assertIn(text, stderr)
+        return stdout, stderr
+
+    def test_details_that_meet_the_protocol_and_match_the_tree_pass(self):
+        status, stdout, stderr = run_check(passing_details())
+        self.assertEqual((status, stderr), (0, ""), stdout)
+        self.assertIn("the speed gate passes", stdout)
+        self.assertNotIn("not a gate run", stdout)
+
+    def test_a_changed_instrument_or_a_missing_instrument_hash_makes_the_details_stale(self):
+        status, _, stderr = run_check(passing_details(), instrument_hash="e" * 64)
+        self.assertEqual(status, 1)
+        for text in ("stale details", "instrument dddddddddddd", "eeeeeeeeeeee", "benchmarks/speed"):
+            self.assertIn(text, stderr)
+        self.fails_with(lambda details: details["meta"].pop("instrument_sha256"), "stale details", "no instrument_sha256")
+
+    def test_the_measured_ids_must_be_the_ids_that_the_modules_define_now(self):
+        details = passing_details()
+        ids = (set(details["fixtures"]), set(details["exempt"]))
+        # A fixture added after the run, one removed, an exemption added, one removed.
+        for what, current, expected in (
+                ("added", (ids[0] | {"det/micro/new"}, ids[1]), "the details lack 1 fixture that the fixture modules "
+                                                                 "define now: det/micro/new"),
+                ("removed", (ids[0] - {"det/micro/x"}, ids[1]), "the details measured 1 fixture that no fixture "
+                                                                 "module defines now: det/micro/x"),
+                ("exempt added", (ids[0], ids[1] | {"verify/micro/new"}), "the details lack 1 exempt fixture"),
+                ("exempt removed", (ids[0], ids[1] - {"verify/micro/x"}), "measured 1 exempt fixture that no fixture")):
+            with self.subTest(what):
+                status, _, stderr = run_check(passing_details(), current_ids=current)
+                self.assertEqual(status, 1)
+                self.assertIn(expected, stderr)
+                self.assertIn("the fixtures changed after the run", stderr)
+        # Many ids are named briefly.
+        status, _, stderr = run_check(passing_details(), current_ids=({f"new/micro/{n}" for n in range(9)}, ids[1]))
+        self.assertIn("lack 9 fixtures", stderr)
+        self.assertIn("new/micro/0, new/micro/1, new/micro/2, new/micro/3, new/micro/4, ...", stderr)
+        # A partial run measured part of the fixtures: the ones it did not measure are not "lacking", an unknown id is.
+        details = passing_details()
+        details["meta"].update(partial=True, ops=["det"])
+        details["fixtures"] = {key: value for key, value in details["fixtures"].items() if key.startswith("det/")}
+        status, _, stderr = run_check(details, "--allow-quick", current_ids=ids)
+        self.assertNotIn("the details lack", stderr)
+        details["fixtures"]["det/micro/unknown"] = fixture_entry("det", "micro")
+        status, _, stderr = run_check(details, "--allow-quick", current_ids=ids)
+        self.assertIn("that no fixture module defines now: det/micro/unknown", stderr)
+
+    def test_sympy_must_be_1_14_0(self):
+        self.assertEqual(check_speed.SYMPY_VERSION, "1.14.0")
+        for version in ("1.13.3", "1.14.1", None):
+            with self.subTest(version):
+                _, stderr = self.fails_with(lambda details: details["meta"].update(sympy=version), "SymPy 1.14.0")
+                self.assertIn("no SymPy" if version is None else f"SymPy {version}", stderr)
+        status, _, _ = run_check(passing_details(), "--allow-quick")
+        self.assertEqual(status, 0)
+
+    def test_the_measurement_protocol_is_required(self):
+        for what, change, expected in (
+                ("rounds", lambda details: set_rounds(details, 2), "too few rounds: 2"),
+                ("repeat", lambda details: details["meta"].update(repeat=8), "too few repeats: 8"),
+                ("cpu", lambda details: details["meta"].update(cpu=None), "not pinned to a cpu"),
+                ("sample_ms missing", lambda details: details["meta"].pop("sample_ms"), "no sample_ms was recorded"),
+                ("sample_ms zero", lambda details: details["meta"].update(sample_ms=0), "no sample_ms was recorded"),
+                ("partial", lambda details: details["meta"].update(partial=True, ops=["det"]), "partial run"),
+                ("partial missing", lambda details: details["meta"].pop("partial"), "not marked as a complete run")):
+            with self.subTest(what):
+                self.fails_with(change, expected)
+        # Three rounds, nine repeats and a cpu number are enough, and cpu 0 is a cpu.
+        details = passing_details()
+        details["meta"].update(rounds=3, repeat=9, cpu=0)
+        self.assertEqual(run_check(details)[0], 0)
+        details = passing_details()
+        details["meta"].update(repeat=21, cpu=3, sample_ms=0.5)
+        set_rounds(details, 5)
+        self.assertEqual(run_check(details)[0], 0)
+
+    def test_allow_quick_waives_the_protocol_and_says_that_the_result_is_not_a_gate_run(self):
+        details = passing_details()
+        details["meta"].update(repeat=3, cpu=None)
+        set_rounds(details, 1)
+        status, _, stderr = run_check(details)
+        self.assertEqual(status, 1)  # A small run does not pass the gate...
+        for text in ("too few rounds: 1", "too few repeats: 3", "not pinned to a cpu"):
+            self.assertIn(text, stderr)
+        status, stdout, stderr = run_check(details, "--allow-quick")  # ...unless it is asked for explicitly.
+        self.assertEqual((status, stderr), (0, ""), stdout)
+        self.assertIn("not a gate run (--allow-quick)", stdout.splitlines()[0])
+        self.assertIn("check_speed: not a gate run", stdout.splitlines()[-1])
+        self.assertNotIn("the speed gate passes", stdout)  # It is never reported as the gate passing.
+        set_ratios(details, "det/micro/x", 3.4, [3.4])  # The limit and the other checks stay on.
+        status, stdout, stderr = run_check(details, "--allow-quick")
+        self.assertEqual(status, 1)
+        self.assertIn("det/micro/x = 3.40", stderr)
+        self.assertIn("not a gate run (--allow-quick)", stdout)
+        details = passing_details()  # The staleness checks stay on too.
+        status, _, stderr = run_check(details, "--allow-quick", working_hash="f" * 64)
+        self.assertEqual(status, 1)
+        self.assertIn("stale details", stderr)
+
+    def test_a_fixture_is_held_to_the_limit_in_every_round_while_the_median_is_what_is_reported(self):
+        details = passing_details()
+        set_ratios(details, "det/micro/x", 2.1, [1.5, 3.4, 2.1])  # The median 2.1 is fine; one round is not.
+        status, stdout, stderr = run_check(details)
+        self.assertEqual(status, 1)
+        self.assertIn("ratio above the limit 3.0 in a round: det/micro/x = 3.40", stderr)
+        self.assertIn("median 2.10", stderr)
+        self.assertIn("rounds 1.50, 3.40, 2.10", stderr)
+        self.assertIn("2.10  det/micro/x", stdout)  # The report keeps the median.
+        self.assertIn("rounds 1.50, 3.40, 2.10", stdout)
+        set_ratios(details, "det/micro/x", 2.1, [1.5, 3.0, 2.1])  # The limit is inclusive in a round too.
+        self.assertEqual(run_check(details)[0], 0)
+        set_ratios(details, "det/micro/x", 3.2, [1.5, 2.0, 2.1])  # A pooled median above the limit still fails.
+        status, _, stderr = run_check(details)
+        self.assertEqual(status, 1)
+        self.assertIn("ratio above the limit 3.0: det/micro/x = 3.20", stderr)
+
+    def test_waived_fixtures_are_printed_with_their_reason_and_do_not_fail_the_gate(self):
+        bezout = ("the independently checked Bezout certificate dominates at this size (v0.8.0 known limitation)")
+        structured = "solve_system still runs the v0.7 structured pipeline; accelerated in v0.9"
+        details = passing_details()
+        for identifier, ratio in (("integer_gcd/realistic/bits30000", 17.7), ("integer_gcd/realistic/rsa_moduli", 14.3),
+                                  ("integer_lcm/realistic/bits20000", 16.4), ("integer_lcm/realistic/rsa_moduli", 10.5),
+                                  ("solve_system/micro/two_by_two", 14.9), ("solve_system/realistic/dense_6_by_6", 9.7),
+                                  ("solve_system/realistic/scaled_dense_12_by_12", 8.5),
+                                  ("solve_system/realistic/underdetermined_4_by_6", 12.1)):
+            details["fixtures"][identifier] = fixture_entry(identifier.split("/")[0], identifier.split("/")[1], ratio)
+            details["fixtures"][identifier]["round_ratios"] = [ratio, ratio * 1.1, ratio * 0.9]
+        status, stdout, stderr = run_check(details)
+        self.assertEqual((status, stderr), (0, ""), stdout)
+        self.assertIn("the speed gate passes", stdout)
+        waived = [line for line in stdout.splitlines() if line.startswith("waived: ")]
+        self.assertEqual(len(waived), 8)
+        self.assertEqual(sum(line.startswith(f"waived: {bezout} [") for line in waived), 4)
+        self.assertEqual(sum(line.startswith(f"waived: {structured} [") for line in waived), 4)
+        self.assertTrue(any("[integer_gcd/realistic/bits30000: ratio 17.70, worst 19.47" in line for line in waived))
+        # A waiver is for its fixture only: an unwaived one next to it still fails.
+        set_ratios(details, "integer_gcd/micro/x", 17.7)
+        status, _, stderr = run_check(details)
+        self.assertEqual(status, 1)
+        self.assertIn("integer_gcd/micro/x = 17.70", stderr)
+        self.assertNotIn("bits30000", stderr)
+        # A waived fixture that comes back within the limit is reported as such.
+        details = passing_details()
+        details["fixtures"]["integer_lcm/realistic/rsa_moduli"] = fixture_entry("integer_lcm", "realistic", 2.4)
+        status, stdout, stderr = run_check(details)
+        self.assertEqual((status, stderr), (0, ""), stdout)
+        self.assertNotIn("waived: ", stdout)
+        self.assertIn("waived fixture within the limit: integer_lcm/realistic/rsa_moduli: ratio 2.40", stdout)
+        self.assertIn("its waiver (the independently checked Bezout certificate", stdout)
+        self.assertIn("is no longer needed", stdout)
+
+    def test_a_waiver_does_not_excuse_other_failures_of_the_same_fixture(self):
+        details = passing_details()
+        details["fixtures"]["solve_system/micro/two_by_two"] = fixture_entry("solve_system", "micro", 14.9)
+        details["meta"]["sympy"] = "1.13.3"  # The waiver is for the ratio only.
+        status, _, stderr = run_check(details)
+        self.assertEqual(status, 1)
+        self.assertIn("SymPy 1.14.0", stderr)
+        self.assertNotIn("two_by_two", stderr)
+
+    def test_the_waivers_name_real_fixtures_and_cover_every_solve_system_fixture(self):
+        fixture_ids, _ = speed_suite.current_ids()
+        self.assertEqual(set(check_speed.WAIVED) - fixture_ids, set())  # No waiver for a fixture that is gone.
+        self.assertEqual({identifier for identifier in fixture_ids if identifier.startswith("solve_system/")},
+                         {identifier for identifier in check_speed.WAIVED if identifier.startswith("solve_system/")})
+        self.assertEqual({identifier for identifier in check_speed.WAIVED if not identifier.startswith("solve_system/")},
+                         {"integer_gcd/realistic/bits30000", "integer_gcd/realistic/rsa_moduli",
+                          "integer_lcm/realistic/bits20000", "integer_lcm/realistic/rsa_moduli"})
+        self.assertEqual({reason for identifier, reason in check_speed.WAIVED.items()
+                          if identifier.startswith("solve_system/")},
+                         {"solve_system still runs the v0.7 structured pipeline; accelerated in v0.9"})
+        self.assertEqual({reason for identifier, reason in check_speed.WAIVED.items()
+                          if not identifier.startswith("solve_system/")},
+                         {"the independently checked Bezout certificate dominates at this size "
+                          "(v0.8.0 known limitation)"})
 
 
 if __name__ == "__main__":

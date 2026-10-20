@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from math import gcd, perm
 
+from ..limits import ResourceLimitError
 from ..model import Rational
 from ..trusted import upoly as tp
 from ..trusted.caches import BoundedCache
@@ -440,13 +441,27 @@ def check_resultant(f: tuple[int, ...], g: tuple[int, ...], value: int) -> bool:
 _STURM = BoundedCache("certify.sturm", 512)
 
 
+def _limit() -> int:
+    budget = tp._active()
+    return 65_536 if budget is None else budget.limits.max_integer_bits
+
+
+def _too_long() -> ResourceLimitError:
+    return ResourceLimitError("Computation limit exceeded: integer bits")
+
+
 def euclid_gcd(f: tuple[int, ...], g: tuple[int, ...]) -> tuple[int, ...]:
     """The primitive gcd (positive leading coefficient) of nonzero integer polynomials, by the primitive
-    pseudo-remainder sequence (the checker's own; the producer uses a heuristic gcd)."""
+    pseudo-remainder sequence (the checker's own; the producer uses a heuristic gcd). A divisor whose leading
+    coefficient passes max_integer_bits is refused before it divides (ResourceLimitError), as the producer's Euclid
+    refuses it."""
     a, b = tp.primitive(f), tp.primitive(g)
     if len(a) < len(b):
         a, b = b, a
+    limit = _limit()
     while b:
+        if b[-1].bit_length() > limit:
+            raise _too_long()
         a, b = b, tp.primitive(tp.pseudo_remainder(a, b))
     return tp.primitive(a)
 
@@ -464,7 +479,10 @@ def sturm_chain(p: tuple[int, ...]) -> tuple[tuple[int, ...], ...]:
     """A Sturm sequence of the square-free integer polynomial p (degree >= 1): the subresultant PRS of p and p'
     (Brown and Collins' scalars, as SymPy's dup_inner_subresultants computes them), each member multiplied by the
     sign that makes it a positive multiple of minus the remainder of the two before it. With R_(i+1) =
-    s_i lc(R_i)**k_i rem(R_(i-1), R_i), the sign is sigma_(i+1) = -sigma_(i-1) sign(s_i) sign(lc R_i)**k_i."""
+    s_i lc(R_i)**k_i rem(R_(i-1), R_i), the sign is sigma_(i+1) = -sigma_(i-1) sign(s_i) sign(lc R_i)**k_i.
+
+    A member whose leading or constant coefficient passes max_integer_bits is refused (ResourceLimitError) before it
+    divides, as the producer's chain refuses its own members."""
     return _STURM.get(p, lambda: _sturm_chain(p))
 
 
@@ -485,12 +503,18 @@ def _sturm_chain(p):
     c = -c
     scale_sign = scale
     exponent = drop + 1
+    limit = _limit()
     while h:
+        if max(h[-1].bit_length(), h[0].bit_length()) > limit:
+            raise _too_long()
         sign_lead = 1 if lead > 0 else -1
         signs.append(-signs[-2] * scale_sign * (sign_lead if exponent % 2 else 1))
         members.append(h)
+        if len(h) == 1:
+            break  # A nonzero constant ends the chain: every remainder by it vanishes.
         k = len(h) - 1
         f, g, drop = g, h, len(g) - 1 - k
+        tp.charge_power(c.bit_length(), drop)
         b = -lead * c ** drop
         remainder = tp.pseudo_remainder(f, g)
         exponent = len(f) - len(g) + 1
@@ -501,6 +525,7 @@ def _sturm_chain(p):
         scale_sign = 1 if b > 0 else -1  # s_i = 1 / b
         lead = g[-1]
         if drop > 1:
+            tp.charge_power(max(c.bit_length(), lead.bit_length()), drop)
             q = c ** (drop - 1)
             c, rest = divmod((-lead) ** drop, q)
             if rest:
@@ -734,6 +759,16 @@ def compare(left, right) -> int | None:
     return -1 if a[1] <= b[0] else 1
 
 
+def _interval_product(low, high, a, b):
+    """[low, high] * [a, b] for Rational ends, the four products charged by the size of their integers (each runs
+    two gcds)."""
+    tp.charge_gcd(max(low.numerator.bit_length(), low.denominator.bit_length(), high.numerator.bit_length(),
+                      high.denominator.bit_length(), a.numerator.bit_length(), a.denominator.bit_length(),
+                      b.numerator.bit_length(), b.denominator.bit_length()), 8)
+    products = (low * a, low * b, high * a, high * b)
+    return min(products), max(products)
+
+
 def _rational_enclosure(expression, bits: int):
     """Rationals (lo, hi) enclosing a tree of Rational, Sqrt, Add, Mul and Pow nodes: exact rational arithmetic,
     with sqrt(p/q) between s / (q 2**bits) and (s + 1) / (q 2**bits) for s = isqrt(p q 4**bits)."""
@@ -759,8 +794,7 @@ def _rational_enclosure(expression, bits: int):
         low = high = Rational(1)
         for factor in expression.factors:
             a, b = _rational_enclosure(factor, bits)
-            products = (low * a, low * b, high * a, high * b)
-            low, high = min(products), max(products)
+            low, high = _interval_product(low, high, a, b)
         return low, high
     if kind is Pow:
         exponent = expression.exponent
@@ -769,8 +803,7 @@ def _rational_enclosure(expression, bits: int):
         a, b = _rational_enclosure(expression.base, bits)
         low = high = Rational(1)
         for _ in range(exponent):
-            products = (low * a, low * b, high * a, high * b)
-            low, high = min(products), max(products)
+            low, high = _interval_product(low, high, a, b)
         return low, high
     raise ValueError(kind.__name__)
 
@@ -856,15 +889,24 @@ def check_root_records(p: tuple[int, ...], records) -> bool:
 # ---------------------------------------------------------------------------------------------------------------
 # Irreducibility over Q: polynomial_exact._check_irreducible and _rabin on integer tuples
 
+_TRIAL_BATCH = 256  # Trial divisions charged at a time.
+
+
 def _prime(n) -> bool:
+    """v0.7's primality test of the evidence's prime: trial division by 3, 5, 7, ..., charged one unit of work per
+    division as v0.7 ticked them (in batches), so that a large prime stops at max_work as it did there."""
     if type(n) is not int or n < 2:
         return False
     if n % 2 == 0:
         return n == 2
     divisor = 3
     while divisor * divisor <= n:
-        if n % divisor == 0:
-            return False
+        tp.charge(_TRIAL_BATCH)
+        for divisor in range(divisor, divisor + 2 * _TRIAL_BATCH, 2):
+            if divisor * divisor > n:
+                return True
+            if n % divisor == 0:
+                return False
         divisor += 2
     return True
 
@@ -922,10 +964,16 @@ def check_irreducible(p: tuple[int, ...], evidence) -> bool:
     if (type(prime) is not int or type(exponent) is not int or exponent <= 0
             or type(factors) is not tuple or not factors or not _prime(prime)):
         return False
-    budget = tp._active()
-    if exponent > (65_536 if budget is None else budget.limits.max_integer_bits):
+    limit = _limit()
+    if exponent > limit:
         return False
+    # v0.7 built prime**exponent one checked product at a time, refusing it past max_integer_bits; a power surely
+    # past the bound is refused before it is formed.
+    if (prime.bit_length() - 1) * exponent > limit:
+        raise _too_long()
     modulus = prime ** exponent
+    if modulus.bit_length() > limit:
+        raise _too_long()
     source = tp.primitive(p)
     if source[-1] % prime == 0 or modulus <= 2 * _coefficient_bound(source):
         return False

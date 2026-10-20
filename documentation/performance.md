@@ -2,9 +2,9 @@
 
 ## v0.8 cheaper exact computation
 
-v0.8 lowers the fixed cost of an exact operation without changing its values,
-errors, records or document bytes. Four changes carry it. None adds an
-approximation, and none skips an independent check.
+v0.8 lowers the cost of exact operations without changing their values, records
+or document bytes. Five changes carry it. None adds an approximation, and none
+skips an independent check.
 
 - **Rational fast paths.** `Rational` arithmetic and ordering against another
   exact `Rational` or an `int` work on the integers directly, reducing by greatest
@@ -15,6 +15,22 @@ approximation, and none skips an independent check.
 - **An inline budget.** The computation budget charges in place instead of through
   helper calls, and `computation()` keeps its call forms, including its use as a
   decorator. Limits keep their meaning and error messages.
+- **Exact kernels with independent checkers.** New producers compute on integers:
+  integer linear algebra by fraction-free elimination, dense integer
+  polynomials, an integer kernel for factorization and primality, and arithmetic
+  of complex numbers whose parts are rationals or quadratic surds. A result
+  counts only once an independent check accepts it, never by rerunning its
+  producer: modular certificates for determinants, echelon forms and
+  characteristic polynomials, one exact product for an inverse, polynomial
+  identities decided by a single integer evaluation, prime certificates, a
+  second computation of a different shape for complex arithmetic, truncated
+  power series for Taylor coefficients, and a median certificate that counts the
+  entries below, equal to and above the median. The checkers in
+  `mathforge.certify` share no code with the producers beyond a small trusted
+  layer of arithmetic. Complex surd arithmetic relies on Besicovitch's theorem,
+  whose hypotheses, squarefree and pairwise coprime radicands, are checked by
+  exact computation in every call. The verifiers of stored documents use several
+  of these checkers as well.
 - **The lean value path.** A value function such as `mf.integer_gcd`,
   `mf.ntheory.continued_fraction` or `mf.det`, called without `limits`, first runs
   its lean function. It calls the producer and the independent checker directly,
@@ -24,8 +40,11 @@ approximation, and none skips an independent check.
   value or raises the error of that path. Calls fall back for an unusual argument
   type or size, a request that is deferred or declined, a check that fails or runs
   out of budget, a call made while a computation budget is active, and any call
-  with explicit `limits`. The lean path charges each budget at least what the
-  structured path charges, so near a limit it falls back sooner, never later.
+  with explicit `limits`. A value function never returns a value other than the
+  structured path's, and every error that it raises is that path's. Near a
+  resource limit, though, it may answer where the structured path refuses with
+  a resource-limit error, because the new kernels need less work than the
+  structured producers.
 - **A cheaper structured pipeline.** `mathforge.operations` inspects the arguments,
   the value and the evidence once, and builds the request, the step and the result
   without repeating those checks; the public record constructors keep all of their
@@ -33,10 +52,18 @@ approximation, and none skips an independent check.
   directly, and the JSON encoder finds the handler of each record class in a table
   built once. Results serialize to the same bytes as before.
 
-Because exact arithmetic charges less work, a computation limit is a ceiling, not
-a cost promise: an input just past a limit in v0.7 may now succeed. The
+Because exact computation charges less work, a computation limit is a ceiling,
+not a cost promise: an input just past a limit in v0.7 may now succeed. The
 deterministic gates below still check work, nodes, evidence and bytes. Wall-clock
 timings depend on the machine and the input and are not guarantees.
+
+### Known limitations
+
+- `integer_gcd` and `integer_lcm` on very large integers, of tens of thousands of
+  bits, remain comparatively slow, because every result carries a Bézout
+  certificate that an independent checker verifies.
+- `solve_system` still uses the v0.7 structured pipeline; a later version will
+  accelerate it.
 
 ## v0.7 resource gates
 

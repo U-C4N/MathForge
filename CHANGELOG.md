@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.8.0 — 2026-10-19
+## 0.8.0 — 2026-10-20
 
 - Add a declarative operation registry; `tools/generate_api.py` generates from it the `mathforge.operations` wrappers, the value functions and 18 lazily loaded area modules, such as `mf.ntheory`.
 - Keep the v0.7 names, signatures and results unchanged; `tools/generate_api.py --check` fails when a generated file is stale.
@@ -14,17 +14,28 @@
 - Add `continued_fraction`, the first v6 operation: `mf.ntheory.continued_fraction` and `mf.operations.continued_fraction` give the finite simple continued fraction of an exact rational.
 - Its independent checker rebuilds the rational from the convergents; `tools/check_layering.py` fails when a checker can reach any module beyond a small trusted set, even through chained imports.
 - Speed up exact arithmetic: `Rational` operations on exact `Rational` and `int` operands work on the integers directly, and the computation budget charges inline.
+- `Rational` instances now use slots: weak references to them work as in v0.7, but `vars()` of one raises `TypeError`, because it has no attribute dict.
+- Add exact kernels: integer linear algebra with modular certificates, dense integer polynomials, an integer kernel with prime certificates, and complex and quadratic-surd arithmetic.
+- Check their results with new independent `mathforge.certify` checkers, complex arithmetic by a second computation, Taylor values by truncated power series and medians by a certificate.
 - Add the lean value path: a value function called without `limits` runs its producer and an independent checker directly, and falls back to the structured path for any call it does not handle.
+- Near a resource limit, a value function may answer where `mathforge.operations` refuses, as the kernels need less work; it never returns a different value, and errors are otherwise the same.
 - Cut the fixed cost of the structured pipeline: it inspects arguments, value and evidence once and builds requests, steps and results without repeating checks. Records and bytes are unchanged.
 - Add the superseding-operation mechanism: a v6 family can take over a v0.7 operation name for new results while older records keep their format. No operation uses it yet.
 
 Compatibility: Python 3.11–3.14 and the dependency-free core remain. v1–v5
-documents keep their bytes and verify unchanged, and values and errors match
-v0.7. Some inputs just past a resource limit may now succeed, because exact
-arithmetic got cheaper. The v0.7 public API, the thirty v0.7 MCP tools with
-their input schemas and `api_version=1` are pinned by compatibility tests.
-Operations added in v0.8 live in their area module and in `mathforge.operations`,
-not in the plain `mathforge` namespace.
+documents keep their bytes and get the same verdicts as in v0.7, except that
+some checks that ran out of budget in v0.7 now complete; some checks run new,
+faster checker code. Values match v0.7, and so do errors, except that some
+inputs just past a resource limit may now succeed, because exact computation got
+cheaper. The v0.7 public API, the thirty v0.7 MCP tools with their input schemas
+and `api_version=1` are pinned by compatibility tests. Operations added in v0.8
+live in their area module and in `mathforge.operations`, not in the plain
+`mathforge` namespace.
+
+Known limitations: `integer_gcd` and `integer_lcm` on very large integers, of
+tens of thousands of bits, remain comparatively slow, because every result
+carries an independently checked Bézout certificate. `solve_system` still uses
+the v0.7 structured pipeline and will be accelerated in a later version.
 
 ## 0.7.0 — 2026-10-14
 

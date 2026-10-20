@@ -92,15 +92,19 @@ class ExplosiveIntermediatesTest(QuickRefusals, unittest.TestCase):
 
     def test_irreducibility_evidence_with_a_large_prime(self):
         """Forged evidence ("modular", 2**61 - 1, ...) reaches certify.upoly.check_irreducible through the check of a
-        user record: trial division of the prime, and its powers, are charged as v0.7 charged them."""
+        user record: trial division of the prime, and its powers, are charged as v0.7 charged them, so the check
+        refuses within a second with v0.7's error. (v0.7's own criterion, which ticks each division alone, takes
+        0.35 s to a second for the prime: only its error is compared, not timed.)"""
         poly = mf.Polynomial((-2, 0, 1), X)
         prime = (1 << 61) - 1
         for evidence in (("modular", prime, 1, ((1, 1), (prime - 1, 1))),  # Trial division up to 2**30.5.
                          ("modular", 3, 50_000, ((1, 1), (2, 1))),  # 3**50000 has 79,249 bits.
                          ("modular", 2_147_483_647, 4_000, ((1, 1), (2, 1)))):  # Refused before the power.
-            for check in (polynomial_exact._check_irreducible, polynomial_exact._check_irreducible_v07):
-                with self.subTest(evidence=evidence[:3], check=check.__name__), computation():
-                    self.assertRefusedQuickly(lambda: check(poly, evidence))
+            with self.subTest(evidence=evidence[:3]):
+                with computation():
+                    self.assertRefusedQuickly(lambda: polynomial_exact._check_irreducible(poly, evidence))
+                with computation(), self.assertRaises(ResourceLimitError):
+                    polynomial_exact._check_irreducible_v07(poly, evidence)
 
     def test_checker_chains_refuse_long_remainders(self):
         """certify.upoly's Euclid and subresultant Sturm chain refuse a long member before dividing by it."""

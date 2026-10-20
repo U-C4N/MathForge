@@ -93,10 +93,11 @@ def produce(operation, args):
 ```
 
 The generated structured wrapper of a superseded v0.7 operation calls `run_dual`, and its value function keeps
-its name and values. A superseded legacy operation gets no generated wrapper: its public functions in
-`mathforge.operations` and `mathforge` stay, and call `run_dual` with `older`, a function that returns the v0.7
-Result; its area module re-exports the `mathforge` value function. `mathforge.capabilities()` and the catalog list
-the name once, and the MCP tools run it through its public structured function.
+its name and values. A superseded legacy operation gets no generated wrapper, and no code routes it to `run_dual`
+yet: its public functions in `mathforge.operations` and `mathforge` stay, and a family that supersedes one must
+change them by hand to call `run_dual` with `older`, a function that returns the v0.7 Result. Its area module
+re-exports the `mathforge` value function. `mathforge.capabilities()` and the catalog list the name once, and the
+MCP tools run it through its public structured function.
 
 ## Keep records plain
 

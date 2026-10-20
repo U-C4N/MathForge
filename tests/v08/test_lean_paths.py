@@ -294,8 +294,12 @@ class LeanPathTest(unittest.TestCase):
             recorded.append(name)
             return resolve(name)
 
+        # parse_function has no lean producer: mathforge re-exports v0.7's own function, as v0.7 did.
+        self.assertIs(mf.parse_function, mf.functions.parse_function)
         with patch.object(lean, "_resolve", side_effect=recording):
             for operation in value_operations():
+                if operation in NO_LEAN_PRODUCER:
+                    continue
                 with self.subTest(operation=operation):
                     lean._clear_caches()
                     recorded.clear()
@@ -353,6 +357,28 @@ class LeanPathTest(unittest.TestCase):
                         if public is not None:
                             self.assertSameOutcome(outcome(lambda: public(**arguments)), expected,
                                                    (operation, name, edge))
+
+    def test_v6_argument_kinds_fall_back(self):
+        """The runner checks a v6 spec's argument kinds before produce(), as operations_v6.run does: an argument that
+        its kind does not admit falls back here, and the structured path reports invalid_input."""
+        from mathforge import operations_v6
+        from . import demo_kind_family
+        valid = {"n": 1, "q": mf.Rational(1, 2), "counts": (1, 2), "data": (1, mf.Rational(1, 3)),
+                 "A": mf.Matrix(((1,),)), "variable": mf.Symbol("x")}
+        demo_kind_family.CALLS.clear()
+        self.addCleanup(demo_kind_family.CALLS.clear)
+        with registry._testing_families(demo_kind_family):
+            lean._clear_caches()
+            for name, edge in (("n", True), ("counts", (True, 2)), ("variable", "x")):
+                arguments = {**valid, name: edge}
+                with self.subTest(argument=name, edge=edge):
+                    self.assertIs(lean.run_value("demo_kinds", arguments), lean.FALLBACK)
+                    self.assertIs(lean.functions.demo_kinds(*arguments.values()), lean.FALLBACK)
+                    result = operations_v6.run("demo_kinds", arguments)
+                    self.assertEqual((result.execution_status, result.error.code),
+                                     (mf.ExecutionStatus.INVALID_INPUT, "invalid_input"))
+            self.assertEqual(demo_kind_family.CALLS, [])  # No call reached the producer.
+            self.assertEqual(lean.run_value("demo_kinds", valid), 1)
 
     def test_containers_the_record_refuses_fall_back(self):
         """Producers iterate any container, but a record holds only tuples: ranges and sets fail as in v0.7."""

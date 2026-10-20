@@ -32,13 +32,18 @@ _WALKED_LIMIT = 4_096  # Classes made at run time cannot grow the table without 
 
 
 def _walked(cls):
-    names = _WALKED.get(cls)
+    """A seeded class keeps its seeded fields; a full table is replaced by a fresh copy of the seeds, never cleared in
+    place, so that a lookup in another thread meanwhile still finds every seeded class (as limits._kind does)."""
+    global _WALKED
+    names = _SEED_WALKED.get(cls)
+    if names is None:
+        names = _WALKED.get(cls)
     if names is None:
         names = tuple(field.name for field in fields(cls)) if is_dataclass(cls) else ()
-        if len(_WALKED) >= _WALKED_LIMIT:
-            _WALKED.clear()
-            _WALKED.update(_SEED_WALKED)
-        _WALKED[cls] = names
+        walked = _WALKED
+        if len(walked) >= _WALKED_LIMIT:
+            walked = _WALKED = dict(_SEED_WALKED)
+        walked[cls] = names
     return names
 
 

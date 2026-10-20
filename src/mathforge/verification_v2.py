@@ -327,6 +327,10 @@ def _check_operation(operation, args, value, evidence):
             return False
         left, right = endpoint_of(args["left"]), endpoint_of(args["right"])
         if left is None or right is None:
+            # Outside the comparison's scope: raise v0.7's own error, which as_endpoint gives, left argument first.
+            from .algebraic import as_endpoint
+            as_endpoint(args["left"])
+            as_endpoint(args["right"])
             raise UnsupportedOperation("Expected a rational, root descriptor or one quadratic-field constant")
         return value == compare(left, right)
     if operation == "rational_function":

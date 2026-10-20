@@ -3,14 +3,18 @@
 A value function (``mathforge.integer_gcd``, ``mathforge.ntheory.integer_gcd``, ``mathforge.det``, ...) called
 without ``limits`` first calls its lean function, ``functions.<operation>``. The lean function returns the verified
 value, or ``FALLBACK`` for any call it does not handle; the value function then runs the structured path
-(``mathforge.operations``) and unwraps its Result, so its values and errors stay exactly the structured path's.
-With explicit ``limits``, a value function takes the structured path at once.
+(``mathforge.operations``) and unwraps its Result. A value function therefore never returns a value other than the
+structured path's, and every error that it raises is the structured path's. Near a resource limit it may answer where
+the structured path refuses with ``resource_limit_exceeded``, because the lean modules compute with exact kernels
+(``mathforge.kernels`` and integer arithmetic of their own) that need less work than the structured producers. With
+explicit ``limits``, a value function takes the structured path at once.
 
 The contract of a lean function:
 
 - It takes the positional parameters of the public value function, ``limits`` excepted, and it never raises.
 - It returns a value only after an independent check accepted it (a certify checker, or the criterion of the v0.7
-  checker of the operation), and only a value equal to what ``structured(...).unwrap()`` returns for that input.
+  checker of the operation), and never a value other than what ``structured(...).unwrap()`` returns for that input.
+  It may answer an input that the structured path refuses for a resource limit, but none that it rejects otherwise.
 - Anything it does not handle gives ``FALLBACK``: argument types and sizes, deferrals, a failed or exhausted check,
   and a call made while a computation budget is active (the structured path then charges that budget, as in v0.7).
 - It leaves its arguments as it found them: a one-shot iterator falls back before anything iterates it.
@@ -26,22 +30,24 @@ its own operation.
 
 **The generic runner,** ``run_value(operation, arguments)``, returns the verified value or ``FALLBACK`` and never
 raises an Exception. For a registry operation it repeats ``operations_v5.run`` or ``operations_v6.run`` without the
-records: it freezes and inspects the arguments, checks their names, normalizes them as the request would, runs the
-family's ``produce`` in a fresh budget, falls back on a deferral or a decline, inspects the value and the evidence,
-and runs the checker (the family's ``check_operation`` for v5, ``registry.checker(...)`` for v6) in another fresh
-budget, as the verifier does. For a legacy operation it repeats ``operations._run`` with the operation's
+records: it freezes and inspects the arguments, checks their names and, for a v6 operation, the argument kinds that
+``operations_v6.run`` checks before ``produce`` (``operations_v6._check_kinds``), normalizes them as the request
+would, runs the family's ``produce`` in a fresh budget, falls back on a deferral or a decline, inspects the value and
+the evidence, and runs the checker (the family's ``check_operation`` for v5, ``registry.checker(...)`` for v6) in
+another fresh budget, as the verifier does. For a legacy operation it repeats ``operations._run`` with the operation's
 ``operations.LEGACY`` entry: ``_run``'s argument normalization, the producer, the record's source checks and the
 entry's check, all in one budget, as there; it falls back for the inputs that the public function routes elsewhere.
 As in v0.7, a legacy operation never builds the registry tables: unless ``registry.is_v6_operation`` says that a v6
 family took it over, its lean function resolves from the legacy catalogue alone.
 
-Building no records, the runner still charges each budget at least what the structured path charges: the run's
-inspections of the arguments, the value and the evidence, those of the request and the step that operations_v6.run
-builds with the public constructors (operations_v5.run and operations._run build theirs without inspection), and the
-verifier's inspection of the whole Result, and on the legacy path of its step as well. Its own inspections run with
-``max_depth`` lowered by the depth at which the Result nests an argument, so an argument too deep for the record
-falls back here too. A value returned here is therefore one that the structured path returns as well; at the edge of
-a limit, the lean path falls back sooner, never later.
+Building no records, the generic runner still charges each budget at least what the structured path charges: the
+run's inspections of the arguments, the value and the evidence, those of the request and the step that
+operations_v6.run builds with the public constructors (operations_v5.run and operations._run build theirs without
+inspection), and the verifier's inspection of the whole Result, and on the legacy path of its step as well. Its own
+inspections run with ``max_depth`` lowered by the depth at which the Result nests an argument, so an argument too deep
+for the record falls back here too. A value that the generic runner returns is therefore one that the structured path
+returns as well; at the edge of a limit, the generic runner falls back sooner, never later. Only the lean modules'
+own functions may answer near a limit where the structured path refuses.
 """
 
 from __future__ import annotations
@@ -53,7 +59,7 @@ from types import MappingProxyType
 from typing import Any
 
 from .. import registry
-from ..errors import UnsupportedOperation
+from ..errors import InvalidInput, UnsupportedOperation
 from ..limits import ComputationLimits, computation, current_budget
 
 __all__ = ["FALLBACK", "functions", "run_legacy", "run_value"]
@@ -251,13 +257,16 @@ def _registry_plan(operation: str, spec: Any,
     family = registry.family(operation, spec.version)  # A superseded v0.7 operation's spec is its v6 family's.
     checker = registry.checker(operation, spec.version)  # v5: the family itself; v6: its CHECKER module.
     expected = registry.operation_arguments(spec.version)[operation]
+    check_kinds: Callable[[str, Mapping[str, object]], None] | None = None
     if spec.version == 5:
         from ..functions import UnevaluatedIntegral, UnevaluatedLimit
         deferrals: tuple[type, ...] = (UnevaluatedIntegral, UnevaluatedLimit)
         partial = getattr(family, "is_partial", None)
     else:
         from ..deferred import Unevaluated
+        from ..operations_v6 import _check_kinds
         deferrals, partial = (Unevaluated,), None
+        check_kinds = _check_kinds
     # The v5 verifier wants a recorded variable to be a Symbol (run records only a Symbol); v6 records what it gets.
     symbol_variable = spec.version == 5 and "variable" in expected
     # The arguments that run copies into the Result: the expression (else A), and a Symbol variable.
@@ -272,6 +281,11 @@ def _registry_plan(operation: str, spec: Any,
         args = {key: _freeze(value) for key, value in arguments.items()}
         if args.keys() != expected:
             return FALLBACK
+        if check_kinds is not None:  # operations_v6.run rejects these as invalid input before produce().
+            try:
+                check_kinds(operation, args)
+            except InvalidInput:
+                return FALLBACK
         variable = args.get("variable")
         if symbol_variable and variable is not None and type(variable) is not Symbol:
             return FALLBACK

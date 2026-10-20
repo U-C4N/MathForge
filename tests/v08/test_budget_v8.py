@@ -4,6 +4,9 @@ The expected deltas and messages below were recorded on the unmodified v0.7 code
 """
 
 from dataclasses import dataclass, field
+import sys
+import threading
+import time
 import unittest
 from unittest.mock import patch
 
@@ -16,6 +19,7 @@ from mathforge.model import Domain, Rational, Symbol
 SMALL = ComputationLimits(max_work=3, max_nodes=3, max_refinements=3, max_evidence_items=3, max_integer_bits=8,
                           max_matrix_entries=4, max_depth=2)
 BAD_CHARGE = "Budget charge must be a nonnegative integer"
+HUGE = 2**70_000  # Past the default max_integer_bits (65,536).
 
 
 @dataclass(frozen=True)
@@ -248,6 +252,104 @@ class BudgetV8Test(unittest.TestCase):
         budget.limits = ComputationLimits(max_work=1)  # A replaced limit object takes effect, as in v0.7.
         budget.tick()
         self.assertCharge(budget, budget.tick, (0, 0, 0, 0), ResourceLimitError, "Computation limit exceeded: work (1)")
+
+
+class KindCacheTest(unittest.TestCase):
+    """inspect's table of kinds by type (limits._KINDS) is a cache: a full one is replaced by a fresh copy of the
+    seeds, never cleared in place, and a seeded type keeps its kind whatever the cache holds."""
+
+    def setUp(self):
+        original = limits._KINDS
+        self.addCleanup(setattr, limits, "_KINDS", original)
+
+    def assertRefused(self, value):
+        with self.assertRaises(ResourceLimitError) as caught:
+            Budget().inspect(value)
+        self.assertEqual(str(caught.exception), "Computation limit exceeded: integer bits")
+
+    def assertSeeded(self):
+        """Every seeded type that the table holds has its seeded kind."""
+        table = limits._KINDS
+        self.assertEqual({cls: table.get(cls, kind) for cls, kind in limits._SEED_KINDS.items()}, limits._SEED_KINDS)
+
+    def test_seeded_types_keep_their_kind(self):
+        limits._KINDS = {}  # What an inspect held while the in-place reset had emptied the table, before its refill.
+        for value in (HUGE, (HUGE,), [HUGE], {1: HUGE}, Rational(HUGE)):
+            with self.subTest(kind=type(value).__name__):
+                self.assertRefused(value)
+        self.assertSeeded()
+
+    def test_full_cache_is_replaced_not_cleared(self):
+        with patch.object(limits, "_KIND_CACHE_LIMIT", len(limits._SEED_KINDS) + 2):
+            limits._KINDS = table = dict(limits._SEED_KINDS)
+            fresh = [type(f"Fresh{index}", (), {}) for index in range(3)]
+            for cls in fresh:
+                Budget().inspect(cls())
+            self.assertIsNot(limits._KINDS, table)
+            self.assertEqual(limits._KINDS, {**limits._SEED_KINDS, fresh[2]: "leaf"})
+            # The replaced table, which an inspect running meanwhile may still hold, keeps every seeded type.
+            self.assertEqual({cls: table[cls] for cls in limits._SEED_KINDS}, limits._SEED_KINDS)
+
+    def test_verifier_field_table_is_replaced_not_cleared(self):
+        """verification_v5's table of the fields to walk per class follows the same two rules."""
+        from mathforge import contracts as c, verification_v5 as v5
+        original = v5._WALKED
+        self.addCleanup(setattr, v5, "_WALKED", original)
+        v5._WALKED = {}
+        self.assertEqual(v5._walked(c.Result), v5._SEED_WALKED[c.Result])
+        with patch.object(v5, "_WALKED_LIMIT", len(v5._SEED_WALKED) + 1):
+            v5._WALKED = table = dict(v5._SEED_WALKED)
+            self.assertEqual((v5._walked(Box), v5._walked(Symbol)), (("walked", "skipped"), ("name", "domain",
+                                                                                              "assumptions", "uid")))
+            self.assertIsNot(v5._WALKED, table)
+            self.assertEqual(v5._WALKED, {**v5._SEED_WALKED, Symbol: ("name", "domain", "assumptions", "uid")})
+            self.assertEqual({cls: table[cls] for cls in v5._SEED_WALKED}, v5._SEED_WALKED)
+
+    def test_concurrent_resets_never_misclassify(self):
+        """Threads that keep resetting a small cache with new classes, while others inspect a 70,000-bit integer:
+        every inspection must refuse it. The former in-place reset let one accept it within milliseconds."""
+        accepted, failures, stop = [], [], threading.Event()
+
+        def churn():
+            try:
+                while not stop.is_set():
+                    Budget().inspect(type("Fresh", (), {})())
+            except BaseException as error:
+                failures.append(error)
+
+        def inspect():
+            try:
+                while not stop.is_set():
+                    for value in (HUGE, (HUGE,), [HUGE]):
+                        try:
+                            Budget().inspect(value)
+                        except ResourceLimitError:
+                            continue
+                        accepted.append(type(value).__name__)
+            except BaseException as error:
+                failures.append(error)
+
+        threads = [threading.Thread(target=target) for target in (churn, churn, inspect, inspect, inspect)]
+        interval = sys.getswitchinterval()
+        sys.setswitchinterval(1e-6)  # Switch threads as often as possible.
+        try:
+            with patch.object(limits, "_KIND_CACHE_LIMIT", len(limits._SEED_KINDS) + 8):
+                for thread in threads:
+                    thread.start()
+                deadline = time.monotonic() + 1.0
+                while time.monotonic() < deadline and not accepted:
+                    time.sleep(0.01)
+                stop.set()
+                for thread in threads:
+                    thread.join(30)
+        finally:
+            stop.set()
+            sys.setswitchinterval(interval)
+        self.assertEqual(failures, [])
+        self.assertFalse(any(thread.is_alive() for thread in threads))
+        self.assertEqual(accepted, [])
+        self.assertSeeded()
+        self.assertRefused(HUGE)
 
 
 if __name__ == "__main__":

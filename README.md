@@ -25,10 +25,10 @@
 ## New in v0.8
 
 - **Areas and one registry:** every operation belongs to one of 18 mathematical areas, such as `mf.ntheory` or `mf.linalg`. Each area module loads on first use, and the Python API is generated from a single operation registry.
-- **Mathematical JSON v6:** operations added in v0.8 use v6, with a generic `Unevaluated` record for a request that reaches no verified answer. v1–v5 documents keep their bytes and verify unchanged.
+- **Mathematical JSON v6:** operations added in v0.8 use v6, with a generic `Unevaluated` record for a request that reaches no verified answer. v1–v5 documents keep their bytes and get the same verdicts.
 - **MCP area tools:** typed tools run a named operation of an area, and `mathforge.catalog` finds operations. The thirty v0.7 tools are unchanged.
 - **Continued fractions:** `mf.ntheory.continued_fraction` returns the finite simple continued fraction of an exact rational, confirmed by an independent checker.
-- **Cheaper exact computation:** `Rational` fast paths, a lean value path that calls the producer and the independent checker directly, and a structured pipeline with a lower fixed cost. Values and errors match v0.7.
+- **Cheaper exact computation:** `Rational` fast paths, exact integer kernels with independent checkers, a lean value path that calls a producer and its checker directly, and a structured pipeline with a lower fixed cost. Values match v0.7.
 
 ```python
 import mathforge as mf
@@ -45,7 +45,15 @@ See the [area guide](documentation/areas.md) for the modules and names, the
 [MCP guide](documentation/mcp.md) for the area tools and
 [performance notes](documentation/performance.md) for the cheaper computation
 path. Every v0.7 operation keeps its name, signature and result. Some inputs just
-past a resource limit may now succeed, because exact arithmetic got cheaper.
+past a resource limit may now succeed, because exact computation got cheaper: a
+value function may answer where `mathforge.operations` reports the limit, never
+with a different value. Some verifier checks that ran out of budget in v0.7 now
+complete.
+
+Known limitations: `integer_gcd` and `integer_lcm` on very large integers, of
+tens of thousands of bits, remain comparatively slow, because every result
+carries an independently checked Bézout certificate. `solve_system` still uses
+the v0.7 structured pipeline and will be accelerated in a later version.
 
 ## Added in v0.7
 

@@ -103,6 +103,23 @@ class V2VerificationTests(unittest.TestCase):
         det = op.det(Matrix(((1, 2), (3, 4))))
         self.assertFalse(m.verify(self.forge(det, value=m.Rational(0))).verified)
 
+    def test_out_of_scope_comparisons_keep_the_v07_messages(self):
+        """A compare_real record outside the comparison's scope fails with v0.7's own message, left argument first."""
+        result = op.compare_real(m.sqrt(2), 1)
+        independent = "Independent quadratic fields are outside comparison scope"
+        expected = "Expected a rational, root descriptor or one quadratic-field constant"
+        cases = ((m.sqrt(2) + m.sqrt(3), m.Rational(3), independent),
+                 (m.sqrt(5) + m.sqrt(2) * m.sqrt(3), m.Rational(3), independent),
+                 (self.x, m.Rational(3), expected), (self.x, m.sqrt(2) + m.sqrt(3), expected),
+                 (m.Rational(3), m.sqrt(2) + m.sqrt(3), independent))
+        for left, right, message in cases:
+            with self.subTest(left=left, right=right):
+                request = c.OperationRequest("compare_real", (("left", left), ("right", right)))
+                report = m.verify(self.forge(result, request=request))
+                self.assertFalse(report.verified)
+                self.assertEqual([(check.claim, check.status, check.details) for check in report.checks[-1:]],
+                                 [("step.validity", c.CheckStatus.FAILED, message)])
+
     def test_dropped_rf_hole_is_rejected(self):
         """RF-22/CAL-11: matching values do not justify losing the domain."""
         source = rational_function(self.x**2 - 1, self.x - 1, variable=self.x)

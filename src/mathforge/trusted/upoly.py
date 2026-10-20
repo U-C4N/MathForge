@@ -13,8 +13,8 @@ charge of an operation by the size of its integers (one unit up to about 1,000 b
 what they always did; ``evaluation_factor`` does so for an evaluation at a long point, and ``kronecker`` charges a
 long evaluation of its own), and ``charge_product``, ``charge_power`` and ``charge_gcd`` charge what a big-integer
 product, power or gcd costs beyond that, before it runs, so that a computation with explosive integers stops at
-``max_work`` instead of running for minutes.
-Results whose integers outgrow ``max_integer_bits`` are refused by the callers that can create them (``check_bits``).
+``max_work`` instead of running for minutes. Results whose integers outgrow ``max_integer_bits`` are refused by the
+callers that can create them (``check_bits``).
 
 The module also builds the two exact objects that the lean value path returns from coefficient lists without
 re-validating them: Rationals in lowest terms (``rationals``) and the expression tree that
@@ -34,9 +34,9 @@ _active = _ACTIVE.get  # The active Budget or None.
 __all__ = [
     "trim", "add", "sub", "mul", "scale", "neg", "derivative", "pseudo_remainder", "divmod_exact", "exact_quotient",
     "content", "primitive", "evaluation_factor", "sign_at", "value_at", "mod", "mul_mod", "divmod_mod", "gcd_mod",
-    "pow_mod",
-    "monic_mod", "max_bits", "norm1_bits", "kronecker_bits", "kronecker", "check_bits", "charge", "size_factor",
-    "charge_product", "charge_power", "charge_gcd", "from_rationals", "rationals", "monic_rationals", "expression",
+    "pow_mod", "monic_mod", "max_bits", "norm1_bits", "kronecker_bits", "kronecker", "check_bits", "charge",
+    "size_factor", "charge_product", "charge_power", "charge_gcd", "from_rationals", "rationals", "monic_rationals",
+    "expression",
 ]
 
 _new = object.__new__

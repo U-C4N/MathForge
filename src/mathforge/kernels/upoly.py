@@ -184,7 +184,7 @@ def heuristic_gcd(f: tuple[int, ...], g: tuple[int, ...]):
 def euclid_gcd(f: tuple[int, ...], g: tuple[int, ...]) -> tuple[int, ...]:
     """The primitive gcd (positive leading coefficient) of nonzero integer polynomials, by the primitive
     pseudo-remainder sequence. A divisor whose leading coefficient passes max_integer_bits is refused before it divides
-    (the pseudo-remainders are charged by the size of their integers)."""
+    (the pseudo-remainders, and the gcds of their contents, are charged by the size of their integers)."""
     a, b = tp.primitive(f), tp.primitive(g)
     if len(a) < len(b):
         a, b = b, a
@@ -192,7 +192,9 @@ def euclid_gcd(f: tuple[int, ...], g: tuple[int, ...]) -> tuple[int, ...]:
     while b:
         if b[-1].bit_length() > limit:
             raise _too_long()
-        a, b = b, tp.primitive(tp.pseudo_remainder(a, b))
+        remainder = tp.pseudo_remainder(a, b)
+        tp.charge_gcd(tp.max_bits(remainder), len(remainder))  # Its content: up to one gcd per coefficient.
+        a, b = b, tp.primitive(remainder)
     return tp.primitive(a)
 
 
@@ -400,6 +402,7 @@ def _sturm_chain(p):
             break
         if b[-1] > 0 or (len(a) - len(b) + 1) % 2 == 0:
             remainder = tp.neg(remainder)  # -rem up to the positive factor lc(b)**k
+        tp.charge_gcd(tp.max_bits(remainder), len(remainder))  # The content: up to one gcd per coefficient.
         divisor = gcd(*remainder)
         if divisor != 1:
             remainder = tuple([value // divisor for value in remainder])

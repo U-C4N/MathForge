@@ -6,14 +6,16 @@ built from the same Python arithmetic on a MathForge or a SymPy symbol. A micro 
 shape; the realistic fixtures are the usual textbook expansions and limits (the v0.7 cases taylor6, sinc_limit and
 double_pole carry over unchanged), and the scaled ones are a high order or a high degree.
 
-The SymPy reference of a Taylor polynomial is ``series(...).removeO()``, the call a SymPy user makes.
-``sympy.polys.ring_series.rs_series`` is several times faster, but it works on elements of a polynomial ring and
-returns one, not an expression, so it is measured and excluded. The reference of a limit is ``limit`` (``gruntz`` at
-infinity, where ``limit`` itself calls it and it is more than 15% faster). A candidate that is within 15% of the
-conventional call is not preferred to it. Every ``reference`` lists the candidates, the excluded one among them, with
-their median time in microseconds on that fixture's inputs, with SymPy's caches cleared before each call (Python
-3.14.6, SymPy 1.14.0, python ground types); there g is the function, x its symbol, a the point or center, n the number
-of terms and dir the direction.
+The SymPy reference of a Taylor polynomial is ``series(...).removeO()`` or ``g.series(...).removeO()``, the calls a
+SymPy user makes. ``sympy.polys.ring_series.rs_series`` is several times faster, but it works on elements of a
+polynomial ring and returns one, not an expression, so it is measured and excluded. The reference of a limit is the
+fastest of ``limit``, ``Limit(...).doit()`` and ``gruntz`` (which ``limit`` itself calls, at infinity and, from one side,
+at a finite point). Every reference is the fastest same-object call, the one with the smallest median: ``limit`` and
+``series`` win no tie. Every ``reference`` lists the candidates, the excluded one among them, with their median time in
+microseconds on that fixture's inputs, with SymPy's caches cleared before each call (Python 3.14.6, SymPy 1.14.0, python
+ground types); there g is the function, x its symbol, a the point or center, n the number of terms and dir the
+direction. A reference that was re-pointed was measured again with the suite's own sampling, together with the call it
+replaced: 31 to 127 interleaved samples of k calls, caches reset before each.
 """
 
 from __future__ import annotations
@@ -32,38 +34,39 @@ _REFERENCES: dict[str, str] = {
         "series(...).removeO() 18689 us (chosen); g.series(x, a, n).removeO() 29530 us; rs_series(g, x, n) "
         "2768 us works on polynomial-ring elements, not expressions, and is excluded"),
     "function_taylor/realistic/exp_sin_log_order6": (
-        "series(...).removeO() 86666 us (chosen; g.series(x, a, n).removeO() 77134 us is within 15%); "
-        "series(...).removeO() was the v0.7 reference; rs_series(g, x, n) 6234 us works on polynomial-ring "
-        "elements, not expressions, and is excluded"),
+        "series(...).removeO() 43471 us (chosen); g.series(x, a, n).removeO() 43510 us; series(...).removeO() was the"
+        " v0.7 reference; rs_series(g, x, n) 6234 us works on polynomial-ring elements, not expressions, and is "
+        "excluded"),
     "function_taylor/realistic/sinh_exp_order6": (
-        "series(...).removeO() 65122 us (chosen); g.series(x, a, n).removeO() 65986 us; rs_series(g, x, n) "
-        "4769 us works on polynomial-ring elements, not expressions, and is excluded"),
+        "g.series(x, a, n).removeO() 37916 us (chosen); series(...).removeO() 37930 us; first pass, an earlier "
+        "machine state: rs_series(g, x, n) 4769 us works on polynomial-ring elements, not expressions, and is "
+        "excluded"),
     "function_taylor/realistic/x_exp_order8": (
-        "series(...).removeO() 55950 us (chosen; g.series(x, a, n).removeO() 51752 us is within 15%); "
-        "rs_series(g, x, n) 2868 us works on polynomial-ring elements, not expressions, and is excluded"),
+        "series(...).removeO() 31633 us (chosen); g.series(x, a, n).removeO() 31754 us; rs_series(g, x, n) 2868 us "
+        "works on polynomial-ring elements, not expressions, and is excluded"),
     "function_taylor/realistic/exp_about_1_order6": (
-        "series(...).removeO() 74087 us (chosen); g.series(x, a, n).removeO() 71851 us"),
+        "series(...).removeO() 69987 us (chosen); g.series(x, a, n).removeO() 70516 us"),
     "function_taylor/realistic/scaled_exp_order20": (
-        "series(...).removeO() 60966 us (chosen); g.series(x, a, n).removeO() 59874 us; rs_series(g, x, n) "
-        "1514 us works on polynomial-ring elements, not expressions, and is excluded"),
+        "g.series(x, a, n).removeO() 54978 us (chosen); series(...).removeO() 55068 us; first pass, an earlier "
+        "machine state: rs_series(g, x, n) 1514 us works on polynomial-ring elements, not expressions, and is "
+        "excluded"),
     "function_taylor/realistic/scaled_sin_order15": (
-        "series(...).removeO() 17976 us (chosen); g.series(x, a, n).removeO() 17305 us; rs_series(g, x, n) "
-        "1192 us works on polynomial-ring elements, not expressions, and is excluded"),
+        "series(...).removeO() 17030 us (chosen); g.series(x, a, n).removeO() 17063 us; first pass, an earlier "
+        "machine state: rs_series(g, x, n) 1192 us works on polynomial-ring elements, not expressions, and is "
+        "excluded"),
     "function_limit/micro/sinc_scaled": (
-        "limit(g, x, a, dir) 1330 us (chosen); Limit(g, x, a, dir).doit() 1351 us"),
+        "Limit(g, x, a, dir).doit() 716 us (chosen); limit(g, x, a, dir) 717 us"),
     "function_limit/micro/decay_at_infinity": (
         "gruntz(g, x, a, dir) 12803 us (chosen); Limit(g, x, a, dir).doit() 18719 us; limit(g, x, a, "
         "dir) 18981 us"),
     "function_limit/realistic/sinc": (
-        "limit(g, x, a, dir) 1064 us (chosen); Limit(g, x, a, dir).doit() 1051 us; limit(...) was the "
-        "v0.7 reference"),
+        "Limit(g, x, a, dir).doit() 1004 us (chosen); limit(g, x, a, dir) 1008 us; limit(...) was the v0.7 reference"),
     "function_limit/realistic/cosine_defect": (
-        "limit(g, x, a, dir) 18430 us (chosen); Limit(g, x, a, dir).doit() 18340 us"),
+        "limit(g, x, a, dir) 18377 us (chosen); Limit(g, x, a, dir).doit() 18397 us"),
     "function_limit/realistic/x_log_x_from_right": (
-        "limit(g, x, a, dir) 11192 us (chosen); gruntz(g, x, a, dir) 10087 us; Limit(g, x, a, "
-        "dir).doit() 11385 us"),
+        "gruntz(g, x, a, dir) 9245 us (chosen); Limit(g, x, a, dir).doit() 10034 us; limit(g, x, a, dir) 10305 us"),
     "function_limit/realistic/exp_defect": (
-        "limit(g, x, a, dir) 61531 us (chosen); Limit(g, x, a, dir).doit() 61278 us"),
+        "limit(g, x, a, dir) 61140 us (chosen); Limit(g, x, a, dir).doit() 61435 us"),
     "function_limit/realistic/log_over_x_at_infinity": (
         "gruntz(g, x, a, dir) 4855 us (chosen); Limit(g, x, a, dir).doit() 6768 us; limit(g, x, a, "
         "dir) 6778 us"),
@@ -74,14 +77,14 @@ _REFERENCES: dict[str, str] = {
     "limit/micro/quadratics_at_infinity": (
         "limit(g, x, a, dir) 4426 us (chosen); Limit(g, x, a, dir).doit() 4641 us"),
     "limit/realistic/double_pole_algebraic_point": (
-        "limit(g, x, a, dir) 18122 us (chosen); Limit(g, x, a, dir).doit() 17750 us; limit(...) was "
-        "the v0.7 reference"),
+        "limit(g, x, a, dir) 16552 us (chosen); Limit(g, x, a, dir).doit() 16570 us; limit(...) was the v0.7 "
+        "reference"),
     "limit/realistic/double_pole_rational_point": (
         "limit(g, x, a, dir) 4035 us (chosen); Limit(g, x, a, dir).doit() 4084 us"),
     "limit/realistic/simple_pole_from_right": (
         "limit(g, x, a, dir) 2218 us (chosen); Limit(g, x, a, dir).doit() 2296 us"),
     "limit/realistic/removable_singularity": (
-        "limit(g, x, a, dir) 13159 us (chosen); Limit(g, x, a, dir).doit() 12855 us"),
+        "Limit(g, x, a, dir).doit() 11640 us (chosen); limit(g, x, a, dir) 11654 us"),
     "limit/realistic/scaled_degree_8_at_infinity": (
         "limit(g, x, a, dir) 9584 us (chosen); Limit(g, x, a, dir).doit() 10019 us"),
 }
@@ -127,8 +130,9 @@ def _same_taylor(order: int):
     return agree
 
 
-def _taylor_fixture(size, label, text_of, center, order, *, variants, v07=""):
-    """text_of(i) is the function; the SymPy call is series(...).removeO()."""
+def _taylor_fixture(size, label, text_of, center, order, *, variants, v07="", method=False):
+    """text_of(i) is the function; the SymPy call is series(...).removeO(), or with ``method`` the method that it
+    calls, g.series(...).removeO(), where that measured faster."""
     def mathforge(i):
         return mf.taylor, (_function(text_of(i)), X, center, order), {}
 
@@ -136,6 +140,8 @@ def _taylor_fixture(size, label, text_of, center, order, *, variants, v07=""):
         import sympy as sp
         x = sympy_symbols()[X]
         function = _expression(text_of(i))
+        if method:
+            return lambda: function.series(x, center, order + 1).removeO()
         return lambda: sp.series(function, x, center, order + 1).removeO()
 
     return Fixture("function_taylor", size, label, mathforge, sympy, _same_taylor(order),
@@ -159,9 +165,10 @@ def _same_function_limit(mf_value, sympy_value) -> bool:
 _DIRECTIONS = {"both": "+-", "right": "+", "left": "-"}
 
 
-def _limit_fixture(size, label, text_of, point, side, *, variants, v07="", gruntz=False):
+def _limit_fixture(size, label, text_of, point, side, *, variants, v07="", gruntz=False, doit=False):
     """The limit of the function text_of(i) at ``point`` ("+inf", "-inf" or an int) from ``side``. ``gruntz`` selects
-    sympy.series.gruntz.gruntz, which ``limit`` itself calls at infinity, where it is faster than ``limit``."""
+    sympy.series.gruntz.gruntz, which ``limit`` itself calls (at infinity, or at a finite point from one side), and
+    ``doit`` selects Limit(...).doit(), which it calls too, where that measured faster than ``limit``."""
     def mathforge(i):
         return mf.function_limit, (_function(text_of(i)), X, point, side), {}
 
@@ -171,11 +178,15 @@ def _limit_fixture(size, label, text_of, point, side, *, variants, v07="", grunt
         function = _expression(text_of(i))
         if gruntz:
             from sympy.series.gruntz import gruntz as algorithm
-            return lambda: algorithm(function, x, sp.oo)
+            if point == "+inf":
+                return lambda: algorithm(function, x, sp.oo)
+            return lambda: algorithm(function, x, point, dir="+" if side == "right" else "-")
         if point == "+inf":
             return lambda: sp.limit(function, x, sp.oo)
         if point == "-inf":
             return lambda: sp.limit(function, x, -sp.oo)
+        if doit:
+            return lambda: sp.Limit(function, x, point, dir=_DIRECTIONS[side]).doit()
         return lambda: sp.limit(function, x, point, dir=_DIRECTIONS[side])
 
     return Fixture("function_limit", size, label, mathforge, sympy, _same_function_limit,
@@ -196,10 +207,12 @@ def _same_limit(mf_value, sympy_value) -> bool:
     return mf_value.kind == "finite" and equal(to_sympy(mf_value.value, {}), sympy_value)
 
 
-def _rational_fixture(size, label, parts_of, point, side, *, variants, v07="", point_of=None, sympy_point_of=None):
+def _rational_fixture(size, label, parts_of, point, side, *, variants, v07="", point_of=None, sympy_point_of=None,
+                      doit=False):
     """parts_of(i) -> a function x -> (numerator, denominator), evaluated on the MathForge symbol and on the SymPy
     symbol alike. The point is an int, "+inf" or "-inf"; point_of(i) and sympy_point_of(i) give it as a MathForge
-    and as a SymPy value instead when it varies or is not an integer."""
+    and as a SymPy value instead when it varies or is not an integer. ``doit`` selects Limit(...).doit(), which
+    ``limit`` calls, where that measured faster."""
     def mathforge(i):
         numerator, denominator = parts_of(i)(X)
         target = point if point_of is None else point_of(i)
@@ -215,6 +228,8 @@ def _rational_fixture(size, label, parts_of, point, side, *, variants, v07="", p
         if point == "-inf":
             return lambda: sp.limit(function, x, -sp.oo)
         target = point if sympy_point_of is None else sympy_point_of(i)
+        if doit:
+            return lambda: sp.Limit(function, x, target, dir=_DIRECTIONS[side]).doit()
         return lambda: sp.limit(function, x, target, dir=_DIRECTIONS[side])
 
     return Fixture("limit", size, label, mathforge, sympy, _same_limit, _reference("limit", size, label), variants,
@@ -248,19 +263,19 @@ FIXTURES = (
     _taylor_fixture("micro", "exp_ax_order3", lambda i: f"exp({i + 1}*x)", 0, 3, variants=1000),
     _taylor_fixture("realistic", "exp_sin_log_order6", lambda i: "exp(x)*sin(x)+log(1+x)", 0, 6, variants=1,
                     v07="taylor6"),
-    _taylor_fixture("realistic", "sinh_exp_order6", lambda i: "sinh(x)*exp(x)", 0, 6, variants=1),
+    _taylor_fixture("realistic", "sinh_exp_order6", lambda i: "sinh(x)*exp(x)", 0, 6, variants=1, method=True),
     _taylor_fixture("realistic", "x_exp_order8", lambda i: "x*exp(x)", 0, 8, variants=1),
     _taylor_fixture("realistic", "exp_about_1_order6", lambda i: "exp(x)", 1, 6, variants=1),
-    _taylor_fixture("realistic", "scaled_exp_order20", lambda i: "exp(x)", 0, 20, variants=1),
+    _taylor_fixture("realistic", "scaled_exp_order20", lambda i: "exp(x)", 0, 20, variants=1, method=True),
     _taylor_fixture("realistic", "scaled_sin_order15", lambda i: "sin(x)", 0, 15, variants=1),
     # function_limit
-    _limit_fixture("micro", "sinc_scaled", lambda i: f"sin({i + 1}*x)/x", 0, "both", variants=1000),
+    _limit_fixture("micro", "sinc_scaled", lambda i: f"sin({i + 1}*x)/x", 0, "both", variants=1000, doit=True),
     _limit_fixture("micro", "decay_at_infinity", lambda i: f"({i + 1}*x+1)*exp(-x)", "+inf", "both", variants=1000,
                    gruntz=True),
     _limit_fixture("realistic", "sinc", lambda i: "sin(x)/x", 0, "both", variants=1,
-                   v07="sinc_limit"),
+                   v07="sinc_limit", doit=True),
     _limit_fixture("realistic", "cosine_defect", lambda i: "(1-cos(x))/(x*x)", 0, "both", variants=1),
-    _limit_fixture("realistic", "x_log_x_from_right", lambda i: "x*log(x)", 0, "right", variants=1),
+    _limit_fixture("realistic", "x_log_x_from_right", lambda i: "x*log(x)", 0, "right", variants=1, gruntz=True),
     _limit_fixture("realistic", "exp_defect", lambda i: "(exp(x)-1-x)/(x*x)", 0, "both", variants=1),
     _limit_fixture("realistic", "log_over_x_at_infinity", lambda i: "log(x)/x", "+inf", "both", variants=1,
                    gruntz=True),
@@ -277,7 +292,7 @@ FIXTURES = (
     _rational_fixture("realistic", "simple_pole_from_right", lambda i: (lambda x: (x, (x - 2) * (x + 3))), 2,
                       "right", variants=1),
     _rational_fixture("realistic", "removable_singularity", lambda i: (lambda x: (x * x - 9, x - 3)), 3, "both",
-                      variants=1),
+                      variants=1, doit=True),
     _rational_fixture("realistic", "scaled_degree_8_at_infinity",
                       lambda i: (lambda x: (3 * x ** 8 + x ** 5 - 2 * x + 7, 2 * x ** 8 - x ** 6 + 11)), "+inf",
                       "both", variants=1),

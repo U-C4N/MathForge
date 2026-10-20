@@ -410,10 +410,11 @@ def _parse_function_fixtures():
                  "types), caches cleared before each call"), variants=len(_ELEMENTARY_TEXTS)),
         Fixture("parse_function", "realistic", "scaled_sixteen_terms", _parse_mf(_long_text),
                 _sympy(_parse_inputs_sp(_long_text), call), _same_function,
-                ("used: parse_expr(text, local_dict) 4.48 ms; others: sympify(text, locals) 4.46 ms; sympify(text) "
-                 "4.71 ms; parse_expr(text, local_dict, transformations=()) 4.29 ms (excluded: no number "
-                 "conversion: decimals would become floats); medians of 9 calls, SymPy 1.14.0 (python ground "
-                 "types), caches cleared before each call"), variants=3),
+                ("used: parse_expr(text, local_dict) 4.27 ms; others: sympify(text, locals) 4.30 ms; first pass, an "
+                 "earlier machine state: sympify(text) 4.71 ms; parse_expr(text, local_dict, transformations=()) 4.29"
+                 " ms (excluded: no number conversion: decimals would become floats); medians of 127 samples of k = 1"
+                 " calls (the suite's sampling: caches reset before each sample), SymPy 1.14.0 (python ground types);"
+                 " excluded candidates keep their first-pass medians"), variants=3),
     )
 
 

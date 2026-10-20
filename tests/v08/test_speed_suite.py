@@ -17,6 +17,7 @@ import math
 import os
 from pathlib import Path
 import random
+import re
 import subprocess
 import sys
 import tempfile
@@ -371,6 +372,21 @@ class FixtureModuleTest(unittest.TestCase):
                          ["empty defines no FIXTURES tuple", "empty defines no EDGE_CASES tuple"])
         demo = importlib.import_module(DEMO_MODULE)
         self.assertEqual(problems_in(demo, set(capability_names()), {}, {}, real=False), [])
+
+    def test_no_fixture_module_keeps_a_rule_that_prefers_a_call_to_a_faster_one(self):
+        """A reference is the fastest same-object call. The tie rules of the first fixtures (a documented function wins
+        within 30% or 15%, the shortest expression wins even when a faster spelling exists) made it a call that favours
+        MathForge, and they are gone from every module, its comments and its reference texts."""
+        banned = ("within the margin", "wins any tie", "wins a tie within", "is not preferred",
+                  "but does not replace it", "shortest expression even", "the shortest expression")
+        sources = sorted((REPOSITORY / "benchmarks" / "speed" / "fixtures").glob("*.py"))
+        self.assertGreaterEqual(len(sources), 10)
+        found = []
+        for path in sources:
+            text = path.read_text(encoding="utf-8")
+            found += [f"{path.name}: {phrase!r}" for phrase in banned if phrase in text]
+            found += [f"{path.name}: {match!r}" for match in re.findall(r"within \d+%", text)]  # "within 15%" and so on
+        self.assertEqual(found, [])
 
     def test_modules_are_discovered_by_name_and_underscored_ones_are_helpers(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -1111,6 +1127,75 @@ class CheckSpeedTest(unittest.TestCase):
                     completed = run()
                     self.assertEqual(completed.returncode, 1, completed.stdout + completed.stderr)
                     self.assertIn(expected, completed.stderr)
+
+
+# The fixtures whose reference was re-pointed to the fastest same-object call (the final review of the speed gate found
+# the references that favoured MathForge): each still has to give the very object that MathForge gives.
+REPOINTED = (
+    "cdf/realistic/outcomes_120", "complex_add/micro/gaussian_integers", "complex_mul/realistic/gaussian_fractions",
+    "complex_norm_squared/micro/gaussian_integer", "complex_norm_squared/realistic/gaussian_fraction",
+    "complex_pow/realistic/unit_circle_surds", "condition/micro/five_outcomes", "expand/micro/two_binomials",
+    "expand_multivariate/micro/two_bilinear_factors", "expand_multivariate/realistic/scaled_twelfth_power",
+    "expand_multivariate/realistic/trinomial_eighth_power", "expectation/micro/five_outcomes",
+    "expectation/realistic/binomial41", "expectation/realistic/outcomes_120",
+    "function_antiderivative/realistic/polynomial_times_exp", "function_antiderivative/realistic/x_exp",
+    "function_antiderivative/realistic/x_log_x", "function_differentiate/micro/sin_kx",
+    "function_differentiate/realistic/scaled_six_terms_first_derivative", "function_hessian/micro/two_variables",
+    "function_integrate/micro/cos_kx_unit_interval", "function_integrate/realistic/x_log_x_one_to_two",
+    "function_jacobian/realistic/scaled_four_by_four", "function_limit/micro/sinc_scaled",
+    "function_limit/realistic/sinc", "function_limit/realistic/x_log_x_from_right",
+    "function_partial_diff/micro/polynomial_and_sine", "function_taylor/realistic/scaled_exp_order20",
+    "function_taylor/realistic/sinh_exp_order6", "integer_xgcd/realistic/bits4096", "inverse/realistic/scaled_16x16",
+    "limit/realistic/removable_singularity", "moment/micro/five_outcomes", "moment/realistic/binomial41",
+    "moment/realistic/outcomes_120", "probability/micro/five_outcomes", "probability/realistic/binomial41",
+    "probability/realistic/outcomes_120", "rational_antiderivative/realistic/linear_over_irreducible_quadratic",
+    "rational_antiderivative/realistic/scaled_four_factors", "rational_integrate/realistic/scaled_double_pole",
+    "rational_integrate/realistic/two_simple_poles_unit_interval", "real_roots/realistic/scaled_degree_ten",
+    "rowspace/micro/3x4", "rowspace/realistic/8x12_rank6", "rowspace/realistic/scaled_14x20_rank9",
+    "stddev/micro/five_values", "stddev/realistic/values_200", "stddev/realistic/values_500",
+    "stirling/realistic/s300_150",
+)
+
+
+@NEEDS_SRC
+@unittest.skipUnless(importlib.util.find_spec("sympy") is not None, "needs SymPy, the reference")
+class RepointedReferencesTest(unittest.TestCase):
+    def test_each_repointed_reference_still_gives_the_object_that_mathforge_gives(self):
+        entries = {speed_suite.entry_id(entry): entry
+                   for entry in speed_suite.load_entries(speed_suite.module_names(None, None), None)}
+        reset = speed_suite.Reset()
+        self.assertEqual(sorted(set(REPOINTED) - set(entries)), [])
+        for identifier in REPOINTED:
+            with self.subTest(identifier):
+                speed_suite.check_agreement(entries[identifier], 0, reset)  # SuiteError when they disagree
+
+    def test_the_rowspace_reference_is_the_reduced_basis_and_not_an_echelon_one(self):
+        import sympy
+        from benchmarks.speed.fixtures import linalg
+        rows = ((1, 2, 3), (2, 4, 6), (1, 0, 1))
+        mine = mf.rowspace(mf.Matrix(rows))
+        self.assertEqual(mine, ((mf.Rational(1), mf.Rational(0), mf.Rational(1)),
+                                (mf.Rational(0), mf.Rational(1), mf.Rational(1))))
+        for reference in (linalg._rowspace_matrix, linalg._rowspace_domain):  # The two calls that are references.
+            with self.subTest(reference.__name__):
+                self.assertTrue(linalg._same_rowspace(mine, reference(rows)()))
+        echelon = sympy.Matrix(rows).rowspace()  # Matrix.rowspace(): [1, 2, 3] and [0, -2, -2], not reduced.
+        self.assertFalse(linalg._same_rowspace(mine, echelon))
+        self.assertTrue(linalg._same_rowspace((), []))  # The zero matrix has an empty basis.
+
+    def test_the_stddev_reference_is_the_unreduced_root_and_the_comparison_accepts_both_forms(self):
+        import sympy
+        from benchmarks.speed.fixtures import stats
+        variance = sympy.Rational(8, 3)
+        for root in (sympy.sqrt(variance, evaluate=False), sympy.sqrt(variance)):  # Unreduced, and simplified.
+            self.assertTrue(stats._same_sqrt(mf.Sqrt(mf.Rational(8, 3)), root), root)
+            self.assertFalse(stats._same_sqrt(mf.Sqrt(mf.Rational(7, 3)), root), root)
+        square = sympy.Rational(9, 4)  # A perfect square: MathForge returns the Rational root.
+        for root in (sympy.sqrt(square, evaluate=False), sympy.sqrt(square)):
+            self.assertTrue(stats._same_sqrt(mf.Rational(3, 2), root), root)
+            self.assertFalse(stats._same_sqrt(mf.Rational(-3, 2), root), root)
+            self.assertFalse(stats._same_sqrt(mf.Rational(1, 2), root), root)
+        self.assertFalse(stats._same_sqrt(mf.Rational(3, 2), sympy.sqrt(sympy.Rational(2), evaluate=False)))
 
 
 class GateChecksTest(unittest.TestCase):

@@ -27,11 +27,13 @@ TINY = {"max_integer_bits": 1}  # every integer of two or more bits is over this
 # a SymPy-level public function or method that a user calls for the operation and that returns the same mathematical
 # object (checked with agree): igcd, factorial(Integer), the sympy.stats functions. Scalar domain-element primitives
 # (ZZ.gcd, ZZ.factorial, QQ and PythonMPQ arithmetic) are ground arithmetic and never count, like dup_*, dmp_* and
-# gf_*. Where SymPy has no call for the operation, the reference is the shortest expression a SymPy user would write
-# with SymPy objects (Rational, Integer, sqrt), inputs prebuilt. The fastest candidate is chosen, but the documented
-# top-level function wins any tie within 30%. Medians are microseconds per call over three interleaved passes of 11 to
-# 100 samples (k consecutive variants per sample, SymPy caches cleared before every sample, SYMPY_GROUND_TYPES=python)
-# on a machine that other jobs share: differences under about 30% are noise.
+# gf_*. Where SymPy has no call for the operation, the reference is the fastest expression a SymPy user would write
+# with SymPy objects (Rational, Integer, sqrt), inputs prebuilt. The reference is the fastest same-object call, the one
+# with the smallest median: no function wins a tie, and the spelling that takes ints or SymPy Integers is whichever
+# measured faster. Medians are microseconds per call over three interleaved passes of 11 to 100 samples (k consecutive
+# variants per sample, SymPy caches cleared before every sample, SYMPY_GROUND_TYPES=python). A reference that was
+# re-pointed to a faster call was measured again with the suite's own sampling, together with the call it replaced: 31
+# to 127 interleaved samples of k calls, caches reset before each.
 # "not counted" marks a formula, an alias or a domain-element primitive that is not a candidate.
 _REFERENCE = {
     "factorial/micro/range_5_to_1004": (
@@ -101,11 +103,11 @@ _REFERENCE = {
         "n) / (n + 1) (composite) 1.2 ms. binomial(2n, n) / (n + 1) is a formula of two calls, not a "
         "catalan call"),
     "stirling/micro/triangle": (
-        "stirling(n, k): 43.5 us; other candidates: stirling(Integer, Integer) 43.2 us"),
+        "stirling(n, k): 11.2 us; other candidates: stirling(Integer, Integer) 11.3 us"),
     "stirling/realistic/s120_40": (
-        "stirling(n, k): 412 us; other candidates: stirling(Integer, Integer) 410 us"),
+        "stirling(n, k): 262 us; other candidates: stirling(Integer, Integer) 265 us"),
     "stirling/realistic/s300_150": (
-        "stirling(n, k): 4.49 ms; other candidates: stirling(Integer, Integer) 4.45 ms"),
+        "stirling(Integer, Integer): 2.68 ms; other candidates: stirling(n, k) 2.68 ms"),
 }
 
 
@@ -242,6 +244,16 @@ def _sp_stirling(inputs):
     return build
 
 
+def _sp_stirling_integers(inputs):
+    """stirling on SymPy Integers, the spelling that measured faster than Python ints on the (300, 150) pair."""
+    def build(i):
+        from sympy import Integer
+        from sympy.functions.combinatorial.numbers import stirling
+        n, k = map(Integer, inputs(i))
+        return lambda: stirling(n, k)
+    return build
+
+
 def _mf_one(function, number):
     return lambda i: (function, (number(i),), {})
 
@@ -300,7 +312,7 @@ FIXTURES = (
     _fixture("stirling", "realistic", "s120_40", _mf_pair(mf.stirling, lambda i: (120, 40)),
              _sp_stirling(lambda i: (120, 40)), _same_int),
     _fixture("stirling", "realistic", "s300_150", _mf_pair(mf.stirling, lambda i: (300, 150)),
-             _sp_stirling(lambda i: (300, 150)), _same_int),
+             _sp_stirling_integers(lambda i: (300, 150)), _same_int),
 )
 
 

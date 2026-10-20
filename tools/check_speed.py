@@ -15,9 +15,10 @@ Reads the details file that benchmarks/speed_suite.py wrote and exits with statu
 * the measurement protocol was not met: at least 3 rounds and 9 repeats, a pinned cpu, a complete (not partial) run and
   a recorded sample_ms. --allow-quick waives this minimum and prints that the result is not a gate run;
 * a fixture is above --limit in any round: the median ratio (MathForge's median over the median of SymPy's reset-cache
-  calls) stays the number that is reported, but the largest ratio of a single round is the one that is gated, because
-  one SymPy call has measured 3.3 times slower in one run than in another. A fixture in WAIVED does not fail on this:
-  it is printed as "waived: <reason>", or as within the limit when it has come back under it;
+  calls) stays the number that is reported, but the largest ratio of a single round is held to the limit as well (and
+  the median, which the rounds do not bound), because one SymPy call has measured 3.3 times slower in one run than in
+  another. A fixture in WAIVED does not fail on this: it is printed as "waived: <reason>", or as within the limit when
+  it has come back under it;
 * an exemption's budget is unmet: its timed call took longer than the production of the same result;
 * an exemption names an operation outside criteria.SPEED_EXEMPTIONS (tools/coverage_gate/criteria.py).
 

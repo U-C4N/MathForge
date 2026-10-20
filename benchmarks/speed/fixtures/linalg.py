@@ -12,17 +12,21 @@ wherever the call needs a field) and the timed call is the call a SymPy user mak
 domain (``DomainMatrix.diagonal()`` summed by hand) is never a candidate, nor is a hand-assembled algorithm such as
 the normal equations. A call that returns a scaled form of the object (``rref_den``, ``inv_den``, ``nullspace()``
 without ``divide_last``, isolating intervals instead of roots) is measured but not a candidate, and neither is
-``DomainMatrix.rowspace()``, which cuts the rows of the original matrix, not of its reduced form. Where SymPy has no
-single call for the whole object, the timed call is the shortest expression a SymPy user writes: the minimizer of
-``solve_least_squares`` plus the residual b - A x for least_squares, and the real roots of the characteristic
-polynomial, ``real_roots(Matrix.charpoly(x))``, for real_eigenvalues (``eigenvals`` returns the complex eigenvalues
-too). ``Matrix.rowspace()`` returns an echelon basis of the row space, not the reduced basis that MathForge returns;
-the comparison row-reduces it, because the reduced basis of a subspace is unique.
+``DomainMatrix.rowspace()``, which cuts the rows of the original matrix, not of its reduced form, nor
+``Matrix.rowspace()``, which returns an unreduced echelon basis (MathForge returns the reduced basis, the unique one
+of a subspace, and ``Matrix.rowspace()`` costs a reduction of its own besides). The row space is the pivot rows of the
+reduced form: ``rref()`` of a Matrix or a DomainMatrix cut to its pivot rows is the same object, several times faster.
+Where SymPy has no single call for the whole object, the timed call is the fastest expression a SymPy user writes: the
+minimizer of ``solve_least_squares`` plus the residual b - A x for least_squares, and the real roots of the
+characteristic polynomial, ``real_roots(Matrix.charpoly(x))``, for real_eigenvalues (``eigenvals`` returns the complex
+eigenvalues too).
 
 Every ``reference`` lists the candidates with their median time in microseconds on that fixture's inputs, taken with
 SymPy's caches cleared before each call (Python 3.14.6, SymPy 1.14.0, python ground types), among them the ones that
-were measured but excluded. The chosen call is the fastest, except that a candidate within 15% of the conventional
-call (a Matrix method, then a DomainMatrix method) is not preferred to it.
+were measured but excluded. The chosen call is the fastest same-object call, whatever it is named: a Matrix method wins
+no tie against a DomainMatrix method or the other way round. A reference that was re-pointed was measured again with the
+suite's own sampling, together with the call it replaced: 31 to 127 interleaved samples of k calls, caches reset before
+each.
 """
 
 from __future__ import annotations
@@ -184,16 +188,11 @@ def _same_nullspace(mf_value, sympy_value) -> bool:
 
 
 def _same_rowspace(mf_value, sympy_value) -> bool:
-    """sympy_value is the list of row vectors of Matrix.rowspace(), an echelon basis of the row space. MathForge
-    returns the reduced basis, which is unique for a subspace, so the echelon basis is row-reduced first."""
-    import sympy as sp
-    if type(mf_value) is not tuple or len(mf_value) != len(sympy_value):
-        return False
-    if not sympy_value:
-        return True
-    reduced, pivots = sp.Matrix.vstack(*sympy_value).rref()
-    return (len(pivots) == len(sympy_value)
-            and _mf_vectors(mf_value) == [tuple(_frac(e) for e in reduced.row(k)) for k in range(len(pivots))])
+    """sympy_value is the list of the pivot rows of the reduced row echelon form, each a 1 x n Matrix or DomainMatrix:
+    the reduced basis of the row space, which is unique for a subspace and is what MathForge returns."""
+    rows = [[_frac(e) for e in (row.to_Matrix() if hasattr(row, "to_Matrix") else row).tolist()[0]]
+            for row in sympy_value]
+    return type(mf_value) is tuple and _mf_vectors(mf_value) == [tuple(row) for row in rows]
 
 
 def _same_columnspace(mf_value, sympy_value) -> bool:
@@ -315,11 +314,26 @@ def _nullspace_domain(rows):
     return lambda: matrix.nullspace(divide_last=True)
 
 
-def _rowspace_call(rows):
-    """Matrix.rowspace(). (DomainMatrix.rowspace() cuts the rows of the original matrix, not of its reduced form, so
-    it is not a basis in general and no candidate.)"""
+def _rowspace_matrix(rows):
+    """The pivot rows of Matrix.rref(): the reduced basis of the row space. (Matrix.rowspace() returns an unreduced
+    echelon basis, and DomainMatrix.rowspace() cuts the rows of the original matrix, so neither is the object.)"""
     matrix = _sp_matrix(rows)
-    return lambda: matrix.rowspace()
+
+    def rowspace():
+        reduced, pivots = matrix.rref()
+        return [reduced.row(k) for k in range(len(pivots))]
+    return rowspace
+
+
+def _rowspace_domain(rows):
+    """The pivot rows of DomainMatrix.rref() over QQ."""
+    matrix = _dm(rows, field=True)
+
+    def rowspace():
+        reduced, pivots = matrix.rref()
+        columns = list(range(reduced.shape[1]))
+        return [reduced.extract([k], columns) for k in range(len(pivots))]
+    return rowspace
 
 
 def _columnspace_call(rows):
@@ -462,11 +476,11 @@ FIXTURES = (
              "'LU' 7447.9 us; 'LDL' 8478.1 us; 'CH' 28555.0 us; 'ADJ' 57909.7 us; 'QR' 58079.4 us; "
              "DomainMatrix.inv_den() 496.9 us returns a pair, not the inverse",
              variants=1),
-    _fixture("inverse", "realistic", "scaled_16x16", lambda i: _dominant(16, 43_000 + i), _inverse_matrix,
+    _fixture("inverse", "realistic", "scaled_16x16", lambda i: _dominant(16, 43_000 + i), _inverse_domain,
              _same_matrix,
-             "Matrix.inv() 12322.5 us (chosen; DomainMatrix(QQ).inv() 11782.7 us and Matrix.inv(method='GE') "
-             "12221.9 us are within 5%); 'LDL' 105730.3 us; 'LU' 123240.2 us; 'CH' 447981.2 us; 'QR' 619145.1 us; "
-             "'ADJ' 3867098.7 us; DomainMatrix.inv_den() 10399.0 us returns a pair, not the inverse",
+             "DomainMatrix(QQ).inv() 7925.5 us (chosen); Matrix.inv() 8391.0 us; Matrix.inv(method='GE') 8739.7 us; "
+             "first pass, an earlier machine state: 'LDL' 105730.3 us; 'LU' 123240.2 us; 'CH' 447981.2 us; 'QR' "
+             "619145.1 us; 'ADJ' 3867098.7 us; DomainMatrix.inv_den() 10399.0 us returns a pair, not the inverse",
              variants=2),
     # rref
     _fixture("rref", "micro", "3x4", lambda i: _grid(3, 4, 51_000 + i, -5, 5), _rref_matrix, _same_rref,
@@ -488,9 +502,9 @@ FIXTURES = (
     # nullspace
     _fixture("nullspace", "micro", "3x4", lambda i: _grid(3, 4, 61_000 + i, -5, 5), _nullspace_matrix,
              _same_nullspace,
-             "Matrix.nullspace() 188.1 us (chosen; DomainMatrix(QQ).nullspace(divide_last=True) 178.8 us is within "
-             "5%); DomainMatrix(ZZ).nullspace() 66.6 us and DomainMatrix(QQ).nullspace() 185.4 us return a scaled "
-             "basis, not the canonical one with a 1 at each free variable",
+             "Matrix.nullspace() 83.5 us (chosen); DomainMatrix(QQ).nullspace(divide_last=True) 88.0 us; first pass, "
+             "an earlier machine state: DomainMatrix(ZZ).nullspace() 66.6 us and DomainMatrix(QQ).nullspace() 185.4 "
+             "us return a scaled basis, not the canonical one with a 1 at each free variable",
              variants=1000),
     _fixture("nullspace", "realistic", "8x12_rank6", lambda i: _product(8, 6, 12, 62_000 + i), _nullspace_domain,
              _same_nullspace,
@@ -503,20 +517,23 @@ FIXTURES = (
              "DomainMatrix(QQ).nullspace() 1816.1 us and DomainMatrix(ZZ).nullspace() 3034.6 us return a scaled basis",
              variants=4),
     # rowspace
-    _fixture("rowspace", "micro", "3x4", lambda i: _grid(3, 4, 71_000 + i, -5, 5), _rowspace_call, _same_rowspace,
-             "Matrix.rowspace() 411.4 us (chosen; an echelon basis, row-reduced by agree); Matrix.rref() cut to its "
-             "pivot rows 172.4 us and DomainMatrix.rref() cut likewise 217.1 us are hand-assembled and excluded; "
-             "DomainMatrix.rowspace() returns the first rows of the original matrix, not a basis",
+    _fixture("rowspace", "micro", "3x4", lambda i: _grid(3, 4, 71_000 + i, -5, 5), _rowspace_matrix, _same_rowspace,
+             "Matrix.rref() cut to its pivot rows 77.2 us (chosen); DomainMatrix(QQ).rref() cut likewise 100.7 us; "
+             "Matrix.rowspace() 166.1 us returns an unreduced echelon basis, not the reduced one that MathForge "
+             "returns, so it is not the same object; it was the reference before; DomainMatrix.rowspace() returns the"
+             " first rows of the original matrix, not a basis",
              variants=1000),
-    _fixture("rowspace", "realistic", "8x12_rank6", lambda i: _product(8, 6, 12, 72_000 + i), _rowspace_call,
+    _fixture("rowspace", "realistic", "8x12_rank6", lambda i: _product(8, 6, 12, 72_000 + i), _rowspace_matrix,
              _same_rowspace,
-             "Matrix.rowspace() 2338.6 us (chosen); Matrix.rref() cut to its pivot rows 363.0 us and "
-             "DomainMatrix.rref() cut likewise 505.0 us are hand-assembled and excluded",
+             "Matrix.rref() cut to its pivot rows 272.4 us (chosen); DomainMatrix(QQ).rref() cut likewise 447.4 us; "
+             "Matrix.rowspace() 1841.8 us returns an unreduced echelon basis, not the reduced one that MathForge "
+             "returns, so it is not the same object; it was the reference before",
              variants=16),
     _fixture("rowspace", "realistic", "scaled_14x20_rank9", lambda i: _product(14, 9, 20, 73_000 + i, -2, 2),
-             _rowspace_call, _same_rowspace,
-             "Matrix.rowspace() 9789.9 us (chosen); DomainMatrix.rref() cut to its pivot rows 1052.2 us and "
-             "Matrix.rref() cut likewise 2306.8 us are hand-assembled and excluded",
+             _rowspace_domain, _same_rowspace,
+             "DomainMatrix(QQ).rref() cut to its pivot rows 1076.0 us (chosen); Matrix.rref() cut likewise 1765.2 us;"
+             " Matrix.rowspace() 6818.5 us returns an unreduced echelon basis, not the reduced one that MathForge "
+             "returns, so it is not the same object; it was the reference before",
              variants=4),
     # columnspace
     _fixture("columnspace", "micro", "3x4", lambda i: _grid(3, 4, 81_000 + i, -5, 5), _columnspace_call,
@@ -576,7 +593,7 @@ FIXTURES = (
     # real_eigenvalues
     _fixture("real_eigenvalues", "micro", "symmetric_2x2", _symmetric_2x2, _eigenvalues_call, _same_spectrum,
              "real_roots(Matrix.charpoly(x), multiple=False) 1119.0 us (chosen); Matrix.charpoly(x).real_roots() "
-             "1110.2 us (within 1%, but it repeats a root instead of pairing it with its multiplicity); "
+             "1110.2 us (it repeats a root instead of pairing it with its multiplicity: not the same object); "
              "Matrix.eigenvals() 1228.8 us (every eigenvalue, complex ones too); real_roots(Poly(DomainMatrix."
              "charpoly()), multiple=False) 1091.4 us is assembled from the coefficients of a DomainMatrix and "
              "excluded; Poly(...).intervals() returns isolating intervals, not the roots",
@@ -584,7 +601,7 @@ FIXTURES = (
     _fixture("real_eigenvalues", "realistic", "symmetric_4x4", lambda i: _symmetric(4, 121_000 + i),
              _eigenvalues_call, _same_spectrum,
              "real_roots(Matrix.charpoly(x), multiple=False) 1348.0 us (chosen); Matrix.charpoly(x).real_roots() "
-             "1313.4 us (within 3%; repeats roots); Matrix.eigenvals() 6723.7 us (every eigenvalue, complex ones "
+             "1313.4 us (repeats roots: not the same object); Matrix.eigenvals() 6723.7 us (every eigenvalue, complex ones "
              "too); real_roots(Poly(DomainMatrix.charpoly()), multiple=False) 1748.3 us is assembled from the "
              "coefficients of a DomainMatrix and excluded; Poly(...).intervals() returns isolating intervals, not "
              "the roots",
@@ -592,7 +609,7 @@ FIXTURES = (
     _fixture("real_eigenvalues", "realistic", "scaled_symmetric_6x6", lambda i: _symmetric(6, 122_000 + i),
              _eigenvalues_call, _same_spectrum,
              "real_roots(Matrix.charpoly(x), multiple=False) 4302.1 us (chosen); Matrix.charpoly(x).real_roots() "
-             "3961.9 us (within 8%; repeats roots); Matrix.eigenvals() 31706.3 us (every eigenvalue, complex ones "
+             "3961.9 us (repeats roots: not the same object); Matrix.eigenvals() 31706.3 us (every eigenvalue, complex ones "
              "too); real_roots(Poly(DomainMatrix.charpoly()), multiple=False) 2405.8 us is assembled from the "
              "coefficients of a DomainMatrix and excluded; Poly(...).intervals() returns isolating intervals, not "
              "the roots",

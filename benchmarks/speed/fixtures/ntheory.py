@@ -32,11 +32,13 @@ TINY = {"max_integer_bits": 1}  # every integer of two or more bits is over this
 # a SymPy-level public function or method that a user calls for the operation and that returns the same mathematical
 # object (checked with agree): igcd, factorial(Integer), the sympy.stats functions. Scalar domain-element primitives
 # (ZZ.gcd, ZZ.factorial, QQ and PythonMPQ arithmetic) are ground arithmetic and never count, like dup_*, dmp_* and
-# gf_*. Where SymPy has no call for the operation, the reference is the shortest expression a SymPy user would write
-# with SymPy objects (Rational, Integer, sqrt), inputs prebuilt. The fastest candidate is chosen, but the documented
-# top-level function wins any tie within 30%. Medians are microseconds per call over three interleaved passes of 11 to
-# 100 samples (k consecutive variants per sample, SymPy caches cleared before every sample, SYMPY_GROUND_TYPES=python)
-# on a machine that other jobs share: differences under about 30% are noise.
+# gf_*. Where SymPy has no call for the operation, the reference is the fastest expression a SymPy user would write
+# with SymPy objects (Rational, Integer, sqrt), inputs prebuilt. The reference is the fastest same-object call, the one
+# with the smallest median: no function wins a tie, and the spelling that takes ints or SymPy Integers is whichever
+# measured faster. Medians are microseconds per call over three interleaved passes of 11 to 100 samples (k consecutive
+# variants per sample, SymPy caches cleared before every sample, SYMPY_GROUND_TYPES=python). A reference that was
+# re-pointed to a faster call was measured again with the suite's own sampling, together with the call it replaced: 31
+# to 127 interleaved samples of k calls, caches reset before each.
 # "not counted" marks a formula, an alias or a domain-element primitive that is not a candidate.
 _REFERENCE = {
     "integer_gcd/micro/pairs": (
@@ -80,13 +82,13 @@ _REFERENCE = {
         "Integer) 81 us; not counted: ZZ.gcdex (domain-element primitive) 0.929 us. ZZ.gcdex is a "
         "domain-element primitive, not counted"),
     "integer_xgcd/realistic/bits4096": (
-        "igcdex(a, b): 1.87 ms; other candidates: igcdex(Integer, Integer) 1.85 ms; gcdex(Integer, "
-        "Integer) 1.95 ms; not counted: ZZ.gcdex (domain-element primitive) 1.83 ms. ZZ.gcdex is a "
-        "domain-element primitive, not counted"),
+        "igcdex(Integer, Integer): 1.2 ms; other candidates: igcdex(a, b) 1.2 ms; first pass, an earlier machine "
+        "state: gcdex(Integer, Integer) 1.95 ms; not counted: ZZ.gcdex (domain-element primitive) 1.83 ms. ZZ.gcdex "
+        "is a domain-element primitive, not counted"),
     "integer_xgcd/realistic/bits16000": (
-        "igcdex(a, b): 21.7 ms; other candidates: gcdex(Integer, Integer) 21.4 ms; igcdex(Integer, "
-        "Integer) 22.3 ms; not counted: ZZ.gcdex (domain-element primitive) 22.1 ms. ZZ.gcdex is a "
-        "domain-element primitive, not counted"),
+        "igcdex(a, b): 14.6 ms; other candidates: gcdex(Integer, Integer) 14.8 ms; first pass, an earlier machine "
+        "state: igcdex(Integer, Integer) 22.3 ms; not counted: ZZ.gcdex (domain-element primitive) 22.1 ms. ZZ.gcdex "
+        "is a domain-element primitive, not counted"),
     "mod_inverse/micro/prime_modulus": (
         "mod_inverse(a, m): 1.71 us; other candidates: mod_inverse(Integer, Integer) 1.84 us; "
         "invert(Integer, Integer) 76.2 us; not counted: ZZ.invert (domain-element primitive) 1.57 us. "
@@ -130,8 +132,8 @@ _REFERENCE = {
         "divisors(n): 7.89 us; other candidates: sorted(divisors(n, generator=True)) 7.89 us; "
         "divisors(Integer) 8.21 us"),
     "divisors/realistic/n720720": (
-        "divisors(n): 55.2 us; other candidates: sorted(divisors(n, generator=True)) 55.1 us; "
-        "divisors(Integer) 57 us"),
+        "divisors(n): 57.6 us; other candidates: sorted(divisors(n, generator=True)) 58.1 us; first pass, an earlier "
+        "machine state: divisors(Integer) 57 us"),
     "divisors/realistic/n73513440": (
         "divisors(n): 128 us; other candidates: divisors(Integer) 129 us; sorted(divisors(n, "
         "generator=True)) 129 us"),
@@ -319,6 +321,16 @@ def _sp_igcdex(inputs):
     return build
 
 
+def _sp_igcdex_integers(inputs):
+    """igcdex on SymPy Integers, the spelling that measured faster than Python ints on the 4,096-bit pair."""
+    def build(i):
+        from sympy import Integer
+        from sympy.core.intfunc import igcdex
+        a, b = map(Integer, inputs(i))
+        return lambda: igcdex(a, b)
+    return build
+
+
 def _sp_mod_inverse(inputs):
     def build(i):
         from sympy import mod_inverse
@@ -396,8 +408,8 @@ FIXTURES = (
     # integer_xgcd ----------------------------------------------------------------------------------------------------
     _fixture("integer_xgcd", "micro", "pairs", _mf_pair(mf.integer_xgcd, _small_pair), _sp_igcdex(_small_pair),
              _same_xgcd, variants=MICRO),
-    _fixture("integer_xgcd", "realistic", "bits4096", _mf_pair(mf.integer_xgcd, _xgcd_pair), _sp_igcdex(_xgcd_pair),
-             _same_xgcd),
+    _fixture("integer_xgcd", "realistic", "bits4096", _mf_pair(mf.integer_xgcd, _xgcd_pair),
+             _sp_igcdex_integers(_xgcd_pair), _same_xgcd),
     _fixture("integer_xgcd", "realistic", "bits16000", _mf_pair(mf.integer_xgcd, _xgcd_big_pair),
              _sp_igcdex(_xgcd_big_pair), _same_xgcd),
     # mod_inverse -----------------------------------------------------------------------------------------------------

@@ -32,10 +32,10 @@ and `api_version=1` are pinned by compatibility tests. Operations added in v0.8
 live in their area module and in `mathforge.operations`, not in the plain
 `mathforge` namespace.
 
-Known limitations: `integer_gcd` and `integer_lcm` on very large integers, of
-tens of thousands of bits, remain comparatively slow, because every result
-carries an independently checked Bézout certificate. `solve_system` still uses
-the v0.7 structured pipeline and will be accelerated in a later version.
+Known limitations: `integer_gcd` and `integer_lcm` on very large integers, from
+about 2,000 bits (RSA size) upward, remain comparatively slow, because every
+result carries an independently checked Bézout certificate. `solve_system` still
+uses the v0.7 structured pipeline and will be accelerated in a later version.
 
 ## 0.7.0 — 2026-10-14
 

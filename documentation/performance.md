@@ -59,9 +59,9 @@ timings depend on the machine and the input and are not guarantees.
 
 ### Known limitations
 
-- `integer_gcd` and `integer_lcm` on very large integers, of tens of thousands of
-  bits, remain comparatively slow, because every result carries a Bézout
-  certificate that an independent checker verifies.
+- `integer_gcd` and `integer_lcm` on very large integers, from about 2,000 bits
+  (RSA size) upward, remain comparatively slow, because every result carries a
+  Bézout certificate that an independent checker verifies.
 - `solve_system` still uses the v0.7 structured pipeline; a later version will
   accelerate it.
 

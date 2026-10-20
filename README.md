@@ -50,10 +50,10 @@ value function may answer where `mathforge.operations` reports the limit, never
 with a different value. Some verifier checks that ran out of budget in v0.7 now
 complete.
 
-Known limitations: `integer_gcd` and `integer_lcm` on very large integers, of
-tens of thousands of bits, remain comparatively slow, because every result
-carries an independently checked Bézout certificate. `solve_system` still uses
-the v0.7 structured pipeline and will be accelerated in a later version.
+Known limitations: `integer_gcd` and `integer_lcm` on very large integers, from
+about 2,000 bits (RSA size) upward, remain comparatively slow, because every
+result carries an independently checked Bézout certificate. `solve_system` still
+uses the v0.7 structured pipeline and will be accelerated in a later version.
 
 ## Added in v0.7
 

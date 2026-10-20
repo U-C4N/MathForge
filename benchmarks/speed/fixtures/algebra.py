@@ -8,12 +8,14 @@ polynomial operations, ``real_roots``, ``compare_real``, ``rational_function``, 
 Reference rule: a SymPy-level public function or object method that a user calls for the operation and that returns
 the same mathematical object (``Poly`` methods, ``minimal_polynomial``, ``real_roots``, ``factor_list``, ``apart``,
 ``solve`` and the like, ``Matrix`` and ``DomainMatrix`` methods); where several such calls exist, the fastest. Where
-SymPy has no call for the operation, the reference is the shortest expression a user writes with SymPy objects
-(``a + b``, ``expand(a*b)``, ``Abs(a)**2``, ``sign(a - b)``); a faster spelling of it is listed in the reference text
-(``Add(a, b)``, ``re(a)**2 + im(a)**2``) but does not replace it. Ground arithmetic is excluded: domain elements
-(``QQ_I`` and ``ZZ_I`` Gaussian numbers, ZZ/QQ methods, ``PythonMPQ``, ``ANP``/``AlgebraicField`` elements) and the
-``dup_*``, ``dmp_*`` and ``gf_*`` helpers. The reference of every fixture lists the candidates that were measured, with
-their medians (SymPy caches cleared before each call).
+SymPy has no call for the operation, the reference is the fastest expression a user writes with SymPy objects
+(``a + b`` or ``Add(a, b)``, ``expand(a*b)`` or ``expand_complex(a*b)``, ``Abs(a)**2`` or ``re(a)**2 + im(a)**2``,
+``sign(a - b)``): a shorter spelling does not win a tie, and a faster one replaces it. The reference is always the
+candidate with the smallest median. Ground arithmetic is excluded: domain elements (``QQ_I`` and ``ZZ_I`` Gaussian
+numbers, ZZ/QQ methods, ``PythonMPQ``, ``ANP``/``AlgebraicField`` elements) and the ``dup_*``, ``dmp_*`` and ``gf_*``
+helpers. The reference of every fixture lists the candidates that were measured, with their medians (SymPy caches
+cleared before each call); a reference that was re-pointed to a faster call was measured again with the suite's own
+sampling, together with the call it replaced: 31 to 127 interleaved samples of k calls, caches reset before each.
 
 * Polynomial operations time ``Poly`` methods on prebuilt ``Poly`` objects over QQ (ZZ for ``resultant`` and
   ``discriminant``, whose value is an integer).
@@ -283,8 +285,10 @@ def _surd_right(i: int):
     return (((1, 1, 1),), ((1, 1, _SURDS[i][1]),))
 
 
-def _binary_fixtures(function, call, micro_reference, realistic_reference, *, divisor=False):
-    """Micro (Gaussian integers) and realistic (fractions) fixtures of a binary operation with a Cartesian value."""
+def _binary_fixtures(function, call, micro_reference, realistic_reference, *, divisor=False, realistic_call=None):
+    """Micro (Gaussian integers) and realistic (fractions) fixtures of a binary operation with a Cartesian value. The
+    call of each size is the fastest one measured at that size: ``call`` for the micro fixture, ``realistic_call`` (by
+    default the same) for the realistic one."""
     return (
         Fixture(function.__name__, "micro", "gaussian_integers",
                 _mathforge(function, lambda i: (_zm(_gauss(i, 0)), _zm(_gauss(i, 1, divisor)))),
@@ -292,7 +296,8 @@ def _binary_fixtures(function, call, micro_reference, realistic_reference, *, di
                 micro_reference, variants=_MICRO),
         Fixture(function.__name__, "realistic", "gaussian_fractions",
                 _mathforge(function, lambda i: (_zm(_fraction_gauss(i, 0)), _zm(_fraction_gauss(i, 1, divisor)))),
-                _sympy(lambda i: (_zs(_fraction_gauss(i, 0)), _zs(_fraction_gauss(i, 1, divisor))), call),
+                _sympy(lambda i: (_zs(_fraction_gauss(i, 0)), _zs(_fraction_gauss(i, 1, divisor))),
+                       realistic_call or call),
                 _same_complex, realistic_reference, variants=len(_SURDS)),
     )
 
@@ -323,9 +328,14 @@ def _named_quotient(sp, a, b, t):
     return _identify(sp, re, t), _identify(sp, im, t), re, im
 
 
-def _named_power(sp, a, n, t):
+def _identify_composed(sp, part, t):
+    """_identify with minimal_polynomial's default (composing) mode, which is the faster one on a few inputs."""
+    return part if part.is_Rational else sp.minimal_polynomial(part, t)
+
+
+def _named_power_composed(sp, a, n, t):
     re, im = sp.expand(a ** n).as_real_imag()
-    return _identify(sp, re, t), _identify(sp, im, t), re, im
+    return _identify_composed(sp, re, t), _identify_composed(sp, im, t), re, im
 
 
 def _surd_inputs(i):
@@ -455,11 +465,12 @@ def _complex_pow_fixtures():
                 variants=len(_SCALED_POWER_BASES)),
         Fixture("complex_pow", "realistic", "unit_circle_surds",
                 _mathforge(mf.complex_pow, lambda i: (_zm(_UNIT_CIRCLE[i][0]), _UNIT_CIRCLE[i][1])),
-                _sympy(unit_inputs, _named_power), _same_named_complex,
-                ("used: expand(a**n), as_real_imag, minimal_polynomial(compose=False) 7.15 ms; others: "
-                 "expand_complex(a**n), as_real_imag, minimal_polynomial(compose=False) 10.87 ms; expand(a**n), "
-                 "as_real_imag, minimal_polynomial 6.97 ms; medians of 60 calls, SymPy 1.14.0 (python ground "
-                 "types), caches cleared before each call"),
+                _sympy(unit_inputs, _named_power_composed), _same_named_complex,
+                ("used: expand(a**n), as_real_imag, minimal_polynomial 3.82 ms; others: expand(a**n), as_real_imag, "
+                 "minimal_polynomial(compose=False) 4.16 ms; first pass, an earlier machine state: "
+                 "expand_complex(a**n), as_real_imag, minimal_polynomial(compose=False) 10.87 ms; medians of 31 "
+                 "samples of k = 1 calls (the suite's sampling: caches reset before each sample), SymPy 1.14.0 "
+                 "(python ground types)"),
                 variants=len(_UNIT_CIRCLE)),
     )
 
@@ -514,14 +525,15 @@ def _quadratic_roots_fixtures():
 
 COMPLEX_FIXTURES = (
     *_complex_algebraic_fixtures(),
-    *_binary_fixtures(mf.complex_add, lambda sp, a, b: a + b,
-             ("used: a + b 147 us; others: Add(a, b) 125 us; medians of 150 calls, SymPy 1.14.0 (python ground "
-              "types), caches cleared before each call"),
+    *_binary_fixtures(mf.complex_add, lambda sp, a, b: sp.Add(a, b),
+             ("used: Add(a, b) 30.5 us; others: a + b 30.9 us; medians of 127 samples of k = 74 calls (the suite's "
+              "sampling: caches reset before each sample), SymPy 1.14.0 (python ground types)"),
              ("used: a + b 139 us; others: Add(a, b) 141 us; medians of 60 calls, SymPy 1.14.0 (python ground "
-              "types), caches cleared before each call")),
+              "types), caches cleared before each call"),
+             realistic_call=lambda sp, a, b: a + b),
     *_binary_fixtures(mf.complex_sub, lambda sp, a, b: a - b,
-             ("used: a - b 273 us; others: Add(a, Mul(-1, b)) 263 us; medians of 150 calls, SymPy 1.14.0 "
-              "(python ground types), caches cleared before each call"),
+             ("used: a - b 43.1 us; others: Add(a, Mul(-1, b)) 43.6 us; medians of 127 samples of k = 54 calls (the "
+              "suite's sampling: caches reset before each sample), SymPy 1.14.0 (python ground types)"),
              ("used: a - b 217 us; others: Add(a, Mul(-1, b)) 217 us; medians of 9 calls, SymPy 1.14.0 (python "
               "ground types), caches cleared before each call")),
     *_binary_fixtures(mf.complex_mul, lambda sp, a, b: sp.expand(a * b),
@@ -530,10 +542,13 @@ COMPLEX_FIXTURES = (
               "a*b 128 us (excluded: lazy: leaves the operation unevaluated, no Cartesian value); QQ_I a * b 19 "
               "us (excluded: QQ_I domain element: ground arithmetic, not a SymPy-level call); medians of 150 "
               "calls, SymPy 1.14.0 (python ground types), caches cleared before each call"),
-             ("used: expand(a*b) 1.41 ms; others: expand_complex(a*b) 1.38 ms; (a*b).as_real_imag() 944 us "
-              "(excluded: splits a number into its parts, not the expression a user writes for this operation); "
-              "a*b 145 us (excluded: lazy: leaves the operation unevaluated, no Cartesian value); medians of 9 "
-              "calls, SymPy 1.14.0 (python ground types), caches cleared before each call")),
+             ("used: expand_complex(a*b) 601 us; others: expand(a*b) 700 us; first pass, an earlier machine state: "
+              "a*b 145 us (excluded: lazy: leaves the operation unevaluated, no Cartesian value); "
+              "(a*b).as_real_imag() 944 us (excluded: splits a number into its parts, not the expression a user "
+              "writes for this operation); medians of 31 samples of k = 3 calls (the suite's sampling: caches reset "
+              "before each sample), SymPy 1.14.0 (python ground types); excluded candidates keep their first-pass "
+              "medians"),
+             realistic_call=lambda sp, a, b: sp.expand_complex(a * b)),
     _surd_fixture(mf.complex_mul, _named_product,
             ("used: expand(a*b), as_real_imag, minimal_polynomial(compose=False) 7.96 ms; others: "
              "(a*b).as_real_imag(), minimal_polynomial(compose=False) 7.99 ms; expand(a*b), as_real_imag, "
@@ -561,8 +576,8 @@ COMPLEX_FIXTURES = (
     *_unary_fixtures(mf.complex_conjugate, lambda sp, a: sp.conjugate(a), _same_complex,
              ("used: conjugate(a) 262 us; others: a.conjugate() 271 us; medians of 150 calls, SymPy 1.14.0 "
               "(python ground types), caches cleared before each call"),
-             ("used: conjugate(a) 210 us; others: a.conjugate() 197 us; medians of 9 calls, SymPy 1.14.0 "
-              "(python ground types), caches cleared before each call")),
+             ("used: conjugate(a) 71.1 us; others: a.conjugate() 71.4 us; medians of 127 samples of k = 3 calls (the "
+              "suite's sampling: caches reset before each sample), SymPy 1.14.0 (python ground types)")),
     *_unary_fixtures(mf.complex_real, lambda sp, a: sp.re(a), _same_real,
              ("used: re(a) 718 us; others: a.as_real_imag()[0] 254 us (excluded: splits a number into its "
               "parts, not the expression a user writes for this operation); medians of 150 calls, SymPy 1.14.0 "
@@ -577,15 +592,17 @@ COMPLEX_FIXTURES = (
              ("used: im(a) 614 us; others: a.as_real_imag()[1] 270 us (excluded: splits a number into its "
               "parts, not the expression a user writes for this operation); medians of 9 calls, SymPy 1.14.0 "
               "(python ground types), caches cleared before each call")),
-    *_unary_fixtures(mf.complex_norm_squared, lambda sp, a: sp.Abs(a) ** 2, _same_real,
-             ("used: Abs(a)**2 2.96 ms; others: expand(a*conjugate(a)) 976 us; re(a)**2 + im(a)**2 947 us; "
-              "as_real_imag, then x*x + y*y 224 us (excluded: a hand-written formula; Abs(a)**2 is the "
-              "expression a user writes); medians of 150 calls, SymPy 1.14.0 (python ground types), caches "
-              "cleared before each call"),
-             ("used: Abs(a)**2 4.10 ms; others: expand(a*conjugate(a)) 992 us; re(a)**2 + im(a)**2 864 us; "
-              "as_real_imag, then x*x + y*y 242 us (excluded: a hand-written formula; Abs(a)**2 is the "
-              "expression a user writes); medians of 60 calls, SymPy 1.14.0 (python ground types), caches "
-              "cleared before each call")),
+    *_unary_fixtures(mf.complex_norm_squared, lambda sp, a: sp.re(a) ** 2 + sp.im(a) ** 2, _same_real,
+             ("used: re(a)**2 + im(a)**2 423 us; others: expand(a*conjugate(a)) 497 us; Abs(a)**2 1.66 ms; first "
+              "pass, an earlier machine state: as_real_imag, then x*x + y*y 224 us (excluded: a hand-written formula;"
+              " Abs(a)**2 is the expression a user writes); medians of 31 samples of k = 2 calls (the suite's "
+              "sampling: caches reset before each sample), SymPy 1.14.0 (python ground types); excluded candidates "
+              "keep their first-pass medians"),
+             ("used: re(a)**2 + im(a)**2 544 us; others: expand(a*conjugate(a)) 632 us; Abs(a)**2 2.48 ms; first "
+              "pass, an earlier machine state: as_real_imag, then x*x + y*y 242 us (excluded: a hand-written formula;"
+              " Abs(a)**2 is the expression a user writes); medians of 31 samples of k = 1 calls (the suite's "
+              "sampling: caches reset before each sample), SymPy 1.14.0 (python ground types); excluded candidates "
+              "keep their first-pass medians")),
     *_complex_sqrt_fixtures(),
     *_complex_pow_fixtures(),
     *_quadratic_roots_fixtures(),
@@ -788,12 +805,14 @@ def _agree_expression(mf_value, sympy_value):
 
 def _expand_fixtures():
     call = lambda sp, e: sp.expand(e)
+    without_hints = lambda sp, e: sp.expand(e, power_base=False, power_exp=False, log=False, basic=False)
     return (
         Fixture("expand", "micro", "two_binomials", _mathforge(mf.expand, _expand_micro_mf),
-                _sympy(_expand_micro_sp, call), _agree_expression,
-                ("used: expand(e) 833 us; others: e.expand() 748 us; expand(e, power_base=False, power_exp=False, "
-                 "log=False, basic=False) 806 us; Poly(e) 972 us; Poly(e).as_expr() 966 us; medians of 150 calls, "
-                 "SymPy 1.14.0 (python ground types), caches cleared before each call"), variants=_MICRO),
+                _sympy(_expand_micro_sp, without_hints), _agree_expression,
+                ("used: expand(e, power_base=False, power_exp=False, log=False, basic=False) 420 us; others: "
+                 "e.expand() 449 us; expand(e) 453 us; Poly(e).as_expr() 539 us; first pass, an earlier machine "
+                 "state: Poly(e) 972 us (excluded: a Poly, not an expression); medians of 127 samples of k = 5 calls "
+                 "(the suite's sampling: caches reset before each sample), SymPy 1.14.0 (python ground types)"), variants=_MICRO),
         Fixture("expand", "realistic", "binomial_powers", _mathforge(mf.expand, _expand_realistic_mf),
                 _sympy(_expand_realistic_sp, call), _agree_expression,
                 ("used: expand(e) 7.39 ms; others: e.expand() 8.15 ms; expand(e, power_base=False, "
@@ -802,9 +821,10 @@ def _expand_fixtures():
                 variants=len(_EXPAND_REALISTIC)),
         Fixture("expand", "realistic", "scaled_cubic_power", _mathforge(mf.expand, _expand_scaled_mf),
                 _sympy(_expand_scaled_sp, call), _agree_expression,
-                ("used: expand(e) 15.90 ms; others: e.expand() 16.24 ms; expand(e, power_base=False, "
-                 "power_exp=False, log=False, basic=False) 16.20 ms; Poly(e) 15.16 ms; Poly(e).as_expr() 15.69 ms; "
-                 "medians of 60 calls, SymPy 1.14.0 (python ground types), caches cleared before each call"),
+                ("used: expand(e) 13.46 ms; others: Poly(e).as_expr() 14.35 ms; first pass, an earlier machine state:"
+                 " expand(e, power_base=False, power_exp=False, log=False, basic=False) 16.20 ms; e.expand() 16.24 "
+                 "ms; Poly(e) 15.16 ms (excluded: a Poly, not an expression); medians of 31 samples of k = 1 calls "
+                 "(the suite's sampling: caches reset before each sample), SymPy 1.14.0 (python ground types)"),
                 variants=len(_EXPAND_SCALED)),
     )
 
@@ -857,28 +877,32 @@ def _multivariate_scaled_sp(i):
 
 
 def _expand_multivariate_fixtures():
-    call = lambda sp, e: sp.expand(e)
+    # expand with its four rewriting hints off: the faster call of the same expansion on every fixture of the operation
+    call = lambda sp, e: sp.expand(e, power_base=False, power_exp=False, log=False, basic=False)
     return (
         Fixture("expand_multivariate", "micro", "two_bilinear_factors",
                 _mathforge(mf.expand_multivariate, _multivariate_micro_mf), _sympy(_multivariate_micro_sp, call),
                 _agree_expression,
-                ("used: expand(e) 1.95 ms; others: e.expand() 1.96 ms; expand(e, power_base=False, "
-                 "power_exp=False, log=False, basic=False) 1.88 ms; Poly(e) 2.12 ms; Poly(e).as_expr() 2.28 ms; "
-                 "medians of 150 calls, SymPy 1.14.0 (python ground types), caches cleared before each call"),
+                ("used: expand(e, power_base=False, power_exp=False, log=False, basic=False) 678 us; others: "
+                 "expand(e) 740 us; first pass, an earlier machine state: e.expand() 1.96 ms; Poly(e).as_expr() 2.28 "
+                 "ms; Poly(e) 2.12 ms (excluded: a Poly, not an expression); medians of 31 samples of k = 4 calls "
+                 "(the suite's sampling: caches reset before each sample), SymPy 1.14.0 (python ground types)"),
                 variants=_MICRO),
         Fixture("expand_multivariate", "realistic", "trinomial_eighth_power",
                 _mathforge(mf.expand_multivariate, _multivariate_realistic_mf),
                 _sympy(_multivariate_realistic_sp, call), _agree_expression,
-                ("used: expand(e) 12.05 ms; others: e.expand() 12.03 ms; expand(e, power_base=False, "
-                 "power_exp=False, log=False, basic=False) 11.58 ms; Poly(e) 12.52 ms; Poly(e).as_expr() 15.31 ms; "
-                 "medians of 9 calls, SymPy 1.14.0 (python ground types), caches cleared before each call"),
+                ("used: expand(e, power_base=False, power_exp=False, log=False, basic=False) 4.32 ms; others: "
+                 "expand(e) 4.96 ms; first pass, an earlier machine state: e.expand() 12.03 ms; Poly(e).as_expr() "
+                 "15.31 ms; Poly(e) 12.52 ms (excluded: a Poly, not an expression); medians of 31 samples of k = 1 "
+                 "calls (the suite's sampling: caches reset before each sample), SymPy 1.14.0 (python ground types)"),
                 variants=len(_MULTIVARIATE_REALISTIC)),
         Fixture("expand_multivariate", "realistic", "scaled_twelfth_power",
                 _mathforge(mf.expand_multivariate, _multivariate_scaled_mf), _sympy(_multivariate_scaled_sp, call),
                 _agree_expression,
-                ("used: expand(e) 24.75 ms; others: e.expand() 24.74 ms; expand(e, power_base=False, "
-                 "power_exp=False, log=False, basic=False) 22.77 ms; Poly(e) 26.59 ms; Poly(e).as_expr() 31.78 ms; "
-                 "medians of 9 calls, SymPy 1.14.0 (python ground types), caches cleared before each call"),
+                ("used: expand(e, power_base=False, power_exp=False, log=False, basic=False) 12.66 ms; others: "
+                 "expand(e) 14.35 ms; first pass, an earlier machine state: e.expand() 24.74 ms; Poly(e).as_expr() "
+                 "31.78 ms; Poly(e) 26.59 ms (excluded: a Poly, not an expression); medians of 31 samples of k = 1 "
+                 "calls (the suite's sampling: caches reset before each sample), SymPy 1.14.0 (python ground types)"),
                 variants=len(_MULTIVARIATE_SCALED)),
     )
 
@@ -908,20 +932,23 @@ def _poly_divmod_fixtures():
     return (
         Fixture("poly_divmod", "micro", "quartic_by_quadratic", _mathforge(mf.poly_divmod, _pair_mf(_DIVMOD_MICRO)),
                 _sympy(_pair_sp(_DIVMOD_MICRO), call), _same_pair,
-                ("used: f.div(g) 60 us; others: divmod(f, g) 55 us; div(f, g) 96 us; (f.quo(g), f.rem(g)) 89 us; "
-                 "medians of 150 calls, SymPy 1.14.0 (python ground types), caches cleared before each call"),
+                ("used: f.div(g) 18.2 us; others: divmod(f, g) 18.2 us; first pass, an earlier machine state: "
+                 "(f.quo(g), f.rem(g)) 89 us; div(f, g) 96 us; medians of 127 samples of k = 89 calls (the suite's "
+                 "sampling: caches reset before each sample), SymPy 1.14.0 (python ground types)"),
                 variants=_MICRO),
         Fixture("poly_divmod", "realistic", "degree_12_by_5",
                 _mathforge(mf.poly_divmod, _pair_mf(_DIVMOD_REALISTIC)), _sympy(_pair_sp(_DIVMOD_REALISTIC), call),
                 _same_pair,
-                ("used: f.div(g) 120 us; others: divmod(f, g) 114 us; div(f, g) 164 us; (f.quo(g), f.rem(g)) 201 "
-                 "us; medians of 9 calls, SymPy 1.14.0 (python ground types), caches cleared before each call"),
+                ("used: f.div(g) 82.9 us; others: divmod(f, g) 83.7 us; first pass, an earlier machine state: div(f, "
+                 "g) 164 us; (f.quo(g), f.rem(g)) 201 us; medians of 127 samples of k = 3 calls (the suite's "
+                 "sampling: caches reset before each sample), SymPy 1.14.0 (python ground types)"),
                 variants=3),
         Fixture("poly_divmod", "realistic", "scaled_degree_40_by_15",
                 _mathforge(mf.poly_divmod, _pair_mf(_DIVMOD_SCALED)), _sympy(_pair_sp(_DIVMOD_SCALED), call),
                 _same_pair,
-                ("used: f.div(g) 687 us; others: divmod(f, g) 670 us; div(f, g) 703 us; (f.quo(g), f.rem(g)) 1.26 "
-                 "ms; medians of 9 calls, SymPy 1.14.0 (python ground types), caches cleared before each call"),
+                ("used: f.div(g) 586 us; others: divmod(f, g) 588 us; first pass, an earlier machine state: div(f, g)"
+                 " 703 us; (f.quo(g), f.rem(g)) 1.26 ms; medians of 127 samples of k = 3 calls (the suite's sampling:"
+                 " caches reset before each sample), SymPy 1.14.0 (python ground types)"),
                 variants=3),
     )
 
@@ -961,8 +988,9 @@ def _poly_gcd_fixtures():
         Fixture("poly_gcd", "realistic", "common_factor_degree_5",
                 _mathforge(mf.poly_gcd, _pair_mf(_GCD_REALISTIC)), _sympy(_pair_sp(_GCD_REALISTIC), call),
                 _same_poly,
-                ("used: f.gcd(g) 174 us; others: gcd(f, g) 262 us; f.cofactors(g)[0] 168 us; medians of 9 calls, "
-                 "SymPy 1.14.0 (python ground types), caches cleared before each call"), variants=3),
+                ("used: f.gcd(g) 124 us; others: f.cofactors(g)[0] 124 us; first pass, an earlier machine state: "
+                 "gcd(f, g) 262 us; medians of 127 samples of k = 3 calls (the suite's sampling: caches reset before "
+                 "each sample), SymPy 1.14.0 (python ground types)"), variants=3),
         Fixture("poly_gcd", "realistic", "scaled_common_factor_degree_12",
                 _mathforge(mf.poly_gcd, _pair_mf(_GCD_SCALED)), _sympy(_pair_sp(_GCD_SCALED), call), _same_poly,
                 ("used: f.gcd(g) 280 us; others: gcd(f, g) 356 us; f.cofactors(g)[0] 312 us; medians of 9 calls, "
@@ -1102,11 +1130,13 @@ def _real_roots_fixtures():
                  "intervals, not the roots); medians of 60 calls, SymPy 1.14.0 (python ground types), caches "
                  "cleared before each call"), v07="quintic_roots"),
         Fixture("real_roots", "realistic", "scaled_degree_ten", _mathforge(mf.real_roots, _real_roots_ten_mf),
-                _sympy(_real_roots_ten_sp, call), _same_root_records,
-                ("used: real_roots(e, multiple=False) 2.83 ms; others: Poly(e).real_roots() 2.81 ms; real_roots(e, "
-                 "radicals=False, multiple=False) 2.80 ms; Poly(e).intervals() 868 us (excluded: isolating "
-                 "intervals, not the roots); medians of 60 calls, SymPy 1.14.0 (python ground types), caches "
-                 "cleared before each call"),
+                _sympy(_real_roots_ten_sp, lambda sp, e: sp.real_roots(e, radicals=False, multiple=False)),
+                _same_root_records,
+                ("used: real_roots(e, radicals=False, multiple=False) 1.49 ms; others: real_roots(e, multiple=False) "
+                 "1.49 ms; first pass, an earlier machine state: Poly(e).real_roots() 2.81 ms; Poly(e).intervals() "
+                 "868 us (excluded: isolating intervals, not the roots); medians of 127 samples of k = 2 calls (the "
+                 "suite's sampling: caches reset before each sample), SymPy 1.14.0 (python ground types); excluded "
+                 "candidates keep their first-pass medians"),
                 variants=len(_DEGREE_TEN)),
     )
 

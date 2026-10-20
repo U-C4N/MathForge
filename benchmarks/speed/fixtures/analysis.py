@@ -23,8 +23,10 @@ fraction field (``FracElement.diff``) are ground-domain elements and never a can
 
 Every ``reference`` lists the candidates with their median time in microseconds on that fixture's inputs, with SymPy's
 caches cleared before each call (Python 3.14.6, SymPy 1.14.0, python ground types); there g is the function, f the
-polynomial or rational function, v its variable, n the order and p the point. The chosen call is the fastest, except
-that a candidate within 15% of the conventional call (``diff``, ``Matrix.jacobian``, ``hessian``) is not preferred.
+polynomial or rational function, v its variable, n the order and p the point. The chosen call is the fastest
+same-object call, whatever it is named: ``diff``, ``Matrix.jacobian`` and ``hessian`` win no tie. A reference that was
+re-pointed was measured again with the suite's own sampling, together with the call it replaced: 31 to 127
+interleaved samples of k calls, caches reset before each.
 """
 
 from __future__ import annotations
@@ -51,18 +53,22 @@ _INCREMENT = 1442695040888963407
 
 _REFERENCES: dict[str, str] = {
     "function_differentiate/micro/sin_kx": (
-        "diff(g, v, n) 1144 us (chosen); g.diff(v, n) 1137 us; Derivative(g, v, n).doit() 1314 us"),
+        "g.diff(v, n) 679 us (chosen); diff(g, v, n) 682 us; first pass, an earlier machine state: Derivative(g, v, "
+        "n).doit() 1314 us"),
     "function_differentiate/realistic/exp_sin_cos_third_derivative": (
-        "diff(g, v, n) 13805 us (chosen); g.diff(v, n) 13365 us; Derivative(g, v, n).doit() 14045 us; "
-        "diff(g, v, n) was the v0.7 reference"),
+        "diff(g, v, n) 13143 us (chosen); g.diff(v, n) 13162 us; first pass, an earlier machine state: Derivative(g, "
+        "v, n).doit() 14045 us; diff(g, v, n) was the v0.7 reference"),
     "function_differentiate/realistic/tan_exp_second_derivative": (
         "diff(g, v, n) 7908 us (chosen); Derivative(g, v, n).doit() 8207 us; g.diff(v, n) 8378 us"),
     "function_differentiate/realistic/log_sin_second_derivative": (
-        "diff(g, v, n) 10231 us (chosen); g.diff(v, n) 10345 us; Derivative(g, v, n).doit() 11035 us"),
+        "diff(g, v, n) 10008 us (chosen); g.diff(v, n) 10078 us; first pass, an earlier machine state: Derivative(g, "
+        "v, n).doit() 11035 us"),
     "function_differentiate/realistic/scaled_six_terms_first_derivative": (
-        "diff(g, v, n) 10566 us (chosen); g.diff(v, n) 10510 us; Derivative(g, v, n).doit() 12174 us"),
+        "g.diff(v, n) 9988 us (chosen); diff(g, v, n) 10070 us; first pass, an earlier machine state: Derivative(g, "
+        "v, n).doit() 12174 us"),
     "function_partial_diff/micro/polynomial_and_sine": (
-        "diff(g, v, n) 1632 us (chosen); g.diff(v, n) 1701 us; Derivative(g, v, n).doit() 1914 us"),
+        "g.diff(v, n) 767 us (chosen); diff(g, v, n) 768 us; first pass, an earlier machine state: Derivative(g, v, "
+        "n).doit() 1914 us"),
     "function_partial_diff/realistic/two_variables_second_derivative": (
         "diff(g, v, n) 14974 us (chosen); g.diff(v, n) 15266 us; Derivative(g, v, n).doit() 15906 us"),
     "function_partial_diff/realistic/scaled_three_variables_third_derivative": (
@@ -83,10 +89,10 @@ _REFERENCES: dict[str, str] = {
         "Matrix(fs).jacobian(vars) (prebuilt Matrix) 6346 us (chosen); [[diff(g, v) ...]] 6445 us; "
         "Matrix(fs).jacobian(vars) (built in the call) 6662 us"),
     "function_jacobian/realistic/scaled_four_by_four": (
-        "Matrix(fs).jacobian(vars) (prebuilt Matrix) 11565 us (chosen); [[diff(g, v) ...]] 11200 us; "
-        "Matrix(fs).jacobian(vars) (built in the call) 11642 us"),
+        "[[diff(g, v) ...]] 6729 us (chosen); Matrix(fs).jacobian(vars) (prebuilt Matrix) 6928 us; first pass, an "
+        "earlier machine state: Matrix(fs).jacobian(vars) (built in the call) 11642 us"),
     "function_hessian/micro/two_variables": (
-        "hessian(g, vars) 6610 us (chosen); [[diff(g, a, b) ...]] 6403 us"),
+        "[[diff(g, a, b) ...]] 3222 us (chosen); hessian(g, vars) 3440 us"),
     "function_hessian/realistic/three_variables": (
         "hessian(g, vars) 18288 us (chosen); [[diff(g, a, b) ...]] 25564 us"),
     "function_hessian/realistic/scaled_four_variables": (
@@ -394,6 +400,11 @@ def _sympy_diff(function, variable, order):
     return lambda: sp.diff(function, variable, order)
 
 
+def _sympy_method_diff(function, variable, order):
+    """``g.diff(v, n)``, the method that ``diff`` calls: the same derivative, one call less."""
+    return lambda: function.diff(variable, order)
+
+
 # --- function_gradient, function_jacobian and function_hessian -----------------------------------------------------
 
 
@@ -451,6 +462,12 @@ def _jacobian_matrix(functions, variables):
     return lambda: matrix.jacobian(variables)
 
 
+def _jacobian_diffs(functions, variables):
+    """The grid of first derivatives, ``[[diff(g, v) ...]]``."""
+    import sympy as sp
+    return lambda: [[sp.diff(function, variable) for variable in variables] for function in functions]
+
+
 def _hessian_fixture(size, label, text_of, names, sympy_call, *, variants):
     def mathforge(i):
         return mf.function_hessian, (_function(text_of(i), names), _vector(names)), {}
@@ -465,6 +482,12 @@ def _hessian_fixture(size, label, text_of, names, sympy_call, *, variants):
 def _hessian_call(function, variables):
     import sympy as sp
     return lambda: sp.hessian(function, variables)
+
+
+def _hessian_diffs(function, variables):
+    """The grid of second derivatives, ``[[diff(g, a, b) ...]]``: faster than ``hessian`` on a small function."""
+    import sympy as sp
+    return lambda: [[sp.diff(function, a, b) for b in variables] for a in variables]
 
 
 # --- function_evaluate ---------------------------------------------------------------------------------------------
@@ -867,7 +890,7 @@ def _analysis_fixture(operation, size, label, parts_of, chain, agree, *, variant
 FIXTURES = (
     # function_differentiate
     _differentiate_fixture("function_differentiate", "micro", "sin_kx", lambda i: f"sin({i + 1}*x)", "x", "x", 1,
-                           _sympy_diff, variants=1000),
+                           _sympy_method_diff, variants=1000),
     _differentiate_fixture("function_differentiate", "realistic", "exp_sin_cos_third_derivative",
                            lambda i: "exp(x)*sin(2*x)+cos(x*x)", "x", "x", 3, _sympy_diff, variants=1,
                            v07="derivative3"),
@@ -877,11 +900,11 @@ FIXTURES = (
                            lambda i: "log(1+x*x)*sin(x)", "x", "x", 2, _sympy_diff, variants=1),
     _differentiate_fixture(
         "function_differentiate", "realistic", "scaled_six_terms_first_derivative",
-        lambda i: "exp(x)*sin(2*x)+cos(x*x)+log(1+x*x)+atan(x)*x+sqrt(1+x*x)+tanh(3*x)", "x", "x", 1, _sympy_diff,
-        variants=1),
+        lambda i: "exp(x)*sin(2*x)+cos(x*x)+log(1+x*x)+atan(x)*x+sqrt(1+x*x)+tanh(3*x)", "x", "x", 1,
+        _sympy_method_diff, variants=1),
     # function_partial_diff
     _differentiate_fixture("function_partial_diff", "micro", "polynomial_and_sine", lambda i: f"x*x*y+{i + 1}*sin(y)",
-                           "xy", "y", 1, _sympy_diff, variants=1000),
+                           "xy", "y", 1, _sympy_method_diff, variants=1000),
     _differentiate_fixture("function_partial_diff", "realistic", "two_variables_second_derivative",
                            lambda i: "exp(x*y)*sin(x+y)+x*log(1+y*y)", "xy", "y", 2, _sympy_diff, variants=1),
     _differentiate_fixture("function_partial_diff", "realistic", "scaled_three_variables_third_derivative",
@@ -901,9 +924,9 @@ FIXTURES = (
                       variants=1),
     _jacobian_fixture("realistic", "scaled_four_by_four",
                       lambda i: ("x*exp(y)+sin(z*w)", "y*cos(x)+z*w", "exp(x*z)+y*w*w", "log(1+x*x)*z+sin(y*w)"),
-                      "xyzw", _jacobian_matrix, variants=1),
+                      "xyzw", _jacobian_diffs, variants=1),
     # function_hessian
-    _hessian_fixture("micro", "two_variables", lambda i: f"x*x*y+{i + 1}*y*y*y", "xy", _hessian_call, variants=1000),
+    _hessian_fixture("micro", "two_variables", lambda i: f"x*x*y+{i + 1}*y*y*y", "xy", _hessian_diffs, variants=1000),
     _hessian_fixture("realistic", "three_variables", lambda i: "exp(x*y)+sin(y*z)+x*z**2", "xyz", _hessian_call,
                      variants=1),
     _hessian_fixture("realistic", "scaled_four_variables", lambda i: "exp(x*y)+sin(y*z)*cos(w)+x*z*w+log(1+w*w)",

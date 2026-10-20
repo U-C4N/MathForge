@@ -43,8 +43,8 @@ def solve_system(system_or_equations, *, for_=None):
 # ---------------------------------------------------------------------------------------------------------------
 
 def _sympy_points(sympy_value):
-    """The distinct points of a SymPy solution given as a FiniteSet, a list (roots repeated by multiplicity), a tuple
-    or a dict; None for anything else."""
+    """The distinct points of a SymPy solution given as a FiniteSet, a list (roots repeated by multiplicity, or pairs
+    (root, multiplicity), as ``real_roots(..., multiple=False)`` gives), a tuple or a dict; None for anything else."""
     import sympy as sp
     if isinstance(sympy_value, sp.FiniteSet):
         return list(sympy_value.args)
@@ -53,6 +53,8 @@ def _sympy_points(sympy_value):
     if isinstance(sympy_value, (list, tuple)):
         distinct = []
         for point in sympy_value:
+            if isinstance(point, tuple) and len(point) == 2 and isinstance(point[1], int):
+                point = point[0]  # (root, multiplicity)
             if not any(shared._same_number(point, known) for known in distinct):
                 distinct.append(point)
         return distinct
@@ -259,11 +261,12 @@ def _solve_fixtures():
                  "types), caches cleared before each call"), variants=_MICRO),
         Fixture("solve", "realistic", "cubic_with_integer_roots", _solve_mf(_cubic_mf),
                 _sympy(_solve_sp(_cubic_sp), polynomial), _same_solution,
-                ("used: Poly(lhs - rhs, x).real_roots() 2.90 ms; others: solveset(problem, x, Reals) 8.22 ms; "
-                 "solve(problem, x) 9.79 ms; real_roots(lhs - rhs, multiple=False) 2.84 ms; "
-                 "solve_univariate_inequality(problem, x, relational=False) 29.13 ms; roots(lhs - rhs, x) 3.20 ms "
-                 "(excluded: also returns the non-real roots); medians of 9 calls, SymPy 1.14.0 (python ground "
-                 "types), caches cleared before each call"),
+                ("used: Poly(lhs - rhs, x).real_roots() 1.43 ms; others: real_roots(lhs - rhs, multiple=False) 1.46 "
+                 "ms; first pass, an earlier machine state: solveset(problem, x, Reals) 8.22 ms; solve(problem, x) "
+                 "9.79 ms; solve_univariate_inequality(problem, x, relational=False) 29.13 ms; roots(lhs - rhs, x) "
+                 "3.20 ms (excluded: also returns the non-real roots); medians of 127 samples of k = 2 calls (the "
+                 "suite's sampling: caches reset before each sample), SymPy 1.14.0 (python ground types); excluded "
+                 "candidates keep their first-pass medians"),
                 variants=len(_CUBIC_ROOTS)),
         Fixture("solve", "realistic", "quintic_with_irrational_roots", _solve_mf(_quintic_mf),
                 _sympy(_solve_sp(_quintic_sp), polynomial), _same_solution,

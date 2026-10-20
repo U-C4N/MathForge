@@ -3,10 +3,12 @@
     PYTHONPATH=<v0.7 worktree>/src python tools/snapshot_structured.py --out tests/fixtures/v8/structured_v07.json
 
 writes ``{operation: mathforge.dumps(result)}``: the compact JSON text of the Result that the operation's structured
-function, ``mathforge.operations.<operation>``, returns for one small input (``ARGUMENTS``). parse_function, which has
+function, ``mathforge.operations.<operation>`` (``mathforge.operations.<public name>`` of a registry operation whose public
+name differs: ``function_taylor`` is ``taylor``), returns for one small input (``ARGUMENTS``). parse_function, which has
 no structured function, stores the value that ``mathforge.functions.parse_function`` returns. Every registry and legacy
-operation of v0.7 has an entry except ``verify``, the v6 pilot ``continued_fraction`` and the nine operations that v0.8
-supersedes with v6 families (``SUPERSEDED``), whose records change by design.
+operation of v0.7 has an entry except ``verify`` and the v6 pilot ``continued_fraction`` (``EXCLUDED``). v0.8.0 ships no
+superseding v6 family, so the records of rref, rank, nullspace, solve_system, rowspace, columnspace, least_squares,
+evaluate_algebraic and function_taylor are held to v0.7's bytes as much as the others'.
 
 The tool uses mathforge's public API only, so it runs against a v0.7 tree as well as against the current code; the
 golden file comes from the v0.7 tree. Symbols are built as ``Symbol(name, uid=str(uuid.UUID(int=k)))``, so no text
@@ -23,10 +25,8 @@ from pathlib import Path
 import sys
 import uuid
 
-# Superseded by v6 families in v0.8 (the plan's ruling 2): their new records differ from v0.7's by design.
-SUPERSEDED = frozenset({"rref", "rank", "nullspace", "solve_system", "rowspace", "columnspace", "least_squares",
-                        "evaluate_algebraic", "function_taylor"})
-EXCLUDED = SUPERSEDED | {"verify", "continued_fraction"}
+# The only v0.7 operations without an entry: verify takes a Result, not an input, and continued_fraction is v0.8's pilot.
+EXCLUDED = frozenset({"verify", "continued_fraction"})
 
 
 def symbol(name: str, k: int):
@@ -53,6 +53,9 @@ def arguments() -> dict[str, dict[str, object]]:
     reciprocal = rational_function(1, x)
     p = mf.Polynomial.from_expression(x**4 + 4, x)
     linear = mf.Polynomial((-1, 1), x)
+    deficient = mf.Matrix(((1, 2, 3), (2, 4, 6), (1, 0, 1)))  # Rank 2: a free column, so a null space and a pivot gap.
+    line_fit = mf.Matrix(((1, 1), (1, 2), (1, 3)))
+    linear_system = mf.LinearSystem(mf.Matrix(((1, 2), (3, 4))), (5, 6), (x, y))
     return {
         # ntheory
         "integer_gcd": dict(a=84, b=30),
@@ -108,6 +111,13 @@ def arguments() -> dict[str, dict[str, object]]:
         "inverse": dict(A=mf.Matrix(((1, 2), (3, 4)))),
         "charpoly": dict(A=mf.Matrix(((0, 2), (1, 0))), variable=x),
         "real_eigenvalues": dict(A=mf.Matrix(((0, 2), (1, 0)))),
+        "rref": dict(A=deficient),
+        "rank": dict(A=deficient),
+        "nullspace": dict(A=deficient),
+        "rowspace": dict(A=deficient),
+        "columnspace": dict(A=deficient),
+        "least_squares": dict(A=line_fit, b=(1, 2, 2)),
+        "solve_system": dict(system_or_equations=linear_system),
         # analysis
         "function_differentiate": dict(expression=single, variable=x, n=1),
         "function_partial_diff": dict(expression=multi, variable=x, n=1),
@@ -126,6 +136,7 @@ def arguments() -> dict[str, dict[str, object]]:
         "function_limit": dict(expression=mf.real_function(f.sin(x) / f.as_real_expr(x), (x,)), variable=x, point=0,
                                side="both"),
         "limit": dict(expression=rational_function(x**2 - 1, x - 1), variable=x, point=1, side="both"),
+        "function_taylor": dict(expression=single, variable=x, point=0, order=4),
         # integrals
         "function_antiderivative": dict(expression=single, variable=x),
         "function_integrate": dict(expression=single, variable=x, lower=0, upper=1),
@@ -153,6 +164,7 @@ def arguments() -> dict[str, dict[str, object]]:
         "apart": dict(expression=rational_function(x + 1, x * x - 1)),
         # expr
         "evaluate": dict(expression=x**2 + 1, bindings={x: 2}),
+        "evaluate_algebraic": dict(expression=x**2 + x + 1, bindings={x: mf.sqrt(2)}),
         "substitute": dict(expression=x**2 + y, bindings={x: 2}),
         "simplify": dict(expression=x + x),
         "parse_function": dict(text="sin(x)", symbols={"x": x}, variables=None),
@@ -162,11 +174,15 @@ def arguments() -> dict[str, dict[str, object]]:
 
 
 def structured(operation: str) -> Callable[..., object]:
-    """The operation's structured function; parse_function's own function, which returns its value."""
+    """The operation's structured function; parse_function's own function, which returns its value. A registry
+    operation whose public name differs from its name (function_taylor, public as taylor) is found by that name."""
     import mathforge as mf
     if operation == "parse_function":
         return mf.functions.parse_function
-    return getattr(mf.operations, operation)
+    function = getattr(mf.operations, operation, None)
+    if function is None:
+        function = getattr(mf.operations, mf.registry.spec(operation).public_name)
+    return function
 
 
 def call(operation: str, kwargs: dict[str, object]) -> str:

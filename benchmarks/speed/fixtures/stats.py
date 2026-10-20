@@ -16,9 +16,12 @@ agent would use and a scaled one.
   fraction of a second: its median checker is quadratic (0.7 s for 500 values).
 
 SymPy has no sample statistics, so ``mean``, ``median``, ``variance``, ``stddev`` and ``covariance`` are timed against
-the shortest expression a SymPy user would write (the fastest of the formulas measured) on prebuilt ``sympy.Rational``
-objects, with ``sympy.sqrt`` for the standard deviation; every distribution operation is timed against the matching
-``sympy.stats`` call on a prebuilt ``FiniteRV`` that carries the same PMF.
+the fastest expression a SymPy user would write (the fastest of the formulas measured) on prebuilt ``sympy.Rational``
+objects; the standard deviation is ``sqrt(variance, evaluate=False)``, the unreduced root that ``mathforge.stddev``
+returns (``sympy.sqrt`` also simplifies the radical, which is most of its time and not part of that object); every
+distribution operation is timed against the fastest same-object ``sympy.stats`` call on a prebuilt ``FiniteRV`` that
+carries the same PMF: ``P`` or ``FinitePSpace.probability``, ``E`` or ``FinitePSpace.compute_expectation``, ``moment``
+or ``compute_expectation(X**n)``, ``cdf`` or ``compute_cdf``.
 """
 
 from __future__ import annotations
@@ -38,11 +41,13 @@ R = mf.Rational
 # a SymPy-level public function or method that a user calls for the operation and that returns the same mathematical
 # object (checked with agree): igcd, factorial(Integer), the sympy.stats functions. Scalar domain-element primitives
 # (ZZ.gcd, ZZ.factorial, QQ and PythonMPQ arithmetic) are ground arithmetic and never count, like dup_*, dmp_* and
-# gf_*. Where SymPy has no call for the operation, the reference is the shortest expression a SymPy user would write
-# with SymPy objects (Rational, Integer, sqrt), inputs prebuilt. The fastest candidate is chosen, but the documented
-# top-level function wins any tie within 30%. Medians are microseconds per call over three interleaved passes of 11 to
-# 100 samples (k consecutive variants per sample, SymPy caches cleared before every sample, SYMPY_GROUND_TYPES=python)
-# on a machine that other jobs share: differences under about 30% are noise.
+# gf_*. Where SymPy has no call for the operation, the reference is the fastest expression a SymPy user would write
+# with SymPy objects (Rational, Integer, sqrt), inputs prebuilt. The reference is the fastest same-object call, the one
+# with the smallest median: no function wins a tie, and a method of an object (``FinitePSpace.compute_expectation``)
+# is as good a call as a top-level function (``E``). Medians are microseconds per call over three interleaved passes of
+# 11 to 100 samples (k consecutive variants per sample, SymPy caches cleared before every sample,
+# SYMPY_GROUND_TYPES=python). A reference that was re-pointed to a faster call was measured again with the suite's own
+# sampling, together with the call it replaced: 31 to 127 interleaved samples of k calls, caches reset before each.
 # "not counted" marks a formula, an alias or a domain-element primitive that is not a candidate.
 _REFERENCE = {
     "bernoulli/micro/p_over_1031": (
@@ -93,21 +98,21 @@ _REFERENCE = {
         "m, n).dict (internal class, not exported) 35.2 ms. density(X) alone returns a lazy distribution "
         "object; .dict materializes the PMF, the object MathForge returns"),
     "probability/micro/five_outcomes": (
-        "P(Contains(X, FiniteSet(event))): 4.21 ms; other candidates: P(Or(Eq(X, v) ...)) 3.08 ms; "
-        "X.pspace.probability(Contains(X, FiniteSet)) 4.15 ms; not counted: sum(density(X)[v] for v in "
-        "event) (dict lookups) 66.2 us. the dict lookups are not a SymPy probability call"),
+        "P(Or(Eq(X, v) ...)): 903 us; other candidates: X.pspace.probability(Contains(X, FiniteSet)) 1.27 ms; "
+        "P(Contains(X, FiniteSet(event))) 1.31 ms; not counted: sum(density(X)[v] for v in event) (dict lookups) 66.2"
+        " us. the dict lookups are not a SymPy probability call"),
     "probability/realistic/binomial41": (
-        "P(Contains(X, FiniteSet(event))): 22.2 ms; other candidates: X.pspace.probability(Contains(X, "
-        "FiniteSet)) 21.8 ms; P(Or(Eq(X, v) ...)) 25.5 ms; not counted: sum(density(X)[v] for v in event) "
-        "(dict lookups) 994 us. the dict lookups are not a SymPy probability call"),
+        "X.pspace.probability(Contains(X, FiniteSet)): 12.8 ms; other candidates: P(Contains(X, FiniteSet(event))) "
+        "13.1 ms; first pass, an earlier machine state: P(Or(Eq(X, v) ...)) 25.5 ms; not counted: sum(density(X)[v] "
+        "for v in event) (dict lookups) 994 us. the dict lookups are not a SymPy probability call"),
     "probability/realistic/outcomes_120": (
-        "P(Contains(X, FiniteSet(event))): 63.6 ms; other candidates: X.pspace.probability(Contains(X, "
-        "FiniteSet)) 63.1 ms; P(Or(Eq(X, v) ...)) 98.5 ms; not counted: sum(density(X)[v] for v in event) "
-        "(dict lookups) 3.71 ms. the dict lookups are not a SymPy probability call"),
+        "X.pspace.probability(Contains(X, FiniteSet)): 37.7 ms; other candidates: P(Contains(X, FiniteSet(event))) "
+        "38.2 ms; first pass, an earlier machine state: P(Or(Eq(X, v) ...)) 98.5 ms; not counted: sum(density(X)[v] "
+        "for v in event) (dict lookups) 3.71 ms. the dict lookups are not a SymPy probability call"),
     "condition/micro/five_outcomes": (
-        "density(given(X, Contains(X, FiniteSet(event)))).dict: 5.94 ms; other candidates: "
-        "density(given(X, Or(Eq...))) 5.04 ms; density(given(X, Contains(X, FiniteSet))) (no .dict) 6.07 "
-        "ms. conditional_space(...).density returns a lazy object, not the conditional PMF"),
+        "density(given(X, Or(Eq(X, v) ...))).dict: 2.61 ms; other candidates: density(given(X, Contains(X, "
+        "FiniteSet(event)))).dict 2.99 ms; not counted: density(given(X, Contains(X, FiniteSet))) (no .dict) 6.07 ms "
+        "(first pass). conditional_space(...).density returns a lazy object, not the conditional PMF"),
     "condition/realistic/binomial41": (
         "density(given(X, Contains(X, FiniteSet(event)))).dict: 37.2 ms; other candidates: "
         "density(given(X, Contains(X, FiniteSet))) (no .dict) 36.1 ms; density(given(X, Or(Eq...))) 47.6 "
@@ -124,24 +129,27 @@ _REFERENCE = {
         "cdf(X) returns the whole table of a finite variable; indexing it is the documented way to "
         "evaluate it"),
     "cdf/realistic/outcomes_120": (
-        "cdf(X)[x]: 18.8 ms; other candidates: X.pspace.compute_cdf(X)[x] 18.7 ms; P(X <= x) 21.6 ms. "
-        "cdf(X) returns the whole table of a finite variable; indexing it is the documented way to "
-        "evaluate it"),
+        "X.pspace.compute_cdf(X)[x]: 10.8 ms; other candidates: cdf(X)[x] 10.8 ms; first pass, an earlier machine "
+        "state: P(X <= x) 21.6 ms. cdf(X) returns the whole table of a finite variable; indexing it is the documented"
+        " way to evaluate it"),
     "moment/micro/five_outcomes": (
-        "moment(X, n): 1.31 ms; other candidates: X.pspace.compute_expectation(X**n) 941 us; E(X**n) 1.19 "
-        "ms"),
+        "X.pspace.compute_expectation(X**n): 558 us; other candidates: moment(X, n) 750 us; first pass, an earlier "
+        "machine state: E(X**n) 1.19 ms"),
     "moment/realistic/binomial41": (
-        "moment(X, n): 6.54 ms; other candidates: X.pspace.compute_expectation(X**n) 5.01 ms; E(X**n) "
-        "5.49 ms"),
+        "X.pspace.compute_expectation(X**n): 3.81 ms; other candidates: moment(X, n) 4.62 ms; first pass, an earlier "
+        "machine state: E(X**n) 5.49 ms"),
     "moment/realistic/outcomes_120": (
-        "moment(X, n): 20.2 ms; other candidates: X.pspace.compute_expectation(X**n) 15.9 ms; E(X**n) "
-        "18.3 ms"),
+        "X.pspace.compute_expectation(X**n): 15 ms; other candidates: moment(X, n) 17.8 ms; first pass, an earlier "
+        "machine state: E(X**n) 18.3 ms"),
     "expectation/micro/five_outcomes": (
-        "E(X): 810 us; other candidates: X.pspace.compute_expectation(X) 670 us; moment(X, 1) 954 us"),
+        "X.pspace.compute_expectation(X): 364 us; other candidates: E(X) 437 us; first pass, an earlier machine "
+        "state: moment(X, 1) 954 us"),
     "expectation/realistic/binomial41": (
-        "E(X): 4.52 ms; other candidates: X.pspace.compute_expectation(X) 3.84 ms; moment(X, 1) 5.07 ms"),
+        "X.pspace.compute_expectation(X): 2.02 ms; other candidates: E(X) 2.36 ms; first pass, an earlier machine "
+        "state: moment(X, 1) 5.07 ms"),
     "expectation/realistic/outcomes_120": (
-        "E(X): 16.1 ms; other candidates: X.pspace.compute_expectation(X) 14.2 ms; moment(X, 1) 18 ms"),
+        "X.pspace.compute_expectation(X): 7.9 ms; other candidates: E(X) 9.06 ms; first pass, an earlier machine "
+        "state: moment(X, 1) 18 ms"),
     "distribution_variance/micro/five_outcomes": (
         "variance(X): 3.9 ms; not counted: moment(X, 2) - E(X)**2 (composite) 2.29 ms; "
         "X.pspace.compute_expectation((X - E)**2) (composite) 2.54 ms"),
@@ -203,23 +211,32 @@ _REFERENCE = {
         "statistics: the fastest of the expressions a SymPy user would write on prebuilt sympy.Rational; "
         "PythonMPQ (QQ) arithmetic is ground arithmetic, not counted"),
     "stddev/micro/five_values": (
-        "sqrt((sum(x*x) - sum(x)**2 / n) / (n - ddof)) on sympy.Rational: 515 us; other candidates: "
-        "sqrt(two-pass (x - m)*(x - m)) 517 us; sqrt(one-pass Add) 675 us; not counted: sqrt of the "
-        "one-pass variance on PythonMPQ (ground arithmetic) 468 us. SymPy has no sample statistics: "
-        "sympy.sqrt of the fastest variance expression on prebuilt sympy.Rational; PythonMPQ (QQ) "
-        "arithmetic is ground arithmetic, not counted"),
+        "sqrt((sum(x*x) - sum(x)**2 / n) / (n - ddof), evaluate=False) on sympy.Rational: 31.5 us; other candidates: "
+        "sympy.sqrt((sum(x*x) - sum(x)**2 / n) / (n - ddof)) on sympy.Rational, which also simplifies the radical 254"
+        " us; first pass, an earlier machine state: sympy.sqrt(one-pass) 515 us; sympy.sqrt(two-pass (x - m)*(x - m))"
+        " 517 us; sympy.sqrt(one-pass Add) 675 us; not counted: sqrt of the one-pass variance on PythonMPQ (ground "
+        "arithmetic) 468 us. SymPy has no sample statistics: the unreduced root, sqrt(variance, evaluate=False), of "
+        "the fastest variance expression on prebuilt sympy.Rational is the number that mathforge.stddev returns "
+        "(sympy.sqrt(variance) also simplifies the radical, most of its time, and is measured as a rival); PythonMPQ "
+        "(QQ) arithmetic is ground arithmetic, not counted"),
     "stddev/realistic/values_200": (
-        "sqrt((sum(x*x) - sum(x)**2 / n) / (n - ddof)) on sympy.Rational: 2.75 ms; other candidates: "
-        "sqrt(one-pass Add) 3.21 ms; sqrt(two-pass (x - m)*(x - m)) 3.46 ms; not counted: sqrt of the "
-        "one-pass variance on PythonMPQ (ground arithmetic) 1.36 ms. SymPy has no sample statistics: "
-        "sympy.sqrt of the fastest variance expression on prebuilt sympy.Rational; PythonMPQ (QQ) "
-        "arithmetic is ground arithmetic, not counted"),
+        "sqrt((sum(x*x) - sum(x)**2 / n) / (n - ddof), evaluate=False) on sympy.Rational: 984 us; other candidates: "
+        "sympy.sqrt((sum(x*x) - sum(x)**2 / n) / (n - ddof)) on sympy.Rational, which also simplifies the radical "
+        "1.54 ms; first pass, an earlier machine state: sympy.sqrt(one-pass) 2.75 ms; sympy.sqrt(one-pass Add) 3.21 "
+        "ms; sympy.sqrt(two-pass (x - m)*(x - m)) 3.46 ms; not counted: sqrt of the one-pass variance on PythonMPQ "
+        "(ground arithmetic) 1.36 ms. SymPy has no sample statistics: the unreduced root, sqrt(variance, "
+        "evaluate=False), of the fastest variance expression on prebuilt sympy.Rational is the number that "
+        "mathforge.stddev returns (sympy.sqrt(variance) also simplifies the radical, most of its time, and is "
+        "measured as a rival); PythonMPQ (QQ) arithmetic is ground arithmetic, not counted"),
     "stddev/realistic/values_500": (
-        "sqrt((sum(x*x) - sum(x)**2 / n) / (n - ddof)) on sympy.Rational: 5.21 ms; other candidates: "
-        "sqrt(one-pass Add) 6.21 ms; sqrt(two-pass (x - m)*(x - m)) 7.04 ms; not counted: sqrt of the "
-        "one-pass variance on PythonMPQ (ground arithmetic) 1.76 ms. SymPy has no sample statistics: "
-        "sympy.sqrt of the fastest variance expression on prebuilt sympy.Rational; PythonMPQ (QQ) "
-        "arithmetic is ground arithmetic, not counted"),
+        "sqrt((sum(x*x) - sum(x)**2 / n) / (n - ddof), evaluate=False) on sympy.Rational: 2.35 ms; other candidates: "
+        "sympy.sqrt((sum(x*x) - sum(x)**2 / n) / (n - ddof)) on sympy.Rational, which also simplifies the radical 2.9"
+        " ms; first pass, an earlier machine state: sympy.sqrt(one-pass) 5.21 ms; sympy.sqrt(one-pass Add) 6.21 ms; "
+        "sympy.sqrt(two-pass (x - m)*(x - m)) 7.04 ms; not counted: sqrt of the one-pass variance on PythonMPQ "
+        "(ground arithmetic) 1.76 ms. SymPy has no sample statistics: the unreduced root, sqrt(variance, "
+        "evaluate=False), of the fastest variance expression on prebuilt sympy.Rational is the number that "
+        "mathforge.stddev returns (sympy.sqrt(variance) also simplifies the radical, most of its time, and is "
+        "measured as a rival); PythonMPQ (QQ) arithmetic is ground arithmetic, not counted"),
     "covariance/micro/five_pairs": (
         "(sum(a*b) - sum(a)*sum(b) / n) / (n - ddof) on sympy.Rational: 51.9 us; other candidates: "
         "two-pass (a - mx)*(b - my) 85.9 us; one-pass Add(*[a*b]) - Add(*x)*Add(*y) / n 101 us; not "
@@ -444,17 +461,20 @@ def _same_pmf(m, s):
 
 
 def _same_sqrt(m, s):
-    """mathforge.stddev gives a Rational (a perfect square variance) or Sqrt(radicand); SymPy gives the simplified root.
+    """mathforge.stddev gives a Rational (a perfect square variance) or Sqrt(radicand), unreduced; SymPy gives the
+    unevaluated root of the variance (``sqrt(variance, evaluate=False)``) or its simplified form.
 
-    A Sqrt is the same number as s when s >= 0 and s**2 is the radicand: SymPy's s**2 evaluates to a Rational.
+    m is the same non-negative number as s when s >= 0 and s**2, which SymPy evaluates to the Rational variance, is
+    the radicand of a Sqrt, or the square of a Rational.
     """
+    square = s ** 2
+    if not (bool(s.is_nonnegative) and square.is_Rational):
+        return False
     if type(m) is R:
-        return _same_rational(m, s)
+        return m.numerator >= 0 and (m * m).numerator == square.p and (m * m).denominator == square.q
     if type(m) is not mf.Sqrt:
         return False
-    square = s ** 2
-    return (bool(s.is_nonnegative) and square.is_Rational
-            and (square.p, square.q) == (m.radicand.numerator, m.radicand.denominator))
+    return (square.p, square.q) == (m.radicand.numerator, m.radicand.denominator)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -498,11 +518,26 @@ def _sp_hypergeometric(urn):
     return build
 
 
-def _sp_probability(pmf, event):
+def _sp_equalities(rv, event):
+    """The event as an Or of equalities, ``Or(Eq(X, v) ...)``: what P and given evaluate fastest for a small event."""
+    from sympy import Eq, Or, Rational
+    return Or(*[Eq(rv, Rational(*e)) for e in event])
+
+
+def _sp_probability_pspace(pmf, event):
+    """``FinitePSpace.probability(Contains(X, FiniteSet))``: the call that P makes, without the dispatch around it."""
+    def build(i):
+        rv = _sp_rv(pmf(i))
+        condition = _sp_event(rv, event(i))
+        return lambda: rv.pspace.probability(condition)
+    return build
+
+
+def _sp_probability_equalities(pmf, event):
     def build(i):
         from sympy.stats import P
         rv = _sp_rv(pmf(i))
-        condition = _sp_event(rv, event(i))
+        condition = _sp_equalities(rv, event(i))
         return lambda: P(condition)
     return build
 
@@ -512,6 +547,15 @@ def _sp_condition(pmf, event):
         from sympy.stats import density, given
         rv = _sp_rv(pmf(i))
         condition = _sp_event(rv, event(i))
+        return lambda: density(given(rv, condition)).dict
+    return build
+
+
+def _sp_condition_equalities(pmf, event):
+    def build(i):
+        from sympy.stats import density, given
+        rv = _sp_rv(pmf(i))
+        condition = _sp_equalities(rv, event(i))
         return lambda: density(given(rv, condition)).dict
     return build
 
@@ -526,20 +570,30 @@ def _sp_cdf(pmf, point):
     return build
 
 
-def _sp_moment(pmf, order):
+def _sp_cdf_pspace(pmf, point):
+    """``FinitePSpace.compute_cdf(X)[x]``: the table that ``cdf(X)`` returns, without the dispatch around it."""
     def build(i):
-        from sympy.stats import moment
+        from sympy import Rational
+        rv = _sp_rv(pmf(i))
+        x = Rational(*point(i))
+        return lambda: rv.pspace.compute_cdf(rv)[x]
+    return build
+
+
+def _sp_moment(pmf, order):
+    """``FinitePSpace.compute_expectation(X**n)``: what ``moment(X, n)`` computes, without the dispatch around it."""
+    def build(i):
         rv = _sp_rv(pmf(i))
         n = order(i)
-        return lambda: moment(rv, n)
+        return lambda: rv.pspace.compute_expectation(rv ** n)
     return build
 
 
 def _sp_expectation(pmf):
+    """``FinitePSpace.compute_expectation(X)``: what ``E(X)`` computes, without the dispatch around it."""
     def build(i):
-        from sympy.stats import E
         rv = _sp_rv(pmf(i))
-        return lambda: E(rv)
+        return lambda: rv.pspace.compute_expectation(rv)
     return build
 
 
@@ -585,6 +639,9 @@ def _sp_variance(sample, ddof=0):
 
 
 def _sp_stddev(sample, ddof=0):
+    """The unreduced root of the variance, ``sqrt(variance, evaluate=False)``, which is what ``mathforge.stddev``
+    returns: ``sympy.sqrt(variance)`` also simplifies the radical (factoring the numerator and the denominator),
+    most of its time, and returns another form of the same number."""
     def build(i):
         from sympy import sqrt
         data = _sp_data(sample(i))
@@ -592,7 +649,7 @@ def _sp_stddev(sample, ddof=0):
 
         def stddev():
             total = sum(data)
-            return sqrt((sum(x * x for x in data) - total * total / n) / (n - ddof))
+            return sqrt((sum(x * x for x in data) - total * total / n) / (n - ddof), evaluate=False)
         return stddev
     return build
 
@@ -675,17 +732,17 @@ FIXTURES = (
     # probability -----------------------------------------------------------------------------------------------------
     _fixture("probability", "micro", "five_outcomes",
              _mf_on_distribution(mf.probability, _micro_pmf, _micro_event, _mf_pairs),
-             _sp_probability(_micro_pmf, _micro_event), _same_rational, variants=MICRO),
+             _sp_probability_equalities(_micro_pmf, _micro_event), _same_rational, variants=MICRO),
     _fixture("probability", "realistic", "binomial41",
              _mf_on_distribution(mf.probability, lambda i: _binomial41_pmf(), _binomial41_event, _mf_pairs),
-             _sp_probability(lambda i: _binomial41_pmf(), _binomial41_event), _same_rational),
+             _sp_probability_pspace(lambda i: _binomial41_pmf(), _binomial41_event), _same_rational),
     _fixture("probability", "realistic", "outcomes_120",
              _mf_on_distribution(mf.probability, lambda i: _scaled_pmf(), _scaled_event, _mf_pairs),
-             _sp_probability(lambda i: _scaled_pmf(), _scaled_event), _same_rational),
+             _sp_probability_pspace(lambda i: _scaled_pmf(), _scaled_event), _same_rational),
     # condition -------------------------------------------------------------------------------------------------------
     _fixture("condition", "micro", "five_outcomes",
              _mf_on_distribution(mf.condition, _micro_pmf, _micro_event_pair, _mf_pairs),
-             _sp_condition(_micro_pmf, _micro_event_pair), _same_pmf, variants=MICRO),
+             _sp_condition_equalities(_micro_pmf, _micro_event_pair), _same_pmf, variants=MICRO),
     _fixture("condition", "realistic", "binomial41",
              _mf_on_distribution(mf.condition, lambda i: _binomial41_pmf(), _binomial41_event, _mf_pairs),
              _sp_condition(lambda i: _binomial41_pmf(), _binomial41_event), _same_pmf),
@@ -700,7 +757,7 @@ FIXTURES = (
              _sp_cdf(lambda i: _binomial41_pmf(), lambda i: (12, 1)), _same_rational),
     _fixture("cdf", "realistic", "outcomes_120",
              _mf_on_distribution(mf.cdf, lambda i: _scaled_pmf(), lambda i: (60, 7), _mf_point),
-             _sp_cdf(lambda i: _scaled_pmf(), lambda i: (60, 7)), _same_rational),
+             _sp_cdf_pspace(lambda i: _scaled_pmf(), lambda i: (60, 7)), _same_rational),
     # moment ----------------------------------------------------------------------------------------------------------
     _fixture("moment", "micro", "five_outcomes", _mf_on_distribution(mf.moment, _micro_pmf, _micro_order, int),
              _sp_moment(_micro_pmf, _micro_order), _same_rational, variants=MICRO),

@@ -1,19 +1,27 @@
 """The v0.8 speed suite, the measuring instrument of the Phase 1 speed gate.
 
     python benchmarks/speed_suite.py --output docs/v08/speed/latest.json [--details PATH] [--rounds 3] [--repeat 9]
-        [--warmups 2] [--cpu N] [--areas a,b] [--ops x,y] [--sample-ms 2]
+        [--warmups 2] [--cpu N] [--areas a,b] [--ops x,y] [--sample-ms 2] [--allow-quick]
 
 Every Fixture of benchmarks/speed/fixtures/<area>.py (one module per registry area; --areas and --ops select) times a
 public MathForge value function, which verifies its own value, against the fastest public SymPy call that returns the
 same mathematical object. Run it with the interpreter that has SymPy 1.14 (.venv-mcp) and gate its details with
 tools/check_speed.py.
 
+Measurement protocol. A gate run takes at least MIN_ROUNDS (3) rounds of at least MIN_REPEAT (9) samples, with every
+worker pinned to a cpu (--cpu N), over every area: the same SymPy call has measured 3.3 times slower in one run than in
+another, and tools/check_speed.py fails any fixture whose worst round ratio is above the limit. The suite refuses fewer
+rounds, fewer repeats or an unpinned run unless --allow-quick is given, and a run with --allow-quick says that it is not a
+gate run. --areas and --ops select what is measured; they write the details only, which the gate cannot pass.
+
 Method
 * One fresh worker process per round: sys.executable, with this repository's src first on sys.path and
   SYMPY_GROUND_TYPES=python and MPMATH_NOGMPY=1 in its environment. The worker asserts that mathforge was imported from
   that src, and that SymPy and mpmath run their pure Python types. Every round must report the same SHA-256 over
-  src/mathforge/**/*.py, sorted by path (source_hash), or the run stops and writes nothing. --cpu N pins the worker to
-  one logical CPU (os.sched_setaffinity on Linux, SetProcessAffinityMask on Windows).
+  src/mathforge/**/*.py, sorted by path (source_hash), and the same SHA-256 over benchmarks/speed_suite.py and
+  benchmarks/speed/** (instrument_hash: the fixtures, their references and the suite itself), and both are taken again
+  at the end of each round, in the worker and in the parent, or the run stops and writes nothing. --cpu N pins the
+  worker to one logical CPU (os.sched_setaffinity on Linux, SetProcessAffinityMask on Windows).
 * In a round the fixtures run in an order shuffled by random.Random(20261019 + round). For each Fixture:
     first_call  the first MathForge call alone, on variant 0, after a reset;
     warmups     --warmups passes, each running both sides on variants 0 to min(variants, 5) - 1 and checking `agree`;
@@ -37,8 +45,9 @@ Method
 
 Files
 * --details (default: --output with "-details" added to its stem): {"meta": ..., "fixtures": {id: ...}, "exempt":
-  {id: ...}}. meta holds the source hash (source_sha256), the Python, SymPy and mpmath versions, the ground types, cpu,
-  rounds, repeat, warmups, sample_ms, the date, and areas, ops and partial. A fixture entry holds its operation, size,
+  {id: ...}}. meta holds the source hash (source_sha256), the instrument hash (instrument_sha256), the Python, SymPy and
+  mpmath versions, the ground types, cpu, rounds, repeat, warmups, sample_ms, the date, areas, ops and partial. A
+  fixture entry holds its operation, size,
   label, variants, k, v07 and reference, the modes mathforge, sympy_reset and sympy_warm (median_us, min_us, p95_us,
   round_medians_us and the raw samples_us), ratio, first_call, and structured (median_us, value_median_us,
   overhead_us, or the error that stopped it). An exempt entry holds timed and budget (as a mode), budget_met and reason.
@@ -47,8 +56,9 @@ Files
   is written as the exemption object with budget_met false, so that the file fails it however good its ratios are.
 * A partial run (--areas or --ops) writes the details only.
 
-Exit status: 0 when the run completes, whatever the ratios; the gate is tools/check_speed.py. A bad option, a fixture
-that disagrees with SymPy, a failed round or a changed source tree stops the run with status 2 and writes nothing.
+Exit status: 0 when the run completes, whatever the ratios; the gate is tools/check_speed.py. A bad option, a run below
+the protocol without --allow-quick, a fixture that disagrees with SymPy, a failed round or a source tree or suite that
+changed during the run stops it with status 2 and writes nothing.
 --modules (comma-separated dotted module names, which replace the area modules and cannot go with --areas) is for the
 suite's own tests. Dev tooling: mathforge never imports it. Results stay under the gitignored docs/v08/speed/.
 """
@@ -90,6 +100,8 @@ AGREE_VARIANTS = 5  # A warmup compares the two sides on variants 0 to min(varia
 STRUCTURED_CALLS = 100  # The most calls of one path in a structured sample: it is reported only, so it stays cheap.
 REFERENCE_ENVIRONMENT = {"SYMPY_GROUND_TYPES": "python", "MPMATH_NOGMPY": "1"}
 DETAILS_FORMAT = 1
+MIN_ROUNDS = 3  # The measurement protocol of a gate run (tools/check_speed.py requires it of the details).
+MIN_REPEAT = 9
 
 
 class SuiteError(Exception):
@@ -115,6 +127,33 @@ def source_hash(root: Path = ROOT) -> str:
     for path in paths:
         digest.update(path.relative_to(root).as_posix().encode("utf-8") + b"\0" + path.read_bytes())
     return digest.hexdigest()
+
+
+def instrument_hash(root: Path = ROOT) -> str:
+    """SHA-256 over benchmarks/speed_suite.py and every file under benchmarks/speed/ (the fixtures, their references
+    and the helpers) except bytecode caches, sorted by path, each as its root-relative path, a NUL and its bytes: what
+    the measuring instrument was when a measurement was taken, which source_hash does not cover. tools/check_speed.py
+    compares the working tree's with the details'."""
+    root = Path(root)
+    suite = root / "benchmarks" / "speed_suite.py"
+    package = root / "benchmarks" / "speed"
+    if not suite.is_file() or not package.is_dir():
+        raise SuiteError(f"{suite} or {package} is missing: there is no instrument to hash")
+    paths = [suite, *(path for path in package.rglob("*")
+                      if path.is_file() and "__pycache__" not in path.parts and path.suffix not in (".pyc", ".pyo"))]
+    digest = hashlib.sha256()
+    for path in sorted(paths, key=lambda path: path.relative_to(root).as_posix()):
+        digest.update(path.relative_to(root).as_posix().encode("utf-8") + b"\0" + path.read_bytes())
+    return digest.hexdigest()
+
+
+def current_ids(areas: Sequence[str] | None = None) -> tuple[set[str], set[str]]:
+    """(the ids of the Fixtures, the ids of the ExemptFixtures) that the area modules define now: what a complete run
+    measures, and what tools/check_speed.py compares the measured ids with."""
+    fixture_type, exempt_type = fixture_types()
+    entries = load_entries(module_names(areas, None), None)
+    return ({entry_id(entry) for entry in entries if isinstance(entry, fixture_type)},
+            {entry_id(entry) for entry in entries if isinstance(entry, exempt_type)})
 
 
 def repository_importable() -> None:
@@ -521,7 +560,8 @@ def run_worker(arguments: argparse.Namespace) -> int:
     rng = random.Random(SEED + arguments.round_index)
     rng.shuffle(entries)
     reset = Reset()
-    record: dict[str, Any] = {"round": arguments.round_index, "source_sha256": source_hash(), "modules": names,
+    record: dict[str, Any] = {"round": arguments.round_index, "source_sha256": source_hash(),
+                              "instrument_sha256": instrument_hash(), "modules": names,
                               "mathforge_version": mathforge.__version__, "python": platform.python_version(),
                               "platform": platform.platform(), "environment": environment, "fixtures": {},
                               "exempt": {}}
@@ -541,8 +581,21 @@ def run_worker(arguments: argparse.Namespace) -> int:
             summary = (f"timed {median(measured['samples_us']['timed']):.3f} us, "
                        f"budget {median(measured['samples_us']['budget']):.3f} us")
         print(f"round {arguments.round_index + 1} [{index}/{len(entries)}] {identifier}: {summary}", flush=True)
+    require_unchanged(record["source_sha256"], record["instrument_sha256"], f"round {arguments.round_index + 1}")
     arguments.worker_result.write_text(json.dumps(record, allow_nan=False), encoding="utf-8")
     return 0
+
+
+def require_unchanged(source: str, instrument: str, when: str) -> None:
+    """Hash the source and the instrument again and stop when either is not what the run started with: a file
+    edited while a round was measuring would leave a round that no hash describes."""
+    changed = [f"{what} {start[:12]} became {now[:12]}"
+               for what, start, now in (("src/mathforge", source, source_hash()),
+                                        ("benchmarks/speed_suite.py and benchmarks/speed", instrument,
+                                         instrument_hash())) if start != now]
+    if changed:
+        raise SuiteError(f"the measured code changed during {when} ({'; '.join(changed)}), so its measurements "
+                         "belong to no tree; nothing was written")
 
 
 # --- The parent: rounds, aggregation, files ---------------------------------------------------------------------
@@ -719,10 +772,20 @@ def run_parent(arguments: argparse.Namespace) -> int:
     areas, ops = parse_list(arguments.areas), parse_list(arguments.ops)
     partial_run = areas is not None or ops is not None
     module_names(areas, parse_list(arguments.modules))  # A misspelled area is refused here, before a worker starts.
+    below = protocol_shortfalls(arguments)
+    if below and not arguments.allow_quick:
+        raise SuiteError(f"this is not a gate run: {'; '.join(below)}. A gate run takes --rounds {MIN_ROUNDS} or more, "
+                         f"--repeat {MIN_REPEAT} or more and --cpu N; pass --allow-quick for a smaller run, which "
+                         "tools/check_speed.py accepts only with its own --allow-quick")
+    quick_note = None
+    if arguments.allow_quick:
+        reasons = [*below, *(["a partial run (--areas or --ops)"] if partial_run else [])]
+        quick_note = "not a gate run (--allow-quick)" + (f": {'; '.join(reasons)}" if reasons else "")
+        print(quick_note, flush=True)
     require_writable(details_path)
     if not partial_run:
         require_writable(output)
-    expected = source_hash()
+    expected, expected_instrument = source_hash(), instrument_hash()
     environment = dict(os.environ, **REFERENCE_ENVIRONMENT)
     rounds: list[dict[str, Any]] = []
     with tempfile.TemporaryDirectory(prefix="mathforge-speed-") as scratch:
@@ -739,13 +802,17 @@ def run_parent(arguments: argparse.Namespace) -> int:
             if completed.returncode != 0:
                 raise SuiteError(f"round {index + 1} of {arguments.rounds} failed with exit status "
                                  f"{completed.returncode}; nothing was written")
+            require_unchanged(expected, expected_instrument, f"round {index + 1} of {arguments.rounds}")
             rounds.append(json.loads(result.read_text(encoding="utf-8")))
-    hashes = {record["source_sha256"] for record in rounds} | {expected}
-    if len(hashes) != 1:
-        raise SuiteError("the source changed during the run, so the rounds measured different code "
-                         f"({', '.join(sorted(h[:12] for h in hashes))}); nothing was written")
+    for what, key, wanted in (("source", "source_sha256", expected), ("instrument", "instrument_sha256",
+                                                                      expected_instrument)):
+        hashes = {record[key] for record in rounds} | {wanted}
+        if len(hashes) != 1:
+            raise SuiteError(f"the {what} changed during the run, so the rounds measured different code "
+                             f"({', '.join(sorted(h[:12] for h in hashes))}); nothing was written")
     first = rounds[0]
-    meta = {"format": DETAILS_FORMAT, "source_sha256": expected, "mathforge_version": first["mathforge_version"],
+    meta = {"format": DETAILS_FORMAT, "source_sha256": expected, "instrument_sha256": expected_instrument,
+            "mathforge_version": first["mathforge_version"],
             "python": first["python"], "platform": first["platform"], **first["environment"],
             "cpu": arguments.cpu, "rounds": arguments.rounds, "repeat": arguments.repeat,
             "warmups": arguments.warmups, "sample_ms": arguments.sample_ms,
@@ -760,7 +827,21 @@ def run_parent(arguments: argparse.Namespace) -> int:
     else:
         write_json(output, build_criteria(details))
         print(f"speed file: {output}")
+    if quick_note:
+        print(quick_note)
     return 0
+
+
+def protocol_shortfalls(arguments: argparse.Namespace) -> list[str]:
+    """How a run falls short of the measurement protocol of a gate run: rounds, repeats and a pinned cpu."""
+    below = []
+    if arguments.rounds < MIN_ROUNDS:
+        below.append(f"{arguments.rounds} rounds, not {MIN_ROUNDS}")
+    if arguments.repeat < MIN_REPEAT:
+        below.append(f"{arguments.repeat} repeats, not {MIN_REPEAT}")
+    if arguments.cpu is None:
+        below.append("no --cpu, so the workers are not pinned")
+    return below
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -777,6 +858,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--ops", help="comma-separated operations to run, for example det,rref")
     parser.add_argument("--sample-ms", type=float, default=2.0,
                         help="the least duration of a SymPy sample, in milliseconds (default 2)")
+    parser.add_argument("--allow-quick", action="store_true",
+                        help="allow fewer than 3 rounds, fewer than 9 repeats or no --cpu: the run prints that it is "
+                             "not a gate run, and tools/check_speed.py takes its details only with --allow-quick")
     parser.add_argument("--modules", help="comma-separated importable modules that define FIXTURES, in place of the "
                                           "area modules of benchmarks/speed/fixtures: for the suite's own tests")
     parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)

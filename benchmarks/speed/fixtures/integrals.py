@@ -14,7 +14,10 @@ its variants. Indefinite integrals are compared by derivative: two primitives ag
 derivative zero. Every ``reference`` lists the candidates with their median time in microseconds on that fixture's
 inputs, with SymPy's caches cleared before each call (Python 3.14.6, SymPy 1.14.0, python ground types); there g is
 the integrand as a function, f as a rational function, x its symbol and (a, b) the bounds. The chosen call is the
-fastest, except that a candidate within 15% of the conventional ``integrate`` is not preferred to it.
+fastest same-object call, whatever it is named: ``integrate`` wins no tie, and ``risch_integrate``, ``ratint`` or
+``manualintegrate`` are references wherever they are the fastest. A reference that was re-pointed was measured again
+with the suite's own sampling, together with the call it replaced: 31 to 127 interleaved samples of k calls, caches
+reset before each.
 """
 
 from __future__ import annotations
@@ -61,18 +64,18 @@ _REFERENCES: dict[str, str] = {
         "integrate(g, x) 2486 us (chosen); Integral(g, x).doit() 2488 us; manualintegrate(g, x) 15776 "
         "us; heurisch(g, x) 16789 us"),
     "function_antiderivative/realistic/polynomial_times_exp": (
-        "integrate(g, x) 18795 us (chosen); risch_integrate(g, x) 16013 us; Integral(g, x).doit() "
-        "19488 us; heurisch(g, x) 39137 us; manualintegrate(g, x) 404057 us; integrate(g, x) was the "
-        "v0.7 reference; risch_integrate is 15% faster, within the margin"),
+        "risch_integrate(g, x) 13359 us (chosen); integrate(g, x) 16384 us; first pass, an earlier machine state: "
+        "Integral(g, x).doit() 19488 us; heurisch(g, x) 39137 us; manualintegrate(g, x) 404057 us; integrate(g, x) "
+        "was the v0.7 reference"),
     "function_antiderivative/realistic/x_exp": (
-        "integrate(g, x) 11473 us (chosen); risch_integrate(g, x) 10361 us; Integral(g, x).doit() "
-        "11474 us; heurisch(g, x) 16556 us; manualintegrate(g, x) 31087 us"),
+        "risch_integrate(g, x) 8477 us (chosen); integrate(g, x) 9182 us; first pass, an earlier machine state: "
+        "Integral(g, x).doit() 11474 us; heurisch(g, x) 16556 us; manualintegrate(g, x) 31087 us"),
     "function_antiderivative/realistic/x_squared_sin": (
         "manualintegrate(g, x) 35731 us (chosen); heurisch(g, x) 55135 us; integrate(g, x) 57252 us; "
         "Integral(g, x).doit() 57778 us"),
     "function_antiderivative/realistic/x_log_x": (
-        "integrate(g, x) 16592 us (chosen); risch_integrate(g, x) 14753 us; Integral(g, x).doit() "
-        "17072 us; heurisch(g, x) 34691 us; manualintegrate(g, x) 97197 us"),
+        "risch_integrate(g, x) 14452 us (chosen); integrate(g, x) 15259 us; first pass, an earlier machine state: "
+        "Integral(g, x).doit() 17072 us; heurisch(g, x) 34691 us; manualintegrate(g, x) 97197 us"),
     "function_antiderivative/realistic/rational_atan": (
         "manualintegrate(g, x) 3866 us (chosen); risch_integrate(g, x) 13726 us; integrate(g, x) "
         "13770 us; Integral(g, x).doit() 13809 us; heurisch(g, x) 14315 us"),
@@ -80,8 +83,8 @@ _REFERENCES: dict[str, str] = {
         "risch_integrate(g, x) 22566 us (chosen); integrate(g, x) 26820 us; Integral(g, x).doit() "
         "27274 us; heurisch(g, x) 108926 us; manualintegrate(g, x) 2596800 us"),
     "function_integrate/micro/cos_kx_unit_interval": (
-        "integrate(g, (x, a, b)) 5458 us (chosen); integrate(..., meijerg=False) 5252 us; Integral(g, "
-        "(x, a, b)).doit() 5356 us; integrate(..., manual=True) 19686 us"),
+        "integrate(..., meijerg=False) 3573 us (chosen); integrate(g, (x, a, b)) 3595 us; Integral(g, (x, a, "
+        "b)).doit() 3632 us; first pass, an earlier machine state: integrate(..., manual=True) 19686 us"),
     "function_integrate/realistic/rational_squared": (
         "integrate(g, (x, a, b)) 29312 us (chosen); integrate(..., meijerg=False) 29430 us; "
         "Integral(g, (x, a, b)).doit() 29798 us; integrate(..., manual=True) 2084902 us; integrate(g, "
@@ -90,26 +93,28 @@ _REFERENCES: dict[str, str] = {
         "integrate(g, (x, a, b)) 14392 us (chosen); integrate(..., meijerg=False) 14640 us; "
         "Integral(g, (x, a, b)).doit() 14654 us; integrate(..., manual=True) 35608 us"),
     "function_integrate/realistic/x_squared_sin_unit_interval": (
-        "integrate(g, (x, a, b)) 64275 us (chosen); Integral(g, (x, a, b)).doit() 61245 us; "
-        "integrate(..., meijerg=False) 61711 us; integrate(..., manual=True) 80783 us"),
+        "integrate(g, (x, a, b)) 55432 us (chosen); integrate(..., meijerg=False) 55511 us; Integral(g, (x, a, "
+        "b)).doit() 56141 us; first pass, an earlier machine state: integrate(..., manual=True) 80783 us"),
     "function_integrate/realistic/x_log_x_one_to_two": (
-        "integrate(g, (x, a, b)) 22596 us (chosen); Integral(g, (x, a, b)).doit() 22225 us; "
-        "integrate(..., meijerg=False) 22394 us; integrate(..., manual=True) 99791 us"),
+        "Integral(g, (x, a, b)).doit() 22175 us (chosen); integrate(g, (x, a, b)) 22197 us; first pass, an earlier "
+        "machine state: integrate(..., meijerg=False) 22394 us; integrate(..., manual=True) 99791 us"),
     "function_integrate/realistic/scaled_degree8_times_exp": (
-        "integrate(g, (x, a, b)) 56790 us (chosen); Integral(g, (x, a, b)).doit() 54543 us; "
-        "integrate(..., meijerg=False) 54946 us; integrate(..., manual=True) 5460342 us"),
+        "integrate(g, (x, a, b)) 54276 us (chosen); integrate(..., meijerg=False) 54560 us; Integral(g, (x, a, "
+        "b)).doit() 54800 us; first pass, an earlier machine state: integrate(..., manual=True) 5460342 us"),
     "rational_antiderivative/micro/constant_over_linear": (
         "integrate(f, x) 3487 us (chosen); ratint(f, x) 7009 us; manualintegrate(f, x) 25483 us"),
     "rational_antiderivative/realistic/atan_quadratic": (
         "manualintegrate(f, x) 4123 us (chosen); ratint(f, x) 12241 us; integrate(f, x) 13928 us"),
     "rational_antiderivative/realistic/linear_over_irreducible_quadratic": (
-        "integrate(f, x) 23062 us (chosen); ratint(f, x) 19865 us; manualintegrate(f, x) 114588 us"),
+        "ratint(f, x) 19123 us (chosen); integrate(f, x) 23046 us; first pass, an earlier machine state: "
+        "manualintegrate(f, x) 114588 us"),
     "rational_antiderivative/realistic/two_simple_poles": (
         "ratint(f, x) 13015 us (chosen); integrate(f, x) 17312 us; manualintegrate(f, x) 728071 us"),
     "rational_antiderivative/realistic/repeated_quadratic": (
         "ratint(f, x) 11339 us (chosen); integrate(f, x) 14802 us; manualintegrate(f, x) 2412201 us"),
     "rational_antiderivative/realistic/scaled_four_factors": (
-        "integrate(f, x) 110320 us (chosen); ratint(f, x) 100471 us; manualintegrate(f, x) 2933214 us"),
+        "ratint(f, x) 93579 us (chosen); integrate(f, x) 104494 us; first pass, an earlier machine state: "
+        "manualintegrate(f, x) 2933214 us"),
     "rational_integrate/micro/constant_over_linear": (
         "integrate(f, (x, a, b)) 7366 us (chosen); integrate(..., meijerg=False) 7484 us; Integral(f, "
         "(x, a, b)).doit() 7488 us; integrate(..., manual=True) 24676 us"),
@@ -117,17 +122,17 @@ _REFERENCES: dict[str, str] = {
         "integrate(..., manual=True) 8454 us (chosen); Integral(f, (x, a, b)).doit() 17249 us; "
         "integrate(..., meijerg=False) 17418 us; integrate(f, (x, a, b)) 17922 us"),
     "rational_integrate/realistic/two_simple_poles_unit_interval": (
-        "integrate(f, (x, a, b)) 28218 us (chosen); integrate(..., meijerg=False) 27786 us; "
-        "Integral(f, (x, a, b)).doit() 27993 us; integrate(..., manual=True) 744727 us"),
+        "integrate(..., meijerg=False) 25146 us (chosen); integrate(f, (x, a, b)) 25291 us; first pass, an earlier "
+        "machine state: Integral(f, (x, a, b)).doit() 27993 us; integrate(..., manual=True) 744727 us"),
     "rational_integrate/realistic/x_over_quadratic": (
-        "integrate(f, (x, a, b)) 16127 us (chosen); Integral(f, (x, a, b)).doit() 16076 us; "
-        "integrate(..., meijerg=False) 16201 us; integrate(..., manual=True) 20173 us"),
+        "integrate(f, (x, a, b)) 14099 us (chosen); Integral(f, (x, a, b)).doit() 14870 us; first pass, an earlier "
+        "machine state: integrate(..., meijerg=False) 16201 us; integrate(..., manual=True) 20173 us"),
     "rational_integrate/realistic/irreducible_quadratic": (
-        "integrate(f, (x, a, b)) 27263 us (chosen); Integral(f, (x, a, b)).doit() 27204 us; "
-        "integrate(..., meijerg=False) 27560 us; integrate(..., manual=True) 134038 us"),
+        "integrate(f, (x, a, b)) 25182 us (chosen); Integral(f, (x, a, b)).doit() 26163 us; first pass, an earlier "
+        "machine state: integrate(..., meijerg=False) 27560 us; integrate(..., manual=True) 134038 us"),
     "rational_integrate/realistic/scaled_double_pole": (
-        "integrate(f, (x, a, b)) 38618 us (chosen); integrate(..., meijerg=False) 36636 us; "
-        "Integral(f, (x, a, b)).doit() 39607 us; integrate(..., manual=True) 15439321 us"),
+        "integrate(..., meijerg=False) 35994 us (chosen); integrate(f, (x, a, b)) 36321 us; first pass, an earlier "
+        "machine state: Integral(f, (x, a, b)).doit() 39607 us; integrate(..., manual=True) 15439321 us"),
 }
 
 
@@ -293,6 +298,19 @@ def _definite_text(text, lower, upper):
     return lambda: sp.integrate(function, (x, lower, upper))
 
 
+def _definite_text_without_meijerg(text, lower, upper):
+    import sympy as sp
+    function, x = _expression(text), sympy_symbols()[X]
+    return lambda: sp.integrate(function, (x, lower, upper), meijerg=False)
+
+
+def _definite_text_doit(text, lower, upper):
+    """``Integral(g, (x, a, b)).doit()``, the call that ``integrate`` makes."""
+    import sympy as sp
+    function, x = _expression(text), sympy_symbols()[X]
+    return lambda: sp.Integral(function, (x, lower, upper)).doit()
+
+
 # --- rational integrands -------------------------------------------------------------------------------------------
 
 
@@ -362,6 +380,11 @@ def _definite_manual_call(function, x, lower, upper):
     return lambda: sp.integrate(function, (x, lower, upper), manual=True)
 
 
+def _definite_without_meijerg_call(function, x, lower, upper):
+    import sympy as sp
+    return lambda: sp.integrate(function, (x, lower, upper), meijerg=False)
+
+
 def _positive_line_parts(i):
     """p/(x + c) with c in [1, 9] and p in [1, 9]."""
     c, p = decode(i % 81, 9, 9)
@@ -405,23 +428,24 @@ FIXTURES = (
                       form="object"),
     # function_antiderivative
     _primitive_fixture("micro", "cos_kx", lambda i: f"cos({i + 1}*x)", _integrate_text, variants=1000),
-    _primitive_fixture("realistic", "polynomial_times_exp", lambda i: "(x**3-2*x+1)*exp(2*x)", _integrate_text,
+    _primitive_fixture("realistic", "polynomial_times_exp", lambda i: "(x**3-2*x+1)*exp(2*x)", _risch_text,
                        variants=1, v07="elementary_integral"),
-    _primitive_fixture("realistic", "x_exp", lambda i: "x*exp(x)", _integrate_text, variants=1),
+    _primitive_fixture("realistic", "x_exp", lambda i: "x*exp(x)", _risch_text, variants=1),
     _primitive_fixture("realistic", "x_squared_sin", lambda i: "x**2*sin(x)", _manual_text, variants=1),
-    _primitive_fixture("realistic", "x_log_x", lambda i: "x*log(x)", _integrate_text, variants=1),
+    _primitive_fixture("realistic", "x_log_x", lambda i: "x*log(x)", _risch_text, variants=1),
     _primitive_fixture("realistic", "rational_atan", lambda i: "1/(1+x**2)", _manual_text, variants=1),
     _primitive_fixture("realistic", "scaled_degree8_times_exp", lambda i: "(x**8-4*x**5+2*x**3-x+7)*exp(2*x)",
                        _risch_text, variants=1),
     # function_integrate
-    _definite_fixture_text("micro", "cos_kx_unit_interval", lambda i: f"cos({i + 1}*x)", 0, 1, _definite_text,
-                           variants=1000),
+    _definite_fixture_text("micro", "cos_kx_unit_interval", lambda i: f"cos({i + 1}*x)", 0, 1,
+                           _definite_text_without_meijerg, variants=1000),
     _definite_fixture_text("realistic", "rational_squared", lambda i: "1/(1+x*x)**2", 0, 1, _definite_text,
                            variants=1, v07="definite_integral"),
     _definite_fixture_text("realistic", "x_exp_unit_interval", lambda i: "x*exp(x)", 0, 1, _definite_text, variants=1),
     _definite_fixture_text("realistic", "x_squared_sin_unit_interval", lambda i: "x**2*sin(x)", 0, 1,
                            _definite_text, variants=1),
-    _definite_fixture_text("realistic", "x_log_x_one_to_two", lambda i: "x*log(x)", 1, 2, _definite_text, variants=1),
+    _definite_fixture_text("realistic", "x_log_x_one_to_two", lambda i: "x*log(x)", 1, 2, _definite_text_doit,
+                           variants=1),
     _definite_fixture_text("realistic", "scaled_degree8_times_exp", lambda i: "(x**8-4*x**5+2*x**3-x+7)*exp(2*x)",
                            1, 2, _definite_text, variants=1),
     # rational_antiderivative
@@ -431,7 +455,7 @@ FIXTURES = (
     _rational_primitive_fixture("realistic", "atan_quadratic", lambda i: (lambda x: (1, x * x + 1)), _manual_call,
                                 variants=1),
     _rational_primitive_fixture("realistic", "linear_over_irreducible_quadratic",
-                                lambda i: (lambda x: (x + 3, x * x + 4 * x + 8)), _integrate_call, variants=1),
+                                lambda i: (lambda x: (x + 3, x * x + 4 * x + 8)), _ratint_call, variants=1),
     _rational_primitive_fixture("realistic", "two_simple_poles", lambda i: (lambda x: (1, (x + 1) * (x + 2))),
                                 _ratint_call, variants=1),
     _rational_primitive_fixture("realistic", "repeated_quadratic", lambda i: (lambda x: (x ** 3, (x * x + 1) ** 2)),
@@ -439,7 +463,7 @@ FIXTURES = (
     _rational_primitive_fixture(
         "realistic", "scaled_four_factors",
         lambda i: (lambda x: (3 * x ** 4 + 2 * x ** 3 + x + 5, (x * x + 1) * (x * x + x + 1) * (x - 2))),
-        _integrate_call, variants=1),
+        _ratint_call, variants=1),
     # rational_integrate
     _rational_definite_fixture("micro", "constant_over_linear", _positive_line_parts, _positive_line_bounds,
                                _definite_integrate_call, variants=1000),
@@ -447,14 +471,14 @@ FIXTURES = (
                                lambda i: (0, 1), _definite_manual_call, variants=1),
     _rational_definite_fixture("realistic", "two_simple_poles_unit_interval",
                                lambda i: (lambda x: (1, (x + 1) * (x + 2))), lambda i: (0, 1),
-                               _definite_integrate_call, variants=1),
+                               _definite_without_meijerg_call, variants=1),
     _rational_definite_fixture("realistic", "x_over_quadratic", lambda i: (lambda x: (x, x * x + 1)),
                                lambda i: (0, 2), _definite_integrate_call, variants=1),
     _rational_definite_fixture("realistic", "irreducible_quadratic", lambda i: (lambda x: (1, x * x + x + 1)),
                                lambda i: (0, 1), _definite_integrate_call, variants=1),
     _rational_definite_fixture("realistic", "scaled_double_pole",
                                lambda i: (lambda x: (2 * x + 3, (x + 1) ** 2 * (x + 2))), lambda i: (3, 5),
-                               _definite_integrate_call, variants=1),
+                               _definite_without_meijerg_call, variants=1),
 )
 
 # --- edge cases ----------------------------------------------------------------------------------------------------

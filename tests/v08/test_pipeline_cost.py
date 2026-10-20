@@ -1,7 +1,9 @@
 """The structured pipeline's fixed cost: records built once from pieces inspected once, with v0.7's bytes.
 
-tests/fixtures/v8/structured_v07.json holds, for every v0.7 operation that v0.8 does not supersede, the dumps of one
-structured call made on the v0.7 tree by tools/snapshot_structured.py; the current code must give the same text.
+tests/fixtures/v8/structured_v07.json holds, for every v0.7 operation but verify, the dumps of one structured call made
+on the v0.7 tree by tools/snapshot_structured.py; the current code must give the same text. v0.8.0 ships no superseding
+v6 family, so there is no exception: rref, rank, nullspace, solve_system, rowspace, columnspace, least_squares,
+evaluate_algebraic and function_taylor are held to v0.7's bytes like the rest.
 """
 
 import importlib.util
@@ -22,6 +24,9 @@ TOOL = REPOSITORY / "tools" / "snapshot_structured.py"
 # The modules of the structured pipeline: run(), the records' builders and the verifier.
 PIPELINE = frozenset({"mathforge.operations", "mathforge.operations_v5", "mathforge.dispatch_v5", "mathforge.contracts",
                       "mathforge.verification", "mathforge.verification_v5"})
+# The v0.7 operations without a golden record: verify checks a Result rather than an input, and continued_fraction is
+# v0.8's own pilot family (not a v0.7 operation at all). Nothing else is left out, and no family supersedes anything.
+NO_GOLDEN = frozenset({"verify", "continued_fraction"})
 
 
 def load_tool():
@@ -50,7 +55,14 @@ class PipelineCostTest(unittest.TestCase):
     def test_structured_bytes_unchanged(self):
         stored = json.loads(GOLDEN.read_text(encoding="utf-8"))
         tool = load_tool()
-        expected = ({spec.name for spec in V07_SPECS} | {entry.name for entry in LEGACY_CATALOG}) - tool.EXCLUDED
+        self.assertEqual(tool.EXCLUDED, NO_GOLDEN)  # The tool leaves out what this test does, and nothing else.
+        v07_operations = {spec.name for spec in V07_SPECS} | {entry.name for entry in LEGACY_CATALOG}
+        expected = v07_operations - NO_GOLDEN
+        self.assertEqual(len(v07_operations), 102)
+        self.assertEqual(len(expected), 101)  # Every v0.7 operation but verify, the nine formerly "superseded" included.
+        for superseded in ("rref", "rank", "nullspace", "solve_system", "rowspace", "columnspace", "least_squares",
+                           "evaluate_algebraic", "function_taylor"):
+            self.assertIn(superseded, stored)
         self.assertEqual(set(stored), expected)
         arguments = tool.arguments()
         self.assertEqual(set(arguments), expected)

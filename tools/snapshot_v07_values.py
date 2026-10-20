@@ -17,10 +17,19 @@ writes one file per area, ``<out-dir>/<area>.json``, from the module benchmarks/
   against the same sources changes nothing.
 
 mathforge is imported from PYTHONPATH: run the tool against a v0.7 tree, never against the code the corpus is to
-judge. The fixture modules come from this repository (``--package`` names another importable package, for tests).
-Every entry runs twice and the two outcomes must agree, which catches inputs that carry random state (build symbols
-with benchmarks.speed.fixture.symbol, not mathforge.symbol). A file that already exists with different content is
-the frozen v0.7 reference, so it is replaced only with ``--force``; nothing is written when any file is refused.
+judge. The tool refuses when mathforge resolves under this repository's src or when its version is not 0.7.x, so
+that a v0.8 tree cannot be snapshotted as if it were v0.7 (``--allow-current-tree`` skips that check, for the tool's
+own tests on throwaway fixture packages). The fixture modules come from this repository (``--package`` names another
+importable package, for tests). Every entry runs twice and the two outcomes must agree, which catches inputs that
+carry random state (build symbols with benchmarks.speed.fixture.symbol, not mathforge.symbol). A file that already
+exists with different content is the frozen v0.7 reference, so it is replaced only with ``--force``; nothing is written
+when any file is refused.
+
+TODO(v0.9): record the provenance of the snapshot (the version and the source hash of the v0.7 tree) in the corpus
+files. v0.8.0 does not: a corpus file is one object that maps entry ids to outcomes, and its readers
+(tests/v08/test_values_v07.py checks every key as an entry id) would have to learn a second kind of key in each of the ten
+files, which means a --force snapshot of the frozen v0.7 reference. The refusal above is what keeps the files honest
+meanwhile.
 """
 
 from __future__ import annotations
@@ -31,12 +40,15 @@ import functools
 import importlib
 import json
 from pathlib import Path
+import re
 import sys
 import types
 from typing import Any
 
 REPOSITORY = Path(__file__).resolve().parents[1]
+SRC = REPOSITORY / "src"
 DEFAULT_PACKAGE = "benchmarks.speed.fixtures"
+V07_VERSION = re.compile(r"0\.7\.\d+")  # 0.7.<patch>, with any suffix: the version of the tree that a snapshot is of.
 VARIANTS = 3  # A Fixture contributes its variants 0, 1 and 2.
 PLAIN_SCALARS = (bool, int, float, complex, str, bytes, type(None))
 PLAIN_SEQUENCES = (tuple, list, set, frozenset)
@@ -53,6 +65,19 @@ def repository_importable() -> None:
     root = str(REPOSITORY)
     if root not in sys.path:
         sys.path.insert(0, root)
+
+
+def check_tree(module: types.ModuleType) -> None:
+    """Refuse a mathforge that is not a v0.7.x tree outside this repository's src: the corpus is what v0.7 returns, so
+    a tree that is this repository's or any other version must not be snapshotted into it."""
+    location = Path(module.__file__).resolve()
+    if SRC.resolve() in location.parents:
+        raise SnapshotError(f"mathforge resolves to {location}, under this repository's src: the corpus is a snapshot "
+                            "of v0.7, not of the code it judges; run the tool with PYTHONPATH=<v0.7 worktree>/src")
+    version = getattr(module, "__version__", None)
+    if not (isinstance(version, str) and V07_VERSION.match(version)):
+        raise SnapshotError(f"mathforge {version!r} ({location}) is not a 0.7.x release: the corpus is a snapshot of "
+                            "v0.7; run the tool with PYTHONPATH=<v0.7 worktree>/src")
 
 
 def fixture_classes() -> tuple[Any, Any, Any]:
@@ -193,6 +218,9 @@ def build_parser() -> argparse.ArgumentParser:
                         help=f"Importable package that holds the area modules (default {DEFAULT_PACKAGE})")
     parser.add_argument("--force", action="store_true",
                         help="Replace files whose content differs; they are the frozen v0.7 reference")
+    parser.add_argument("--allow-current-tree", action="store_true",
+                        help="Snapshot whatever mathforge is importable, without the check that it is a 0.7.x tree "
+                             "outside this repository's src: for the tool's own tests on throwaway fixture packages")
     return parser
 
 
@@ -201,6 +229,8 @@ def main(argv: list[str] | None = None) -> None:
     try:
         areas = parse_areas(arguments.areas)
         import mathforge
+        if not arguments.allow_current_tree:
+            check_tree(mathforge)
         print(f"snapshotting mathforge {mathforge.__version__} from {Path(mathforge.__file__).resolve().parent}",
               file=sys.stderr)
         documents = {area: snapshot_area(arguments.package, area) for area in areas}

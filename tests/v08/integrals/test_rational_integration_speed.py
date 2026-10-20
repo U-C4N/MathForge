@@ -12,7 +12,7 @@ from mathforge.limits import computation
 from mathforge.model import Rational
 from mathforge.serialization import to_data
 
-from tests.v08.integrals import seeded
+from . import seeded
 
 PINNED = Path(__file__).resolve().parents[2] / "fixtures" / "v8" / "rational_integration_v07.json"
 Q = Rational

@@ -11,7 +11,7 @@ from mathforge.certify.series import taylor as checker
 from mathforge.limits import computation
 from mathforge.trusted import series
 
-from tests.v08.series.test_taylor import X, _regular, function
+from .test_taylor import X, _regular, function
 
 Q = mf.Rational
 SYMPY = importlib.util.find_spec("sympy") is not None

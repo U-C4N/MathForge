@@ -10,7 +10,8 @@ Work is charged to the active budget, when there is one, in batches: one ``tick`
 number of coefficient operations, so that a runaway computation stops at ``max_work`` without a charge per
 multiplication. A coefficient operation on long integers costs more than one on short ones: ``size_factor`` scales the
 charge of an operation by the size of its integers (one unit up to about 1,000 bits, so that short coefficients cost
-what they always did), and ``charge_product``, ``charge_power`` and ``charge_gcd`` charge what a big-integer
+what they always did; ``evaluation_factor`` does so for an evaluation at a long point, and ``kronecker`` charges a
+long evaluation of its own), and ``charge_product``, ``charge_power`` and ``charge_gcd`` charge what a big-integer
 product, power or gcd costs beyond that, before it runs, so that a computation with explosive integers stops at
 ``max_work`` instead of running for minutes.
 Results whose integers outgrow ``max_integer_bits`` are refused by the callers that can create them (``check_bits``).
@@ -32,7 +33,8 @@ _active = _ACTIVE.get  # The active Budget or None.
 
 __all__ = [
     "trim", "add", "sub", "mul", "scale", "neg", "derivative", "pseudo_remainder", "divmod_exact", "exact_quotient",
-    "content", "primitive", "sign_at", "value_at", "mod", "mul_mod", "divmod_mod", "gcd_mod", "pow_mod",
+    "content", "primitive", "evaluation_factor", "sign_at", "value_at", "mod", "mul_mod", "divmod_mod", "gcd_mod",
+    "pow_mod",
     "monic_mod", "max_bits", "norm1_bits", "kronecker_bits", "kronecker", "check_bits", "charge", "size_factor",
     "charge_product", "charge_power", "charge_gcd", "from_rationals", "rationals", "monic_rationals", "expression",
 ]
@@ -267,11 +269,18 @@ def primitive(p: tuple[int, ...]) -> tuple[int, ...]:
 # ---------------------------------------------------------------------------------------------------------------
 # Evaluation
 
+def evaluation_factor(length: int, num: int, den: int) -> int:
+    """The size_factor of one Horner step of a polynomial of `length` coefficients at num/den: two products of the
+    running value, which grows to about length times the point's bits, by an integer of the point's bits."""
+    bits = max(num.bit_length(), den.bit_length())
+    return size_factor(length * bits, bits, 2)
+
+
 def sign_at(p: tuple[int, ...], num: int, den: int) -> int:
     """The sign of p(num/den) for den > 0: Horner on the homogenized form sum c_i num**i den**(n-i)."""
     if not p:
         return 0
-    charge(len(p))
+    charge(len(p) * evaluation_factor(len(p), num, den))
     if den == 1:
         value = 0
         for coefficient in reversed(p):
@@ -289,7 +298,7 @@ def value_at(p: tuple[int, ...], x: Rational) -> Rational:
     num, den = x.numerator, x.denominator
     if not p:
         return trusted_rational(0, 1)
-    charge(len(p))
+    charge(len(p) * evaluation_factor(len(p), num, den))
     value, power = 0, 1
     for coefficient in reversed(p):
         value = value * num + coefficient * power
@@ -403,7 +412,13 @@ def norm1_bits(p: tuple[int, ...]) -> int:
 
 
 def kronecker(p: tuple[int, ...], bits: int) -> int:
-    """p(2**bits), by Horner with shifts."""
+    """p(2**bits), by Horner with shifts. Each step copies the value formed so far, so the evaluation costs about
+    len(p)**2 * bits / 64 word operations: one unit of work is charged per 16,384 of len(p)**2 * bits, nothing for
+    short polynomials, so that a long polynomial with a long coefficient does not form an integer of millions of
+    bits unmetered."""
+    extra = len(p) * len(p) * bits >> 14
+    if extra:
+        charge(extra)
     value = 0
     for coefficient in reversed(p):
         value = (value << bits) + coefficient

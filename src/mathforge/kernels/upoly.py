@@ -431,8 +431,10 @@ def _value(p: tuple[int, ...], numerator: int, denominator: int) -> int:
 
 def endpoint(chain, numerator: int, denominator: int) -> tuple[int, bool]:
     """(sign variations of the chain at the point, whether the point is a root of chain[0]), zeros skipped and the
-    first member's zero not counted, as root_isolation's endpoint and _variations count them."""
-    tp.charge(sum(len(member) for member in chain))
+    first member's zero not counted, as root_isolation's endpoint and _variations count them. The evaluations are
+    charged by the size of the point (trusted.upoly.evaluation_factor): a root bound of 60,000 bits makes them
+    millions of bits long."""
+    tp.charge(sum(len(member) for member in chain) * tp.evaluation_factor(len(chain[0]), numerator, denominator))
     first = _sign(_value(chain[0], numerator, denominator))
     previous, variations = first, 0
     for member in chain[1:]:

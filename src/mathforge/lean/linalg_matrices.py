@@ -24,7 +24,7 @@ from ..certify.linalg.lu import check_lu
 from ..certify.linalg.trace import check_trace
 from ..kernels.linalg import (Echelon, charpoly as integer_charpoly, determinant, echelon as integer_echelon,
                               inverse as integer_inverse, lu as plu)
-from ..limits import ComputationLimits, computation, current_budget
+from ..limits import ComputationLimits, ResourceLimitError, computation, current_budget
 from ..matrices import Matrix, trusted_matrix, trusted_rref
 from ..model import Rational, Reals, Symbol
 from ..polynomial import Polynomial
@@ -55,8 +55,12 @@ def _entries(A):
 
 def _integer_rows(rows):
     """(integer rows, row scales) of validated rows when every integer stays within the default integer bound and
-    the eliminations stay bounded (the sum of the row sizes within it as well); else None."""
-    int_rows, scales = clear_row_denominators(rows)
+    the eliminations stay bounded (the sum of the row sizes within it as well); else None. A row scale past the bound
+    is refused while it is formed (trusted.intmatrix.clear_row_denominators)."""
+    try:
+        int_rows, scales = clear_row_denominators(rows)
+    except ResourceLimitError:
+        return None
     total = 0
     for row, scale in zip(int_rows, scales):
         if row:
@@ -74,7 +78,9 @@ def _integer_rows(rows):
 def trace(A):
     """Sum of the diagonal over a common denominator; checked by v0.7's criterion (certify.linalg.trace). Every entry
     is type-checked; only the diagonal's integers are held to the integer bound (addendum rule 5: an off-diagonal
-    entry past it, which the structured path refuses, is a permissive difference only)."""
+    entry past it, which the structured path refuses, is a permissive difference only). A running denominator past
+    the bound is reduced with its numerator, and the sum falls back when it stays past it: v0.7's partial sums, the
+    same Rationals in lowest terms, would have passed the bound there as well."""
     try:
         if current_budget() is not None:
             return FALLBACK
@@ -93,6 +99,11 @@ def trace(A):
                 common = gcd(denominator, bottom)
                 numerator = numerator * (bottom // common) + top * (denominator // common)
                 denominator = denominator // common * bottom
+                if denominator.bit_length() > _MAX_BITS:
+                    common = gcd(numerator, denominator)
+                    numerator, denominator = numerator // common, denominator // common
+                    if denominator.bit_length() > _MAX_BITS:
+                        return FALLBACK
         value = ratio(numerator, denominator)
         with computation(fresh=True):
             if check_trace(rows, value) is not True:
@@ -280,7 +291,11 @@ def _characteristic(A, variable):
     if integers is None:
         return None
     int_rows, scales = integers
-    common = lcm(*scales) if scales else 1
+    common = 1
+    for scale in scales:  # The lcm of the row scales, refused as soon as it passes the integer bound.
+        common = lcm(common, scale)
+        if common.bit_length() > _MAX_BITS:
+            return None
     if common != 1:
         int_rows = tuple(tuple([value * (common // scale) for value in row]) for row, scale in zip(int_rows, scales))
         if _integer_rows_fit(int_rows) is False:

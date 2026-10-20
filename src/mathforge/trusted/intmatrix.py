@@ -12,23 +12,42 @@ from collections.abc import Sequence
 from math import gcd, lcm
 from operator import attrgetter
 
+from mathforge.limits import ResourceLimitError, current_budget
 from mathforge.model import Rational, trusted_rational
+from mathforge.trusted.upoly import charge_gcd
 
 _numerator = attrgetter("numerator")
 _denominator = attrgetter("denominator")
 ZERO = trusted_rational(0, 1)
 ONE = trusted_rational(1, 1)
 _SMALL = {value: trusted_rational(value, 1) for value in range(-16, 17)}  # Shared instances of small integers.
+_DEFAULT_BITS = 65_536  # ComputationLimits().max_integer_bits: the bound without an active budget.
 
 
 def clear_row_denominators(rows: Sequence[Sequence[Rational]]) -> tuple[tuple[tuple[int, ...], ...], tuple[int, ...]]:
     """The integer rows and each row's positive scale: int_row = scale * row, scale the lcm of the row's denominators.
 
-    The entries are trusted to be canonical Rationals (positive denominators, lowest terms)."""
+    The entries are trusted to be canonical Rationals (positive denominators, lowest terms). A scale past the active
+    budget's max_integer_bits (65,536 without one) is refused with ResourceLimitError, where v0.7's determinant
+    refused the same running lcm: a row whose denominators' lengths add up to more is scaled one denominator at a
+    time, each step that grows the scale charged by the size of its gcd, and refused as soon as the scale passes the
+    bound, before an lcm of millions of bits is formed."""
+    budget = current_budget()
+    limit = _DEFAULT_BITS if budget is None else budget.limits.max_integer_bits
     int_rows = []
     scales = []
     for row in rows:
-        scale = lcm(*map(_denominator, row)) if row else 1
+        denominators = tuple(map(_denominator, row))
+        if sum(map(int.bit_length, denominators)) <= limit:
+            scale = lcm(*denominators) if denominators else 1  # At most the product: within the bound.
+        else:
+            scale = 1
+            for denominator in denominators:
+                if scale % denominator:
+                    charge_gcd(max(scale.bit_length(), denominator.bit_length()))
+                    scale = scale // gcd(scale, denominator) * denominator
+                    if scale.bit_length() > limit:
+                        raise ResourceLimitError("Computation limit exceeded: integer bits")
         if scale == 1:
             int_rows.append(tuple(map(_numerator, row)))
         else:

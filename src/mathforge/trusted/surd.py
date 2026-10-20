@@ -5,10 +5,12 @@ The base b_1, ..., b_t is a list of pairwise coprime squarefree integers above 1
 over Q, the products of the sqrt b_j over the subsets of {1, ..., t} are a basis of K, and changing the signs of any
 of the sqrt b_j is an automorphism of K. This is Besicovitch's theorem (the square roots of pairwise coprime
 squarefree integers above 1 are linearly independent over Q) with the Galois theory of a compositum of quadratic
-fields; everything that names an element by its minimal polynomial (the product of X - y over the distinct images y
-of the element under the sign changes) rests on it. Its hypotheses are not assumed: the producer establishes them by
-exact computation, a radicand being split into a square and a squarefree part by trial division (declined when the
-part that is left cannot be shown squarefree) and the radicands refined by gcds into pairwise coprime numbers above 1.
+fields. The irreducibility of the polynomial that names an element (the product of X - y over the distinct images y
+of the element under the sign changes, its minimal polynomial) rests on this theorem. Its hypotheses, each b_j
+squarefree, pairwise coprime and greater than 1, are not assumed but checked by exact computation in the producer
+(mathforge.lean.algebra_complex): a radicand is split into a square and a squarefree part by trial division, and
+declined when the part that is left cannot be shown squarefree; the radicands are refined by gcds into pairwise
+coprime numbers; and only numbers above 1 enter the base.
 
 An element is the tuple of its 2**t Rational coefficients, that of the subset with bit mask m at index m. Products
 follow (e_s)(e_u) = weight[s & u] e_(s xor u), weight[m] the product of the b_j in the subset m. Nothing here decides

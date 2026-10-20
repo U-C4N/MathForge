@@ -250,10 +250,49 @@ class CompareTest(unittest.TestCase):
                             self.assertIs(_check_operation("compare_real", {"left": left, "right": right}, claim, ()),
                                           False)
 
+    def test_isolating_intervals_are_never_points(self):
+        """Roots met at bisection midpoints (0, 1, -1, 2 and 1/2 below) lie in half-open intervals (lo, hi]
+        (final review B, M2)."""
+        for roots in ((0, 1, -1, 2), (0, 3), (1, 2, 3, 4, 5), (-3, 0, 3)):
+            p = (1,)
+            for root in roots:
+                p = tp.mul(p, (-root, 1))
+            p = tp.mul(p, (-1, 2))  # 2x - 1
+            intervals = C.isolate(p)
+            self.assertEqual(len(intervals), len(roots) + 1)
+            for lo, hi in intervals:
+                self.assertLess(lo, hi)
+            for root in (*roots, Rational(1, 2)):
+                self.assertEqual(sum(1 for lo, hi in intervals if lo < root <= hi), 1, (roots, root))
+
     def test_invalid_descriptors_compare_to_nothing(self):
         self.assertIsNone(C.compare(None, ("rational", Rational(1))))
         self.assertIsNone(C.compare(("algebraic", ((-2, 0, 1), 2)), ("rational", Rational(1))))  # No third root.
         self.assertIsNone(C.endpoint_of(mf.Symbol("y")))
+
+
+class RootRecordsTest(unittest.TestCase):
+    def test_records_are_recognized_by_module_and_qualified_name(self):
+        """check_root_records takes RootRecord by its module and qualified name, not by its name alone (final review
+        B, M1), and refuses roots outside their isolating intervals."""
+        from mathforge.algebraic import trusted_root_record
+        p = tp.mul(tp.mul((-2, 0, 1), (-1, 1)), (-1, 1))  # (x**2 - 2)(x - 1)**2: -sqrt 2, 1 (twice), sqrt 2
+        roots, multiplicities = (-mf.sqrt(2), Rational(1), mf.sqrt(2)), (1, 2, 1)
+        records = tuple(trusted_root_record(root, m) for root, m in zip(roots, multiplicities))
+        with computation():
+            self.assertIs(C.check_root_records(p, records), True)
+
+            class RootRecord:  # The same name in another module.
+                def __init__(self, root, multiplicity):
+                    self.root, self.multiplicity = root, multiplicity
+
+            self.assertIs(C.check_root_records(p, tuple(RootRecord(r.root, r.multiplicity) for r in records)), False)
+            for forged in ((roots[0], Rational(2), roots[2]), (roots[2], roots[1], roots[0]),
+                           (roots[0], Rational(1), mf.sqrt(3))):
+                self.assertIs(C.check_root_records(p, tuple(
+                    trusted_root_record(root, m) for root, m in zip(forged, multiplicities))), False, forged)
+            self.assertIs(C.check_root_records(p, tuple(
+                trusted_root_record(root, 1) for root in roots)), False)  # A wrong multiplicity.
 
 
 if __name__ == "__main__":

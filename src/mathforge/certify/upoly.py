@@ -572,8 +572,9 @@ def count_roots(p: tuple[int, ...], lo, hi) -> int:
 
 
 def isolate(p: tuple[int, ...]):
-    """Disjoint intervals (lo, hi], increasing, each holding exactly one real root of the square-free integer
-    polynomial p, by plain bisection from the Cauchy bound; (r, r) for a root met exactly."""
+    """Disjoint half-open intervals (lo, hi] with lo < hi, increasing, each holding exactly one real root of the
+    square-free integer polynomial p, by plain bisection from the Cauchy bound. A root met at a midpoint lies in the
+    interval to its left, (lo, middle], so no interval is a point."""
     if len(p) <= 1:
         return ()
     lead = abs(p[-1])
@@ -682,6 +683,13 @@ def field_coordinates(expression):
     return u, v, (radicand if v.numerator else None)
 
 
+def _is_class(value, name: str) -> bool:
+    """Whether value is an instance of mathforge.algebraic's class of that name, recognized by its module and
+    qualified name (this package does not import the record classes)."""
+    kind = type(value)
+    return kind.__module__ == "mathforge.algebraic" and kind.__qualname__ == name
+
+
 def endpoint_of(value):
     """("rational", Rational) or ("algebraic", (primitive square-free integer polynomial, real index)) for what
     algebraic.as_endpoint accepts (an int, a Rational, a RealAlgebraicRoot, a closed quadratic-field expression);
@@ -690,8 +698,7 @@ def endpoint_of(value):
         return "rational", Rational(value)
     if type(value) is Rational:
         return "rational", value
-    kind = type(value)
-    if kind.__name__ == "RealAlgebraicRoot" and kind.__module__ == "mathforge.algebraic":
+    if _is_class(value, "RealAlgebraicRoot"):
         coefficients, index = value.integer_coefficients, value.real_index
         if (type(coefficients) is not tuple or len(coefficients) < 2 or any(type(c) is not int for c in coefficients)
                 or type(index) is not int or index < 0):
@@ -851,7 +858,7 @@ def check_root_records(p: tuple[int, ...], records) -> bool:
             gcds.append(squarefree_part(current))
     for record, (lo, hi) in zip(records, intervals):
         multiplicity = getattr(record, "multiplicity", None)
-        if (type(record).__name__ != "RootRecord" or type(multiplicity) is not int or multiplicity < 1):
+        if not _is_class(record, "RootRecord") or type(multiplicity) is not int or multiplicity < 1:
             return False
         data = _root_data(record.root)
         if data is None:
@@ -859,10 +866,7 @@ def check_root_records(p: tuple[int, ...], records) -> bool:
         kind, payload = data
         if kind == "rational":
             r = payload
-            if lo == hi:
-                if r != lo:
-                    return False
-            elif not (lo < r <= hi):
+            if not lo < r <= hi:  # isolate's intervals are half-open, never points.
                 return False
             if _sign_at(part, r.numerator, r.denominator) != 0:
                 return False
@@ -873,8 +877,6 @@ def check_root_records(p: tuple[int, ...], records) -> bool:
             division = tp.divmod_exact(part, c)
             if division is None or division[1] or len(c) < 2:
                 return False
-            if lo == hi:
-                return False  # an exact rational point is not an irrational root
             if not (count_roots(c, None, lo) <= index < count_roots(c, None, hi)):
                 return False
             vanishing = 0

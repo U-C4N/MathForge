@@ -462,10 +462,36 @@ class GaussianPathTest(unittest.TestCase):
         with patch.object(module, "_exact_root", lambda n, d: (lambda r: r and (-r[0], r[1]))(exact(n, d))):
             self.assertIs(lean.functions.complex_sqrt(three_plus_four_i), lean.FALLBACK)  # -2 - i: no principal root
         # Two roots in the wrong order.
-        check = module._quadratic_check
-        with patch.object(module, "_quadratic_check",
+        checks = module.gaussian_checks
+        check = checks.check_quadratic_roots
+        with patch.object(checks, "check_quadratic_roots",
                           lambda an, ad, bn, bd, cn, cd, roots, m: check(an, ad, bn, bd, cn, cd, roots[::-1], m)):
             self.assertIs(lean.functions.quadratic_roots(1, 2, 5), lean.FALLBACK)
+
+    def test_the_checks_live_in_certify(self):
+        """The lean module computes; mathforge.certify.complex.gaussian decides, and refuses forged answers."""
+        from mathforge.certify.complex import gaussian
+        from mathforge.lean import algebra_complex as module
+        self.assertIs(module.gaussian_checks, gaussian)
+        z, w = (1, 6, 2), (6, -5, 3)  # (1 + 6i)/2 = 1/2 + 3i and (6 - 5i)/3 = 2 - 5i/3
+        self.assertTrue(gaussian.check_sum(z, w, (5, 2, 4, 3)))  # 5/2 + (4/3) i
+        self.assertFalse(gaussian.check_sum(z, w, (5, 2, 5, 3)))
+        self.assertTrue(gaussian.check_sum(z, w, (-3, 2, 14, 3), subtract=True))
+        self.assertTrue(gaussian.check_product(z, w, (6, 1, 31, 6)))  # (1/2 + 3i)(2 - 5i/3) = 6 + 31i/6
+        self.assertFalse(gaussian.check_product(z, w, (6, 1, 31, 5)))
+        self.assertFalse(gaussian.check_product(z, w, (12, 2, 31, 6)))  # Not in lowest terms.
+        self.assertTrue(gaussian.check_quotient((36, 31, 6), w, (1, 2, 3, 1)))  # (6 + 31i/6) / (2 - 5i/3)
+        self.assertFalse(gaussian.check_quotient((36, 31, 6), w, (1, 2, 2, 1)))
+        self.assertTrue(gaussian.check_norm_squared((3, 4, 5), 1, 1))
+        self.assertFalse(gaussian.check_norm_squared((3, 4, 5), 2, 1))
+        self.assertTrue(gaussian.check_sqrt((3, 4, 1), (2, 1, 1, 1)))
+        self.assertFalse(gaussian.check_sqrt((3, 4, 1), (-2, 1, -1, 1)))  # A root, not the principal one.
+        self.assertTrue(gaussian.check_power((1, 1, 1), 3, (-2, 1, 2, 1)))  # (1 + i)**3 = -2 + 2i
+        self.assertFalse(gaussian.check_power((1, 1, 1), 3, (-2, 1, -2, 1)))
+        self.assertTrue(gaussian.check_power((1, 1, 1), -2, (0, 1, -1, 2)))  # (1 + i)**-2 = -i/2
+        self.assertFalse(gaussian.check_power((1, 1, 1), -2, (0, 1, 1, 2)))
+        self.assertTrue(gaussian.check_quadratic_roots(1, 1, 2, 1, 5, 1, (((-1, 1), (-2, 1)), ((-1, 1), (2, 1))), 1))
+        self.assertFalse(gaussian.check_quadratic_roots(1, 1, 2, 1, 5, 1, (((-1, 1), (2, 1)), ((-1, 1), (-2, 1))), 1))
 
 
 SURD_RADICANDS = (2, 3, 5, 6, 7, 8, 10, 12, 15, 18, 20, 21, 30, 45, 50)
@@ -767,9 +793,41 @@ class SurdPathTest(unittest.TestCase):
         element = module._element
         refused("algebraic: an element that is wrong", patch.object(
             module, "_element", lambda field, node: field.add(element(field, node), field.one)))
-        interval = module._interval
+        interval = module.surd_checks.interval
         refused("algebraic: an interval that is off", patch.object(
-            module, "_interval", lambda node: (lambda r: (r[0] + 1, r[1] + 1))(interval(node))))
+            module.surd_checks, "interval", lambda node: (lambda r: (r[0] + 1, r[1] + 1))(interval(node))))
+
+    def test_a_wrong_field_multiplication_does_not_confirm_itself(self):
+        """With Field.mul doubling every product, the producer's product and the checker's three-multiplication
+        product agree; the fixed-point interval product of the operands' enclosures, which never multiplies two
+        field elements, refuses it (final review B, I1). The checks live in certify, the field in trusted."""
+        from mathforge.certify.complex import surd as checks
+        from mathforge.lean import algebra_complex as module
+        from mathforge.trusted.surd import Field
+        self.assertIs(module._Field, Field)
+        self.assertIs(module.surd_checks, checks)
+        field = Field([2, 3])
+        one, zero = field.one, field.zero
+        r2 = tuple(mf.Rational(int(mask == 1)) for mask in range(4))
+        r3 = tuple(mf.Rational(int(mask == 2)) for mask in range(4))
+        z, w = (field.add(one, r2), r3), (r2, field.sub(r3, one))  # 1 + sqrt 2 + sqrt 3 i and sqrt 2 + (sqrt 3 - 1) i
+        product = module._complex_product(field, z, w)
+        self.assertTrue(checks.check_product(field, z, w, product))
+        self.assertTrue(checks.check_quotient(field, product, w, z))
+        self.assertTrue(checks.check_power(field, z, 3, module._complex_product(
+            field, z, module._complex_product(field, z, z))))
+        mul = Field.mul
+        with patch.object(Field, "mul", lambda self, x, y: self.scale(mul(self, x, y), 2)):
+            doubled = module._complex_product(field, z, w)
+            self.assertNotEqual(doubled, product)
+            self.assertEqual(checks.three_product(field, z, w), doubled)  # The exact recomputation is fooled ...
+            self.assertFalse(checks.consistent_product(field, z, w, doubled))  # ... the interval product is not.
+            self.assertFalse(checks.check_product(field, z, w, doubled))
+            cube = module._complex_product(field, z, module._complex_product(field, z, z))
+            self.assertFalse(checks.check_power(field, z, 3, cube))
+        self.assertTrue(checks.consistent_product(field, z, w, product))
+        self.assertFalse(checks.consistent_product(field, z, w, (product[0], field.neg(product[1]))))
+        self.assertFalse(checks.consistent_power(field, z, -2, (one, zero)))
 
     def test_surd_fallbacks_stay_the_generic_runners(self):
         """When an attempt declines, the generic runner answers as before: here with every attempt broken."""

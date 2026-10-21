@@ -53,7 +53,8 @@ complete.
 Known limitations: `integer_gcd` and `integer_lcm` on very large integers, from
 about 2,000 bits (RSA size) upward, remain comparatively slow, because every
 result carries an independently checked Bézout certificate. `solve_system` still
-uses the v0.7 structured pipeline and will be accelerated in a later version.
+uses the v0.7 structured pipeline and will be accelerated in a later version, as
+will `solve` on the smallest equations, where that pipeline's fixed cost dominates.
 
 ## Added in v0.7
 

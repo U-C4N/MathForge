@@ -1374,7 +1374,8 @@ class GateChecksTest(unittest.TestCase):
                          {identifier for identifier in check_speed.WAIVED if identifier.startswith("solve_system/")})
         self.assertEqual({identifier for identifier in check_speed.WAIVED if not identifier.startswith("solve_system/")},
                          {"integer_gcd/realistic/bits30000", "integer_gcd/realistic/rsa_moduli",
-                          "integer_lcm/realistic/bits20000", "integer_lcm/realistic/rsa_moduli"})
+                          "integer_lcm/realistic/bits20000", "integer_lcm/realistic/rsa_moduli",
+                          "solve/micro/quadratic_with_integer_roots"})  # The user's v0.8.0 decisions, nothing more.
         self.assertEqual({reason for identifier, reason in check_speed.WAIVED.items()
                           if identifier.startswith("solve_system/")},
                          {"solve_system still runs the v0.7 structured pipeline; accelerated in v0.9"})

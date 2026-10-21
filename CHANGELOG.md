@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.8.0 — 2026-10-20
+## 0.8.0 — 2026-10-21
 
 - Add a declarative operation registry; `tools/generate_api.py` generates from it the `mathforge.operations` wrappers, the value functions and 18 lazily loaded area modules, such as `mf.ntheory`.
 - Keep the v0.7 names, signatures and results unchanged; `tools/generate_api.py --check` fails when a generated file is stale.
@@ -35,7 +35,8 @@ live in their area module and in `mathforge.operations`, not in the plain
 Known limitations: `integer_gcd` and `integer_lcm` on very large integers, from
 about 2,000 bits (RSA size) upward, remain comparatively slow, because every
 result carries an independently checked Bézout certificate. `solve_system` still
-uses the v0.7 structured pipeline and will be accelerated in a later version.
+uses the v0.7 structured pipeline and will be accelerated in a later version, as
+will `solve` on the smallest equations, where that pipeline's fixed cost dominates.
 
 ## 0.7.0 — 2026-10-14
 

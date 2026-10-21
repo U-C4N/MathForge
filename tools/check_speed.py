@@ -57,6 +57,8 @@ LISTED = 5  # How many ids a failure line names before it says "...".
 
 _BEZOUT = "the independently checked Bezout certificate dominates at this size (v0.8.0 known limitation)"
 _STRUCTURED = "solve_system still runs the v0.7 structured pipeline; accelerated in v0.9"
+_SOLVE = ("solve returns the v0.7 structured Result, whose fixed cost sits at the limit on the smallest equations; "
+          "accelerated in v0.9")
 # The documented v0.8.0 exceptions (a user decision): fixtures that may be above the limit without failing the gate. Each
 # is printed as "waived: <reason>", and reported as such when it has come back within the limit. The ids must exist: a
 # test holds WAIVED to the fixture modules, so a renamed fixture cannot leave a waiver behind.
@@ -69,6 +71,7 @@ WAIVED: dict[str, str] = {
     "solve_system/realistic/dense_6_by_6": _STRUCTURED,
     "solve_system/realistic/scaled_dense_12_by_12": _STRUCTURED,
     "solve_system/realistic/underdetermined_4_by_6": _STRUCTURED,
+    "solve/micro/quadratic_with_integer_roots": _SOLVE,
 }
 
 

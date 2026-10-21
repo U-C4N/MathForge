@@ -64,6 +64,8 @@ timings depend on the machine and the input and are not guarantees.
   Bézout certificate that an independent checker verifies.
 - `solve_system` still uses the v0.7 structured pipeline; a later version will
   accelerate it.
+- `solve` also returns its result through that pipeline; on the smallest
+  equations its fixed cost dominates, and a later version will accelerate it.
 
 ## v0.7 resource gates
 

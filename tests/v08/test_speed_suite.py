@@ -1380,9 +1380,12 @@ class GateChecksTest(unittest.TestCase):
                           if identifier.startswith("solve_system/")},
                          {"solve_system still runs the v0.7 structured pipeline; accelerated in v0.9"})
         self.assertEqual({reason for identifier, reason in check_speed.WAIVED.items()
-                          if not identifier.startswith("solve_system/")},
+                          if identifier.startswith("integer_")},
                          {"the independently checked Bezout certificate dominates at this size "
                           "(v0.8.0 known limitation)"})
+        self.assertEqual(check_speed.WAIVED["solve/micro/quadratic_with_integer_roots"],
+                         "solve returns the v0.7 structured Result, whose fixed cost sits at the limit on the smallest "
+                         "equations; accelerated in v0.9")
 
 
 if __name__ == "__main__":

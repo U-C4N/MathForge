@@ -975,9 +975,9 @@ def check_v09_lattice(sp):
         assert sorted(actual) == found, rows
         divisors = [1]
         for k in range(1, size + 1):
-            divisors.append(int(sp.gcd([oracle.extract(list(r), list(c)).det()
+            divisors.append(abs(int(sp.gcd([oracle.extract(list(r), list(c)).det()
                                         for r in combinations(range(rows_count), k)
-                                        for c in combinations(range(cols_count), k)])))
+                                        for c in combinations(range(cols_count), k)]))))
         expected = [divisors[k] // divisors[k - 1] if divisors[k] else 0 for k in range(1, size + 1)]
         assert list(actual) == expected, rows
     return cases

@@ -17,7 +17,10 @@ import threading
 import unittest
 from unittest.mock import patch
 
-from jsonschema import Draft202012Validator
+try:
+    from jsonschema import Draft202012Validator
+except ImportError:  # Development-only (requirements-dev.txt); the isolated distribution harness has none.
+    Draft202012Validator = None
 
 import mathforge as mf
 from mathforge import registry
@@ -518,6 +521,8 @@ class SchemaTests(StoreIsolation):
         self.assertFalse(schema["additionalProperties"])
 
     def test_real_payloads_satisfy_the_output_schema(self):
+        if Draft202012Validator is None:
+            self.skipTest("Development-only jsonschema is unavailable")
         validator = Draft202012Validator(output_schema())
         gcd = self.ok(area("ntheory", "integer_gcd", a=12, b=18))
         with patch("mathforge.rendering.to_latex", side_effect=mf.InvalidInput("no room")):
@@ -545,6 +550,8 @@ class SchemaTests(StoreIsolation):
             self.assertEqual(list(catalog.iter_errors(call_tool("mathforge.catalog", arguments).payload)), [])
 
     def test_area_schemas_advertise_handles(self):
+        if Draft202012Validator is None:
+            self.skipTest("Development-only jsonschema is unavailable")
         schemas = input_schemas()
         for tool in area_tools():
             with self.subTest(tool=tool):

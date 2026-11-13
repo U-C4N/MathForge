@@ -10,7 +10,10 @@ import json
 import unittest
 from unittest.mock import patch
 
-from jsonschema import Draft202012Validator
+try:
+    from jsonschema import Draft202012Validator
+except ImportError:  # Development-only (requirements-dev.txt); the isolated distribution harness has none.
+    Draft202012Validator = None
 
 import mathforge as mf
 from mathforge.contracts import ErrorInfo
@@ -50,7 +53,8 @@ class ReasonTests(unittest.TestCase):
         self.assertTrue(response.is_error)
         error = response.payload["error"]
         self.assertEqual(list(error), KEYS)
-        self.assertEqual(list(Draft202012Validator(_error_schema()).iter_errors(error)), [])
+        if Draft202012Validator is not None:
+            self.assertEqual(list(Draft202012Validator(_error_schema()).iter_errors(error)), [])
         self.assertRegex(error["reason"], r"\A[a-z][a-z0-9_]*\Z")
         self.assertTrue(all(type(action) is str and action for action in error["next_actions"]))
         return error

@@ -5,7 +5,7 @@ assignments change there. No tag, commit, upload, push, or package publication i
 performed. The persisted report contains hashes and check status, not artifacts.
 
 Run this script before the final build. Afterward run:
-    python tools/check_release_candidate.py --compare-final dist/mathforge-0.8.0-py3-none-any.whl
+    python tools/check_release_candidate.py --compare-final dist/mathforge-0.9.0-py3-none-any.whl
 """
 
 from __future__ import annotations

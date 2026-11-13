@@ -139,9 +139,9 @@ def _area_tool(tool: str) -> ToolCapability:
     areas = registry.MCP_TOOLS[tool]
     named = areas[0] + " area" if len(areas) == 1 else ", ".join(areas[:-1]) + " and " + areas[-1] + " areas"
     return dict(name=tool, sdk=", ".join(areas),
-                description=f"Run an operation of the {named} by name, with typed arguments: friendly JSON or "
-                            "canonical object envelopes. Deferred requests make no conclusion; mathforge.catalog "
-                            "lists the operations.")
+                description=f"Run an operation of the {named} by name, with typed arguments: friendly JSON, "
+                            "canonical object envelopes or handles of earlier results. Deferred requests make no "
+                            "conclusion; mathforge.catalog lists the operations.")
 
 
 def _entry(spec: "OperationSpec", tool: str | None) -> OperationCapability:

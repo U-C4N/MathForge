@@ -51,7 +51,8 @@ Keep the module light. The registry imports every family module to read its spec
 
 Before `produce` runs, `operations_v6.run` rejects an argument whose exact type its kind does not admit: `int` takes
 an `int`; `rational` an `int` or a `Rational`; `int_list` and `rational_list` a tuple or list of those; `matrix` a
-`Matrix`; `symbol` a `Symbol`. A `bool` or a `float` is never an exact number. The family checks the other kinds,
+`Matrix`; `symbol` a `Symbol`; `polynomial` a `Polynomial`; `interval_set` an `IntervalSet`; `relation` one of `"="`,
+`"<"`, `"<="`, `">"` and `">="`. A `bool` or a `float` is never an exact number. The family checks the other kinds,
 and everything else about its inputs: `produce` validates them first and raises `InvalidInput` for those it
 rejects, testing `type(value) is int`, never `isinstance`. Once the inputs are validated, a family builds records
 only from validated data: an `InvalidInput` raised later still reads as rejected input. Any other exception, apart
@@ -121,6 +122,15 @@ the value's class instead. `python tools/check_layering.py` follows every chain 
 never names `importlib`, `__import__` or `sys.modules`, and never imports `sys`, `builtins` or `importlib` in any
 form (`import sys as s`, `from sys import *`, `import importlib.util`).
 
+Number theory checkers share the helpers of `mathforge.certify.ntheory.factorization`: `prime_proof(n, certificate)`
+proves a prime, `check_factorization(n, factors)` a factorization `((p, e, certificate), ...)` with strictly increasing
+primes, and `charged_pow(base, exponent, modulus)` computes every modular power: a checker charges its budget
+before every builtin `pow`, which cannot be interrupted. Their producers build that evidence with `prime_evidence(n)`
+and `factorization_evidence(n)` of `mathforge.kernels.certificates`, imported inside `produce`. A certificate is
+canonical: `()` exactly where the size of the prime needs none, below 3,317,044,064,679,887,385,961,981, and a v0.7
+Pocklington certificate from there on; anything else is refused. Both sides take their charges from
+`mathforge.trusted.integers`, so a producer refuses evidence whose check would run out of the budget.
+
 ## Never change a released argument set
 
 Once a release ships a v6 operation, its argument names stay as they are: every stored request names exactly the
@@ -133,8 +143,8 @@ The registry raises `RuntimeError` when it builds its tables, at the first looku
 
 - a family that lacks `SPECS`, `TYPES`, `CHECKER` or `produce`, or whose `CHECKER` is not an import path below
   `mathforge.certify` or names the family itself;
-- an operation or public name equal to an argument kind or `envelope`, which name definitions of the MCP area-tool
-  schemas, or already taken, by another operation or by an older one of the legacy catalog, unless the family
+- an operation or public name equal to an argument kind, `envelope` or `handle`, which name definitions of the MCP
+  area-tool schemas, or already taken, by another operation or by an older one of the legacy catalog, unless the family
   supersedes that older operation;
 - a `SUPERSEDES` that is not a `frozenset` of names, that names an operation which is not a v0.7 one or which the
   family's `SPECS` do not define, and a superseding spec whose argument names, order or defaults, or public name,

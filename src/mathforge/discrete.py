@@ -2,21 +2,29 @@
 from __future__ import annotations
 
 __all__ = [
+    "bell",
     "binomial",
     "catalan",
+    "derangements",
     "factorial",
     "fibonacci",
     "multinomial",
+    "partitions",
     "permutations_count",
     "stirling",
+    "stirling1",
 ]
 
 from ._generated.values import (
+    bell,
     binomial,
     catalan,
+    derangements,
     factorial,
     fibonacci,
     multinomial,
+    partitions,
     permutations_count,
     stirling,
+    stirling1,
 )

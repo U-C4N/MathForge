@@ -79,13 +79,16 @@ MCP_TOOLS: dict[str, tuple[str, ...]] = {
     "mathforge.numeric": ("numeric",),
 }
 
+# The order is published: the catalog's schema enumerates the kinds in it, and the $defs of every area-tool schema
+# follow it. A new kind therefore goes last: those of v0.9 follow "object".
 KIND_NAMES = ("int", "int_list", "int_pairs", "rational", "rational_list", "scalar", "complex", "matrix",
               "distribution", "function", "function_list", "rational_function", "symbol", "symbols",
-              "bindings", "point", "side", "object")
+              "bindings", "point", "side", "object", "polynomial", "interval_set", "relation")
 
 # Names that the build keeps operations and arguments from taking. The $defs of an MCP area-tool schema hold
-# each operation's arguments under the operation's name, beside the argument kinds and the canonical envelope.
-DEFINITION_NAMES = (*KIND_NAMES, "envelope")
+# each operation's arguments under the operation's name, beside the argument kinds, the canonical envelope and the
+# handle that may stand for an envelope.
+DEFINITION_NAMES = (*KIND_NAMES, "envelope", "handle")
 # The names that a wrapper written by tools/generate_api.py uses besides its own arguments: its keyword-only
 # limits, the dict builtin, the run functions and the structured module. An argument or a public name equal
 # to one of them would shadow it; the generator checks that its wrappers use no other name.

@@ -62,7 +62,72 @@ __all__ = [
     "rational_antiderivative",
     "rational_integrate",
     "function_integrate",
+    "count_real_roots",
+    "complex_roots",
+    "interpolate",
+    "denest_sqrt",
+    "sturm_sequence",
+    "cyclotomic_polynomial",
+    "partitions",
+    "derangements",
+    "bell",
+    "stirling1",
+    "solve_abs",
+    "solve_sqrt",
+    "distance",
+    "polygon_area",
+    "line_intersection",
+    "orientation",
+    "convex_hull",
+    "trig_power_antiderivative",
+    "trig_power_integral",
+    "matrix_power",
+    "eigenvectors",
+    "definiteness",
+    "gram_schmidt",
+    "hermite_normal_form",
+    "smith_normal_form",
     "continued_fraction",
+    "powmod",
+    "multiplicative_order",
+    "primitive_root",
+    "legendre_symbol",
+    "jacobi_symbol",
+    "sqrt_mod",
+    "next_prime",
+    "prev_prime",
+    "linear_diophantine",
+    "quadratic_continued_fraction",
+    "convergents",
+    "pell_fundamental",
+    "moebius",
+    "divisor_sigma",
+    "integer_nth_root",
+    "discrete_log",
+    "two_squares",
+    "digits",
+    "rational_approximation",
+    "sum_polynomial",
+    "geometric_sum",
+    "geometric_series",
+    "polynomial_geometric_series",
+    "series_coefficients",
+    "residue",
+    "set_union",
+    "set_intersection",
+    "set_difference",
+    "set_complement",
+    "set_symmetric_difference",
+    "correlation",
+    "linear_regression",
+    "quantile",
+    "mode",
+    "stationary_distribution",
+    "fisher_exact",
+    "dot",
+    "cross",
+    "projection",
+    "triple_product",
 ]
 
 from typing import TYPE_CHECKING
@@ -82,7 +147,23 @@ from ..operations_v6 import run_v07 as run
 from ..operations_v6 import run as run_v6
 
 if TYPE_CHECKING:
+    from ..polynomial import Polynomial
+    from ..intervals import IntervalSet
+    from typing import Literal
+    from ..contracts import EmptySet, UniversalSet
+    from ..rational_function import RationalFunction
+    from ..areas.algebra.radicals import DenestedRoot
+    from ..areas.geometry.plane import LineIntersection
+    from ..areas.integrals.trig_powers import PiLinear
+    from ..areas.linalg.eigen import RationalEigenvectors
+    from ..areas.linalg.forms import Inertia
     from ..areas.ntheory.continued_fraction import ContinuedFraction
+    from ..areas.ntheory.diophantine import DiophantineSolution
+    from ..areas.ntheory.discrete import DiscreteLogarithm, SumOfTwoSquares
+    from ..areas.ntheory.quadratic_irrational import PeriodicContinuedFraction
+    from ..areas.numeric.digits import TruncatedDecimal
+    from ..areas.series.power_series import PowerSeries
+    from ..areas.stats.bivariate import LinearFit
 
 
 def integer_gcd(a: int, b: int, *, limits: ComputationLimits | None = None) -> Result[int]:
@@ -325,5 +406,265 @@ def function_integrate(expression, variable: Symbol, lower, upper, *, limits: Co
     return run("function_integrate", dict(expression=expression, variable=variable, lower=lower, upper=upper), limits=limits)
 
 
+def count_real_roots(polynomial: Polynomial, lower: Rational | int | Literal['-inf', '+inf'] = '-inf', upper: Rational | int | Literal['-inf', '+inf'] = '+inf', *, limits: ComputationLimits | None = None) -> Result[int]:
+    return run_v6("count_real_roots", dict(polynomial=polynomial, lower=lower, upper=upper), limits=limits)
+
+
+def complex_roots(polynomial: Polynomial, *, limits: ComputationLimits | None = None) -> Result[tuple[ComplexRoot, ...]]:
+    return run_v6("complex_roots", dict(polynomial=polynomial), limits=limits)
+
+
+def interpolate(xs, ys, variable: Symbol, *, limits: ComputationLimits | None = None) -> Result[Polynomial]:
+    return run_v6("interpolate", dict(xs=xs, ys=ys, variable=variable), limits=limits)
+
+
+def denest_sqrt(a: Rational | int, b: Rational | int, d: int, *, limits: ComputationLimits | None = None) -> Result[DenestedRoot]:
+    return run_v6("denest_sqrt", dict(a=a, b=b, d=d), limits=limits)
+
+
+def sturm_sequence(polynomial: Polynomial, *, limits: ComputationLimits | None = None) -> Result[tuple[Polynomial, ...]]:
+    return run_v6("sturm_sequence", dict(polynomial=polynomial), limits=limits)
+
+
+def cyclotomic_polynomial(n: int, variable: Symbol, *, limits: ComputationLimits | None = None) -> Result[Polynomial]:
+    return run_v6("cyclotomic_polynomial", dict(n=n, variable=variable), limits=limits)
+
+
+def partitions(n: int, *, limits: ComputationLimits | None = None) -> Result[int]:
+    return run_v6("partitions", dict(n=n), limits=limits)
+
+
+def derangements(n: int, *, limits: ComputationLimits | None = None) -> Result[int]:
+    return run_v6("derangements", dict(n=n), limits=limits)
+
+
+def bell(n: int, *, limits: ComputationLimits | None = None) -> Result[int]:
+    return run_v6("bell", dict(n=n), limits=limits)
+
+
+def stirling1(n: int, k: int, *, limits: ComputationLimits | None = None) -> Result[int]:
+    return run_v6("stirling1", dict(n=n, k=k), limits=limits)
+
+
+def solve_abs(lhs: RealFunction, rhs: RealFunction, variable: Symbol, relation: str = '=', *, limits: ComputationLimits | None = None) -> Result[EmptySet | UniversalSet | IntervalSet]:
+    return run_v6("solve_abs", dict(lhs=lhs, rhs=rhs, variable=variable, relation=relation), limits=limits)
+
+
+def solve_sqrt(lhs: RealFunction, rhs: RealFunction, variable: Symbol, relation: str = '=', *, limits: ComputationLimits | None = None) -> Result[EmptySet | UniversalSet | IntervalSet]:
+    return run_v6("solve_sqrt", dict(lhs=lhs, rhs=rhs, variable=variable, relation=relation), limits=limits)
+
+
+def distance(p, q, *, limits: ComputationLimits | None = None) -> Result[Expression]:
+    return run_v6("distance", dict(p=p, q=q), limits=limits)
+
+
+def polygon_area(points: Matrix, *, limits: ComputationLimits | None = None) -> Result[Rational]:
+    return run_v6("polygon_area", dict(points=points), limits=limits)
+
+
+def line_intersection(p1, p2, q1, q2, *, limits: ComputationLimits | None = None) -> Result[LineIntersection]:
+    return run_v6("line_intersection", dict(p1=p1, p2=p2, q1=q1, q2=q2), limits=limits)
+
+
+def orientation(p, q, r, *, limits: ComputationLimits | None = None) -> Result[int]:
+    return run_v6("orientation", dict(p=p, q=q, r=r), limits=limits)
+
+
+def convex_hull(points: Matrix, *, limits: ComputationLimits | None = None) -> Result[Matrix]:
+    return run_v6("convex_hull", dict(points=points), limits=limits)
+
+
+def trig_power_antiderivative(function: RealFunction, variable: Symbol, *, limits: ComputationLimits | None = None) -> Result[RealFunction]:
+    return run_v6("trig_power_antiderivative", dict(function=function, variable=variable), limits=limits)
+
+
+def trig_power_integral(function: RealFunction, variable: Symbol, lower_pi: Rational | int, upper_pi: Rational | int, *, limits: ComputationLimits | None = None) -> Result[PiLinear]:
+    return run_v6("trig_power_integral", dict(function=function, variable=variable, lower_pi=lower_pi, upper_pi=upper_pi), limits=limits)
+
+
+def matrix_power(M: Matrix, k: int, *, limits: ComputationLimits | None = None) -> Result[Matrix]:
+    return run_v6("matrix_power", dict(M=M, k=k), limits=limits)
+
+
+def eigenvectors(M: Matrix, *, limits: ComputationLimits | None = None) -> Result[RationalEigenvectors]:
+    return run_v6("eigenvectors", dict(M=M), limits=limits)
+
+
+def definiteness(M: Matrix, *, limits: ComputationLimits | None = None) -> Result[Inertia]:
+    return run_v6("definiteness", dict(M=M), limits=limits)
+
+
+def gram_schmidt(M: Matrix, *, limits: ComputationLimits | None = None) -> Result[Matrix]:
+    return run_v6("gram_schmidt", dict(M=M), limits=limits)
+
+
+def hermite_normal_form(M: Matrix, *, limits: ComputationLimits | None = None) -> Result[Matrix]:
+    return run_v6("hermite_normal_form", dict(M=M), limits=limits)
+
+
+def smith_normal_form(M: Matrix, *, limits: ComputationLimits | None = None) -> Result[tuple[int, ...]]:
+    return run_v6("smith_normal_form", dict(M=M), limits=limits)
+
+
 def continued_fraction(value: Rational | int, *, limits: ComputationLimits | None = None) -> Result[ContinuedFraction]:
     return run_v6("continued_fraction", dict(value=value), limits=limits)
+
+
+def powmod(base: int, exponent: int, modulus: int, *, limits: ComputationLimits | None = None) -> Result[int]:
+    return run_v6("powmod", dict(base=base, exponent=exponent, modulus=modulus), limits=limits)
+
+
+def multiplicative_order(a: int, n: int, *, limits: ComputationLimits | None = None) -> Result[int]:
+    return run_v6("multiplicative_order", dict(a=a, n=n), limits=limits)
+
+
+def primitive_root(p: int, *, limits: ComputationLimits | None = None) -> Result[int]:
+    return run_v6("primitive_root", dict(p=p), limits=limits)
+
+
+def legendre_symbol(a: int, p: int, *, limits: ComputationLimits | None = None) -> Result[int]:
+    return run_v6("legendre_symbol", dict(a=a, p=p), limits=limits)
+
+
+def jacobi_symbol(a: int, n: int, *, limits: ComputationLimits | None = None) -> Result[int]:
+    return run_v6("jacobi_symbol", dict(a=a, n=n), limits=limits)
+
+
+def sqrt_mod(a: int, p: int, *, limits: ComputationLimits | None = None) -> Result[tuple[int, ...]]:
+    return run_v6("sqrt_mod", dict(a=a, p=p), limits=limits)
+
+
+def next_prime(n: int, *, limits: ComputationLimits | None = None) -> Result[int]:
+    return run_v6("next_prime", dict(n=n), limits=limits)
+
+
+def prev_prime(n: int, *, limits: ComputationLimits | None = None) -> Result[int]:
+    return run_v6("prev_prime", dict(n=n), limits=limits)
+
+
+def linear_diophantine(a: int, b: int, c: int, *, limits: ComputationLimits | None = None) -> Result[DiophantineSolution]:
+    return run_v6("linear_diophantine", dict(a=a, b=b, c=c), limits=limits)
+
+
+def quadratic_continued_fraction(p: int, q: int, d: int, r: int, *, limits: ComputationLimits | None = None) -> Result[PeriodicContinuedFraction]:
+    return run_v6("quadratic_continued_fraction", dict(p=p, q=q, d=d, r=r), limits=limits)
+
+
+def convergents(value: Rational | int, *, limits: ComputationLimits | None = None) -> Result[tuple[Rational, ...]]:
+    return run_v6("convergents", dict(value=value), limits=limits)
+
+
+def pell_fundamental(d: int, *, limits: ComputationLimits | None = None) -> Result[tuple[int, int]]:
+    return run_v6("pell_fundamental", dict(d=d), limits=limits)
+
+
+def moebius(n: int, *, limits: ComputationLimits | None = None) -> Result[int]:
+    return run_v6("moebius", dict(n=n), limits=limits)
+
+
+def divisor_sigma(n: int, k: int, *, limits: ComputationLimits | None = None) -> Result[int]:
+    return run_v6("divisor_sigma", dict(n=n, k=k), limits=limits)
+
+
+def integer_nth_root(n: int, k: int, *, limits: ComputationLimits | None = None) -> Result[int]:
+    return run_v6("integer_nth_root", dict(n=n, k=k), limits=limits)
+
+
+def discrete_log(base: int, target: int, p: int, *, limits: ComputationLimits | None = None) -> Result[DiscreteLogarithm]:
+    return run_v6("discrete_log", dict(base=base, target=target, p=p), limits=limits)
+
+
+def two_squares(n: int, *, limits: ComputationLimits | None = None) -> Result[SumOfTwoSquares]:
+    return run_v6("two_squares", dict(n=n), limits=limits)
+
+
+def digits(value: Expression | int, places: int, *, limits: ComputationLimits | None = None) -> Result[TruncatedDecimal]:
+    return run_v6("digits", dict(value=value, places=places), limits=limits)
+
+
+def rational_approximation(value: Expression | int, max_denominator: int, *, limits: ComputationLimits | None = None) -> Result[Rational]:
+    return run_v6("rational_approximation", dict(value=value, max_denominator=max_denominator), limits=limits)
+
+
+def sum_polynomial(polynomial: Polynomial, *, limits: ComputationLimits | None = None) -> Result[Polynomial]:
+    return run_v6("sum_polynomial", dict(polynomial=polynomial), limits=limits)
+
+
+def geometric_sum(first: Rational | int, ratio: Rational | int, count: int, *, limits: ComputationLimits | None = None) -> Result[Rational]:
+    return run_v6("geometric_sum", dict(first=first, ratio=ratio, count=count), limits=limits)
+
+
+def geometric_series(first: Rational | int, ratio: Rational | int, *, limits: ComputationLimits | None = None) -> Result[Rational]:
+    return run_v6("geometric_series", dict(first=first, ratio=ratio), limits=limits)
+
+
+def polynomial_geometric_series(polynomial: Polynomial, ratio: Rational | int, *, limits: ComputationLimits | None = None) -> Result[Rational]:
+    return run_v6("polynomial_geometric_series", dict(polynomial=polynomial, ratio=ratio), limits=limits)
+
+
+def series_coefficients(function: RealFunction, variable: Symbol, center: Rational | int, order: int, *, limits: ComputationLimits | None = None) -> Result[PowerSeries]:
+    return run_v6("series_coefficients", dict(function=function, variable=variable, center=center, order=order), limits=limits)
+
+
+def residue(function: RationalFunction, variable: Symbol, point: Rational | int, *, limits: ComputationLimits | None = None) -> Result[Rational]:
+    return run_v6("residue", dict(function=function, variable=variable, point=point), limits=limits)
+
+
+def set_union(a: IntervalSet, b: IntervalSet, *, limits: ComputationLimits | None = None) -> Result[IntervalSet]:
+    return run_v6("set_union", dict(a=a, b=b), limits=limits)
+
+
+def set_intersection(a: IntervalSet, b: IntervalSet, *, limits: ComputationLimits | None = None) -> Result[IntervalSet]:
+    return run_v6("set_intersection", dict(a=a, b=b), limits=limits)
+
+
+def set_difference(a: IntervalSet, b: IntervalSet, *, limits: ComputationLimits | None = None) -> Result[IntervalSet]:
+    return run_v6("set_difference", dict(a=a, b=b), limits=limits)
+
+
+def set_complement(a: IntervalSet, *, limits: ComputationLimits | None = None) -> Result[IntervalSet]:
+    return run_v6("set_complement", dict(a=a), limits=limits)
+
+
+def set_symmetric_difference(a: IntervalSet, b: IntervalSet, *, limits: ComputationLimits | None = None) -> Result[IntervalSet]:
+    return run_v6("set_symmetric_difference", dict(a=a, b=b), limits=limits)
+
+
+def correlation(xs, ys, *, limits: ComputationLimits | None = None) -> Result[Expression]:
+    return run_v6("correlation", dict(xs=xs, ys=ys), limits=limits)
+
+
+def linear_regression(xs, ys, *, limits: ComputationLimits | None = None) -> Result[LinearFit]:
+    return run_v6("linear_regression", dict(xs=xs, ys=ys), limits=limits)
+
+
+def quantile(data, p: Rational | int, *, limits: ComputationLimits | None = None) -> Result[Rational]:
+    return run_v6("quantile", dict(data=data, p=p), limits=limits)
+
+
+def mode(data, *, limits: ComputationLimits | None = None) -> Result[tuple[Rational, ...]]:
+    return run_v6("mode", dict(data=data), limits=limits)
+
+
+def stationary_distribution(M: Matrix, *, limits: ComputationLimits | None = None) -> Result[tuple[Rational, ...]]:
+    return run_v6("stationary_distribution", dict(M=M), limits=limits)
+
+
+def fisher_exact(table: Matrix, *, limits: ComputationLimits | None = None) -> Result[Rational]:
+    return run_v6("fisher_exact", dict(table=table), limits=limits)
+
+
+def dot(a, b, *, limits: ComputationLimits | None = None) -> Result[Rational]:
+    return run_v6("dot", dict(a=a, b=b), limits=limits)
+
+
+def cross(a, b, *, limits: ComputationLimits | None = None) -> Result[tuple[Rational, Rational, Rational]]:
+    return run_v6("cross", dict(a=a, b=b), limits=limits)
+
+
+def projection(a, b, *, limits: ComputationLimits | None = None) -> Result[tuple[Rational, ...]]:
+    return run_v6("projection", dict(a=a, b=b), limits=limits)
+
+
+def triple_product(a, b, c, *, limits: ComputationLimits | None = None) -> Result[Rational]:
+    return run_v6("triple_product", dict(a=a, b=b, c=c), limits=limits)

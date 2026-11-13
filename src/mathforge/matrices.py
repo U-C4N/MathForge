@@ -152,6 +152,8 @@ class Matrix:
 
     def __mul__(self, scalar) -> Matrix:
         with computation():
+            if isinstance(scalar, Matrix):  # * scales by an exact rational; the matrix product has its own operator.
+                raise InvalidInput("Matrix * Matrix is not defined: use A @ B for the matrix product")
             scalar = _rational(scalar)
             return Matrix((tuple(value * scalar for value in row) for row in self.rows),
                           ncols=self.ncols)
@@ -169,6 +171,16 @@ class Matrix:
                                                 for k in range(other.nrows)))
                                  for j in range(other.ncols)) for row in self.rows),
                           ncols=other.ncols)
+
+    def __pow__(self, exponent: int) -> Matrix:
+        """self**exponent for a square matrix and an exact int exponent >= 0, the identity of the same size for 0, also
+        for a singular matrix: unchecked arithmetic like @. The value is the v6 operation matrix_power's, computed by
+        its producer (mathforge.areas.linalg.powers) without the independent check that the operation's Result
+        carries. InvalidInput for a non-square matrix, an exponent that is no exact int and a negative exponent (the
+        inverse serves negative powers); ResourceLimitError past the active budget, or past the default limits."""
+        from .areas.linalg.powers import produce  # Here, not at the top: the family module imports this one.
+
+        return produce("matrix_power", {"M": self, "k": exponent})[0]
 
     @classmethod
     def identity(cls, size: int) -> Matrix:

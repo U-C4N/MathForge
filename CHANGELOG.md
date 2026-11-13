@@ -1,5 +1,59 @@
 # Changelog
 
+## 0.9.0 — 2026-11-13
+
+- Fix the deterministic Miller–Rabin test of the trusted layer: it now uses the thirteen prime bases 2 to 41. With the twelve bases 2 to 37, its stated bound of 3,317,044,064,679,887,385,961,981 admitted the composite 318,665,857,834,031,151,167,461 = 399,165,290,221 × 798,330,580,441; no shipped result was affected, because every caller stayed below `2**61`.
+- Fix `powers_by_prime` of the trusted layer, which looped forever on an empty list of primes; it now returns an empty mapping.
+- Add three argument kinds for v6 operations and the MCP area tools: `polynomial`, `interval_set` (at most 32 intervals in friendly JSON) and `relation` (`"="`, `"<"`, `"<="`, `">"` or `">="`); the request budget pays for decoding their envelopes.
+- Add the probe scoreboard, `tools/check_probes.py`: 167 natural mathematics requests in 12 groups, each with one status such as `ok`, `unsupported` or `resource_limit`, compared in CI with the committed baseline `benchmarks/probes-v08.json`.
+- Add `tools/new_family.py`, which scaffolds a v6 operation family with its checker and tests, registers it and regenerates the API and the schemas, and lists the constants that tests and documents pin (`pins --check`).
+- Add shared prime helpers for the number theory families: `mathforge.certify.ntheory.factorization` proves primes and factorizations for checkers and charges every modular power before it runs, and `mathforge.kernels.certificates` builds the matching evidence and refuses evidence whose check would not fit the work budget.
+- Add the cell engine, `mathforge.certify.cells`: a checker-side certified cut of the real line at rational points and at the real roots of one polynomial. The checkers of `solve_abs`, `solve_sqrt` and the four interval set operations decide their claims on it.
+- Add fifteen number theory operations to `mf.ntheory` and `mathforge.operations`, each with an independent checker: `powmod`, `multiplicative_order`, `primitive_root`, `legendre_symbol`, `jacobi_symbol`, `sqrt_mod`, `next_prime`, `prev_prime`, `linear_diophantine`, `quadratic_continued_fraction`, `convergents`, `pell_fundamental`, `moebius`, `divisor_sigma` and `integer_nth_root`, with the records `DiophantineSolution` and `PeriodicContinuedFraction`. The [v0.9 mathematics guide](documentation/v09-mathematics.md) shows each of them.
+- Their checkers prove primes themselves below psi_13 = 3,317,044,064,679,887,385,961,981 and with a Pocklington certificate from psi_13 on; a result whose certificate or factorization does not fit the work budget is `resource_limit_exceeded`, never an unverified value.
+- Add four algebra operations to `mf.algebra`: `count_real_roots` (distinct real roots in a closed interval with rational or infinite ends), `complex_roots` (every complex root with multiplicity, when the irreducible factors have degree at most two; otherwise deferred), `interpolate` (the polynomial of least degree through points with distinct rational abscissas) and `denest_sqrt` (`sqrt(a + b*sqrt(d))` as `sqrt(x) +- sqrt(y)`, with the record `DenestedRoot`; deferred when no such form exists).
+- Add `solve_abs` and `solve_sqrt` to `mf.equations`: equations and inequalities built from polynomials and absolute values of polynomials, or linear in one square root of a polynomial, solved over the reals as `EmptySet`, `UniversalSet` or an `IntervalSet` with rational or real algebraic ends.
+- Add `set_union`, `set_intersection`, `set_difference` and `set_complement` to `mf.sets`, on finite unions of real intervals. `IntervalSet` gains the unchecked methods `complement()`, `difference(other)` and `symmetric_difference(other)` and the operators `|`, `&`, `-`, `^` and `~`.
+- Add `digits` to `mf.numeric`: the decimal expansion of an exact real number truncated toward zero to at most 10,000 places, as the record `TruncatedDecimal`.
+- Add five operations to `mf.series`: `sum_polynomial`, `geometric_sum`, `geometric_series`, `polynomial_geometric_series` and `series_coefficients` (exact power series coefficients at a rational center up to order 4,096, as the record `PowerSeries`; deferred where a coefficient would not be rational). Its checker reuses the Taylor checker's truncated series, which now charges every coefficient operation by the length of its operands, so the budget also bounds the check's time on long coefficients. Under the default limits exp(x) and cos(x) verify to order 4,096, and functions whose coefficients grow long, such as tan(x) or sqrt(1 + x), to orders of about 400.
+- Add `trig_power_antiderivative` and `trig_power_integral` to `mf.integrals`, for polynomials in `sin(a*x)` and `cos(a*x)`; the integral runs between rational multiples of pi whose angles are multiples of `pi/12` and returns the record `PiLinear`.
+- Add `matrix_power` and `eigenvectors` to `mf.linalg`; `eigenvectors` gives every rational eigenvalue with its algebraic multiplicity and eigenspace basis (records `RationalEigenvectors` and `Eigenspace`). `Matrix ** k` returns `matrix_power`'s value as unchecked arithmetic, like `@`, and `Matrix * Matrix` still raises `InvalidInput`, now with a message that names `@`.
+- Add `dot`, `cross`, `projection` and `triple_product` to `mf.vector`, and `distance`, `polygon_area` (signed), `line_intersection` (record `LineIntersection`) and `orientation` to `mf.geometry`.
+- Add `correlation` and `linear_regression` (record `LinearFit`) to `mf.stats`, and `partitions`, `derangements`, `bell` and `stirling1` (unsigned) to `mf.discrete`.
+- Each of these 34 operations has an independent checker, and the [v0.9 mathematics guide](documentation/v09-mathematics.md) shows each of them with its limits.
+- Add sixteen more operations, each with an independent checker: `sturm_sequence` (the canonical Sturm sequence, with the division quotients as evidence) and `cyclotomic_polynomial` (for `phi(n) <= 1024`) to `mf.algebra`; `rational_approximation` (the closest fraction with a bounded denominator, certified by Farey neighbours) to `mf.numeric`; `set_symmetric_difference` to `mf.sets`; `residue` (of a rational function at a rational point) to `mf.series`; `discrete_log` (Pohlig–Hellman modulo a prime, record `DiscreteLogarithm`) and `two_squares` (the number of representations as a sum of two squares and one of them, record `SumOfTwoSquares`) to `mf.ntheory`; `definiteness` (record `Inertia`, certified by a congruence to a diagonal matrix), `gram_schmidt`, `hermite_normal_form` and `smith_normal_form` (with unimodular transforms as evidence) to `mf.linalg`; `convex_hull` to `mf.geometry`; and `quantile` (type 7), `mode`, `stationary_distribution` (of a Markov chain with a unique one) and `fisher_exact` (the exact two-sided p-value of a 2 x 2 table) to `mf.stats`.
+- Fix the interval set operations on an end written as a rational root of a reducible polynomial, such as -1 as root 0 of `x**2 - 1`: when the separation of the ends found that root exact, it dropped the point from the line, and `set_union`, `set_intersection`, `set_difference` and `set_complement` ended in an internal error (`KeyError`) instead of answering.
+- The registry now holds 126 operations besides the 42 of the legacy catalogue, 168 in all, up from 103. Three MCP area tools join: `mathforge.equations`, `mathforge.geometry` (geometry and vectors) and `mathforge.numeric`, so the MCP server offers 40 tools, up from 37; `mathforge.algebra`, `mathforge.analysis`, `mathforge.discrete`, `mathforge.linalg`, `mathforge.ntheory` and `mathforge.stats` serve the other new operations.
+- Add MCP result handles: every response of a computation tool names its `result` with a `handle`, `mf:sha256:` and the SHA-256 digest of the result's canonical JSON (the digest of its workspace `ObjectRef`), and the server keeps recent results in a per-process store of at most 256 documents and 64 MiB, evicting the least recently used. An area tool argument or a `mathforge.compute` operand that takes a canonical envelope also takes a handle, decoded exactly as the envelope sent in full, within the request's limits; an unknown handle is the input error `unknown_handle`. The input schemas of the thirty v0.7 tools, `mathforge.verify` included, do not change; `mathforge.compute` now reads an operand string that matches the handle pattern as a handle (before, an `invalid_input` at stage `decoding`), although its frozen schema does not list handles, so a client that validates calls against it may refuse to send one. Without `symbol_ids`, a request with variables gives new symbol identities, and so a new handle, each time.
+- Every MCP error object gains `reason`, a stable snake_case code such as `unknown_operation`, `unsupported`, `resource_limit_exceeded` or `symbol_mismatch` (a handle passed on beside text without `symbol_ids`), and `next_actions`, short suggestions such as calling `mathforge.catalog`, chosen by the tool, the field and whether a limits field could help; its six other keys keep their values, and `ErrorInfo` and serialized Results do not change. The output schemas require `handle` and both error keys.
+- Add `examples/v09_workflow.py`, a tested tour of the new operations, their re-verifiable results and an MCP area tool call.
+
+Compatibility: Python 3.11–3.14 and the dependency-free core remain. v1–v6
+documents keep their bytes and verdicts. The v0.7 public API and the thirty v0.7
+MCP tools are unchanged, but for the additive `handle`, `reason` and
+`next_actions` keys of their responses. The new operations live in their area modules, such as
+`mf.ntheory` and `mf.algebra`, and in `mathforge.operations`, not in the plain
+`mathforge` namespace, and their results use JSON v6.
+
+Known limitations: factoring bounds the operations that need it. Under the
+default limits the product of the primes `2**89 - 1` and `2**107 - 1` is out of
+reach, and a prime from psi_13 on needs the complete factorization of `p - 1`
+for its certificate. A Pell solution is refused once `x` or `y` has more than
+`max_integer_bits` bits, and a periodic continued fraction once it has more than
+99,000 terms or its terms have more than `max_integer_bits` bits in all.
+`solve_abs` and `solve_sqrt` factor over the integers, so a square-free problem
+polynomial of degree above 64 exceeds the default limits. Rational abscissas
+with many distinct long denominators limit `interpolate` to about 70 points with
+16-bit denominators under the default limits. Near the work limit, some values
+that a producer computes need more work to check than the budget allows (long
+power series coefficients, large plane polygons, some counting and statistics
+inputs, the Sturm sequences of dense polynomials of degree about 55, Fisher tables
+with a total from about 52,000); they end as `resource_limit_exceeded`, never as
+an unverified value. The fraction-free elimination of `definiteness`,
+`gram_schmidt`, `hermite_normal_form` and `stationary_distribution` refuses some
+64 x 64 inputs with long entries whose check would fit, and `discrete_log`
+refuses an order with a large prime factor.
+
 ## 0.8.0 — 2026-10-21
 
 - Add a declarative operation registry; `tools/generate_api.py` generates from it the `mathforge.operations` wrappers, the value functions and 18 lazily loaded area modules, such as `mf.ntheory`.

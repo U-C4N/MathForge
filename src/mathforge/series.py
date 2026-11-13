@@ -3,10 +3,27 @@ from __future__ import annotations
 
 __all__ = [
     "FunctionLimitValue",
+    "PowerSeries",
     "TaylorPolynomial",
     "function_limit",
+    "geometric_series",
+    "geometric_sum",
+    "polynomial_geometric_series",
+    "residue",
+    "series_coefficients",
+    "sum_polynomial",
     "taylor",
 ]
 
-from ._generated.values import function_limit, taylor
+from ._generated.values import (
+    function_limit,
+    geometric_series,
+    geometric_sum,
+    polynomial_geometric_series,
+    residue,
+    series_coefficients,
+    sum_polynomial,
+    taylor,
+)
 from .function_calculus import TaylorPolynomial, FunctionLimitValue
+from .areas.series.power_series import PowerSeries

@@ -66,7 +66,38 @@ class ContinuedFractionTests(unittest.TestCase):
                 self.assertTrue(m.verify(result).verified)
 
     def test_registry_entry(self):
-        self.assertEqual(registry.v6_families(), ("mathforge.areas.ntheory.continued_fraction",))
+        self.assertEqual(registry.v6_families(), ("mathforge.areas.algebra.roots",
+                                                  "mathforge.areas.algebra.polynomial_tools",
+                                                  "mathforge.areas.algebra.radicals",
+                                                  "mathforge.areas.algebra.sequences",
+                                                  "mathforge.areas.discrete.counting",
+                                                  "mathforge.areas.equations.piecewise",
+                                                  "mathforge.areas.geometry.plane",
+                                                  "mathforge.areas.geometry.hull",
+                                                  "mathforge.areas.integrals.trig_powers",
+                                                  "mathforge.areas.linalg.powers",
+                                                  "mathforge.areas.linalg.eigen",
+                                                  "mathforge.areas.linalg.forms",
+                                                  "mathforge.areas.linalg.lattice",
+                                                  "mathforge.areas.ntheory.continued_fraction",
+                                                  "mathforge.areas.ntheory.modular",
+                                                  "mathforge.areas.ntheory.prime_search",
+                                                  "mathforge.areas.ntheory.diophantine",
+                                                  "mathforge.areas.ntheory.quadratic_irrational",
+                                                  "mathforge.areas.ntheory.arithmetic_functions",
+                                                  "mathforge.areas.ntheory.discrete",
+                                                  "mathforge.areas.numeric.digits",
+                                                  "mathforge.areas.numeric.approximation",
+                                                  "mathforge.areas.series.sums",
+                                                  "mathforge.areas.series.power_series",
+                                                  "mathforge.areas.series.laurent",
+                                                  "mathforge.areas.sets.interval_algebra",
+                                                  "mathforge.areas.sets.symmetric",
+                                                  "mathforge.areas.stats.bivariate",
+                                                  "mathforge.areas.stats.order",
+                                                  "mathforge.areas.stats.markov",
+                                                  "mathforge.areas.stats.exact_tests",
+                                                  "mathforge.areas.vector.products"))
         self.assertEqual(registry.spec("continued_fraction"), SPEC)
         self.assertIs(registry.family("continued_fraction"), family)
         self.assertEqual(registry.checker("continued_fraction").__name__,

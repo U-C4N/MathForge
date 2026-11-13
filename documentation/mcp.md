@@ -7,11 +7,12 @@ The tool list has three parts, always in this order:
 
 1. The thirty **curated tools** of v0.7. Their names, order and input schemas are unchanged.
 2. The **area tools**. Each serves a group of mathematical areas, and the list contains only the tools whose
-   areas hold at least one operation. Six exist today: `mathforge.algebra`, `mathforge.analysis`,
-   `mathforge.discrete`, `mathforge.linalg`, `mathforge.ntheory` and `mathforge.stats`.
+   areas hold at least one operation. Nine exist today: `mathforge.algebra`, `mathforge.analysis`,
+   `mathforge.discrete`, `mathforge.equations`, `mathforge.geometry`, `mathforge.linalg`, `mathforge.ntheory`,
+   `mathforge.numeric` and `mathforge.stats`.
 3. `mathforge.catalog`, which finds operations by name, summary or area.
 
-That makes 37 tools today. The list grows as areas gain operations; the protocol's tool listing and
+That makes 40 tools today. The list grows as areas gain operations; the protocol's tool listing and
 `mathforge.capabilities` always show the current one. `api_version` stays 1.
 
 ```python
@@ -19,9 +20,10 @@ import mathforge as mf
 
 names = [tool["name"] for tool in mf.capabilities()["tools"]]
 assert names[0] == "mathforge.capabilities" and names[29] == "mathforge.compute"
-assert names[30:-1] == ["mathforge.algebra", "mathforge.analysis", "mathforge.discrete", "mathforge.linalg",
-                        "mathforge.ntheory", "mathforge.stats"]
-assert names[-1] == "mathforge.catalog" and len(names) == 37
+assert names[30:-1] == ["mathforge.algebra", "mathforge.analysis", "mathforge.discrete",
+                        "mathforge.equations", "mathforge.geometry", "mathforge.linalg",
+                        "mathforge.ntheory", "mathforge.numeric", "mathforge.stats"]
+assert names[-1] == "mathforge.catalog" and len(names) == 40
 ```
 
 ## Install and start
@@ -221,15 +223,18 @@ and returns a version 5 result.
 ## Run an operation through an area tool
 
 An area tool runs one operation of its areas, named in the request. The areas are those of the
-[area modules](areas.md). The six tools serve:
+[area modules](areas.md). The nine tools serve:
 
 | Tool | Areas |
 | --- | --- |
 | `mathforge.algebra` | `expr`, `algebra`, `sets` |
 | `mathforge.analysis` | `analysis`, `series`, `integrals` |
 | `mathforge.discrete` | `discrete` |
+| `mathforge.equations` | `equations` |
+| `mathforge.geometry` | `geometry`, `vector` |
 | `mathforge.linalg` | `linalg` |
 | `mathforge.ntheory` | `ntheory`, `crypto` |
+| `mathforge.numeric` | `numeric` |
 | `mathforge.stats` | `stats` |
 
 The input is an object:
@@ -270,7 +275,7 @@ assert mf.verify(result).verified
 ```
 
 The response is the usual wrapper described under [Understand the result](#understand-the-result). Its `result`
-is the unchanged `to_data(Result)` envelope: format version 6 for an operation added in v0.8, such as
+is the unchanged `to_data(Result)` envelope: format version 6 for an operation added since v0.8, such as
 `continued_fraction`, and version 5 for a v0.7 operation.
 
 ### Write the arguments
@@ -285,6 +290,7 @@ below, or a canonical object envelope.
 | `scalar` | An integer, or closed exact mathematical text | `"sqrt(2)/3"` |
 | `point` | A `scalar`, or the text `"-inf"` or `"+inf"` | `"+inf"` |
 | `side` | `"both"`, `"left"` or `"right"` | `"left"` |
+| `relation` | `"="`, `"<"`, `"<="`, `">"` or `">="` | `"<="` |
 | `int_list` | An array of `int` | `[2, 3, "5"]` |
 | `rational_list` | An array of `rational` | `[1, "3/2", 2]` |
 | `int_pairs` | An array of pairs of `int` | `[[2, 3], [3, 5]]` |
@@ -294,6 +300,8 @@ below, or a canonical object envelope.
 | `function` | `{"text": ..., "variables": [...]}`: a real elementary function and its ordered variables | `{"text": "log(x)+sin(x)", "variables": ["x"]}` |
 | `function_list` | An array of `function` | `[{"text": "x*y", "variables": ["x", "y"]}]` |
 | `rational_function` | `{"text": ..., "variable": ...}` | `{"text": "1/(x^2-1)", "variable": "x"}` |
+| `polynomial` | `{"text": ..., "variable": ...}`: a polynomial in one variable with rational coefficients | `{"text": "x^3 - 2*x + 1/2", "variable": "x"}` |
+| `interval_set` | An array of at most 32 intervals `{"lower": ..., "upper": ..., "left_closed": ..., "right_closed": ...}`: each end a `scalar` or `null`, each flag `true` or `false` | `[{"lower": null, "upper": "sqrt(2)", "left_closed": false, "right_closed": true}]` |
 | `symbol` | A variable name | `"x"` |
 | `symbols` | An array of variable names | `["x", "y"]` |
 | `bindings` | An object from variable names to `scalar` | `{"x": "sqrt(2)"}` |
@@ -302,15 +310,33 @@ below, or a canonical object envelope.
 JSON decimal numbers and `true`/`false` are never exact numbers: send `"1/2"`, not `0.5`. A string of digits has at
 most 1024 characters, and the request's `limits`, such as `max_integer_bits`, apply to every number. `scalar` text
 must be closed, without free variables, and follows the [shared text grammar](parsing.md), as does the text of a
-`rational_function`; `function` text follows the grammar of `mathforge.parse_function`.
+`polynomial` or a `rational_function`; `function` text follows the grammar of `mathforge.parse_function`. The text
+of a `polynomial` names no other variable and divides by rational constants only.
+
+An `interval_set` is the union of its intervals, which may come in any order and may overlap. `left_closed` and
+`right_closed` say whether an interval contains its lower and its upper end. An end is `null` when it is
+infinite, and then open; the texts `"-inf"` and `"+inf"` belong to the `point` kind only. A finite end is a
+rational number or a number of one quadratic field, written with square roots that are rational multiples of
+each other, such as `"(1+sqrt(5))/2"` or `"sqrt(8)-sqrt(2)"`; send any other real algebraic end as the envelope
+of the `RealAlgebraicRoot` that a result returned.
+
+The array lists at most 32 intervals; a longer one is a decoding error. A result repeats a set in its request and
+its step, and in its value when the operation returns one, and the value of an operation on two sets can be as large
+as both. So that such a result loads and verifies within the default limits, the server rebuilds every
+`interval_set` argument, in either form, from its canonical envelope within one tenth of the default limits on work,
+nodes and refinements. A set that needs more is a decoding error with the code `resource_limit_exceeded` at that
+argument, whatever the number of its intervals: irrational ends that lie close together cost more to compare, such
+as the ends of `(sqrt(10^400), sqrt(10^400+1))`.
 
 A **canonical object envelope** is exactly what `mf.to_data` returns for a value, in format version 1 through 6.
 Use it to pass a value from an earlier result, such as a real algebraic root, that has no friendly form. It may
-stand for a whole argument or for an element of a list, a pair, a complex number, a matrix or `bindings`. The
-server applies the checks of `mathforge.compute` to each envelope: it has exactly the members `format`,
-`version`, `kind` and `data`; `kind` is `object`; `data` contains operand types only, so a Result, a Workspace,
-execution metadata and the v6 `Unevaluated` and `Reason` records are not operands; and the envelope is in its
-canonical minimum format.
+stand for a whole argument or for an element of a list, a pair, a complex number, a matrix or `bindings`, or for
+an end of an interval. The server applies the checks of `mathforge.compute` to each envelope: it has exactly the
+members `format`, `version`, `kind` and `data`; `kind` is `object`; `data` contains operand types only, so a
+Result, a Workspace, execution metadata and the v6 `Unevaluated` and `Reason` records are not operands; and the
+envelope is in its canonical minimum format. An interval set, or an interval, is an operand only where it stands
+for a whole `interval_set` argument; anywhere else, the end of an interval included, its envelope is a decoding
+error, as in `mathforge.compute`.
 
 ```python
 def run(tool, operation, **arguments):
@@ -339,19 +365,99 @@ assert not reply.is_error and reply.payload["symbols"] == [{"name": "x", "uid": 
 ```
 
 A call that the server cannot decode is an error response with `result` null. Its `error` names the stage, a code
-and the field that failed, such as `arguments.n` below.
+and the field that failed, such as `arguments.n` below, and the [reason](#read-the-reason-of-an-error) with what to
+try next.
 
 ```python
 bad = call_tool("mathforge.discrete", {"operation": "binomial", "arguments": {"n": 10.0, "k": 3}})
 assert bad.is_error and bad.payload["result"] is None
 assert bad.payload["error"]["stage"] == "decoding" and bad.payload["error"]["field"] == "arguments.n"
+assert bad.payload["error"]["reason"] == "invalid_input"
+```
+
+### Pass a result on by its handle
+
+Every response of a computation tool (the curated tools, the area tools, `mathforge.compute` and
+`mathforge.verify`) names its `result` with a **handle**: the text `mf:sha256:` followed by the 64 lowercase
+hexadecimal digits of the SHA-256 digest of the result's canonical JSON, the compact, key-sorted ASCII text that
+`mf.dumps` writes. It is the digest of the workspace reference too: the handle `mf:sha256:<h>` and the
+`ObjectRef` `sha256:<h>` of the same value name the same document. `handle` is null when `result` is null. A
+request gives the same response, and so the same handle, each time when it uses no variable names or names its
+symbols with `symbol_ids`. Without `symbol_ids`, every call gives its names new symbol identities, so the same
+request with a variable gives a different result and handle each time.
+
+Wherever an area tool argument takes a canonical envelope, as a whole argument, an element or an end of an interval,
+it also takes a handle, and so does each operand of `mathforge.compute`. The input schema of `mathforge.compute` is
+frozen with the thirty v0.7 tools and still lists only envelopes for its operands, so a client that validates calls
+against it may refuse to send a handle there; the server accepts one. A handle of a Result stands for the
+Result's value; a handle of any other document, such as the `RealFunction` of `mathforge.parse_function`, stands for
+that document. The server decodes it exactly as the envelope sent in full: with the same checks of the argument's
+kind, within the request's `limits`, and with the request byte limit counting the document in place of the handle.
+So a handle never makes an argument valid that its envelope would not be: a handle of a `Matrix` result where an
+integer is expected fails as the matrix envelope does. A Result without a value, such as a failed or a deferred one,
+stands for no argument, and naming it is an input error. `mathforge.verify` keeps its frozen input, a whole Result
+document, and takes no handle.
+
+A handle keeps the symbol identities of the earlier result. Text in a later call makes new symbols unless
+`symbol_ids` names them, so a call that writes a variable of the handle's document, such as `"variable": "x"`, must
+pass the earlier response's `symbols` as `symbol_ids`. Otherwise the call holds two symbols named `x`, and its error
+has the reason `symbol_mismatch`.
+
+```python
+power = call_tool("mathforge.linalg", {"operation": "matrix_power",
+                                       "arguments": {"M": [[2, 1], [0, 3]], "k": 2}})
+handle = power.payload["handle"]
+assert handle.startswith("mf:sha256:") and len(handle) == 74
+from mathforge.workspace import Workspace
+assert handle == "mf:" + Workspace().put(mf.from_data(power.payload["result"])).identifier
+
+vectors = call_tool("mathforge.linalg", {"operation": "eigenvectors", "arguments": {"M": handle}})
+assert not vectors.is_error and mf.verify(mf.from_data(vectors.payload["result"])).verified
+gcd = call_tool("mathforge.ntheory", {"operation": "integer_gcd", "arguments": {"a": 12, "b": 18}})
+again = call_tool("mathforge.compute", {"operation": "integer_gcd",
+                                        "arguments": {"a": gcd.payload["handle"], "b": mf.to_data(4)}})
+assert mf.from_data(again.payload["result"]).value == 2
+
+derivative = call_tool("mathforge.analysis", {"operation": "function_differentiate", "arguments": {
+    "expression": {"text": "x^3", "variables": ["x"]}, "variable": "x"}})
+integral = {"operation": "function_integrate",
+            "arguments": {"expression": derivative.payload["handle"], "variable": "x", "lower": 0, "upper": 1}}
+mismatch = call_tool("mathforge.analysis", integral)
+assert mismatch.is_error and mismatch.payload["error"]["reason"] == "symbol_mismatch"
+ids = {entry["name"]: entry["uid"] for entry in derivative.payload["symbols"]}
+integral["symbol_ids"] = ids
+reply = call_tool("mathforge.analysis", integral)
+assert not reply.is_error and str(mf.from_data(reply.payload["result"]).value) == "1"
+```
+
+The server keeps the documents behind the handles in memory, **in its own process only**, in a store of at most
+256 documents and 64 MiB of JSON text, and evicts the least recently used one first; a document larger than 64 MiB is
+not kept. A handle from another server process, from before a restart or of an evicted document is unknown: the call
+fails with the code and reason `unknown_handle`, stage `input`, and the field of the argument, and the server never
+guesses. To recover, repeat the call that returned the handle and pass the handle of its new response, or send the
+argument in full in its friendly form. The `result` of a response cannot replace the handle of a Result: a Result
+document is no operand, and its value's canonical envelope, which `mathforge.compute` would take, is in its minimum
+format version, which the response does not show. The store checks the digest of every document it returns,
+so a handle can only ever stand for the document it names. A string is a handle only when it matches
+`^mf:sha256:[0-9a-f]{64}$` exactly; anything else, such as uppercase digits or another prefix, is decoded as
+friendly input of the kind and fails as any other invalid string does. No friendly form contains a colon, so a handle
+is never mistaken for a number, a name or mathematical text.
+
+```python
+unknown = call_tool("mathforge.ntheory", {"operation": "integer_gcd",
+                                          "arguments": {"a": "mf:sha256:" + "0" * 64, "b": 4}})
+error = unknown.payload["error"]
+assert (error["stage"], error["code"], error["field"]) == ("input", "unknown_handle", "arguments.a")
+assert error["next_actions"] == [
+    "repeat the call that returned this handle and pass the handle of its new response instead",
+    "or send this argument in full, in its friendly form when its kind has one (mathforge.catalog names the kind)"]
 ```
 
 ### Treat the schemas as hints
 
 An area tool's input schema documents the shape of a call. `operation` lists the tool's operations. The tool's
 `$defs` define each operation's arguments object, named like the operation, each argument kind that the tool
-uses, and the canonical `envelope`; `arguments` refers to those definitions. The schema stays within a portable
+uses, the canonical `envelope` and the `handle` that may replace it; `arguments` refers to those definitions. The schema stays within a portable
 subset of JSON Schema: a plain object at the root, local `$ref` references, and no `if`/`then`/`else` or
 combinator at the root.
 
@@ -421,9 +527,10 @@ Computation tools return a structured wrapper containing:
 
 - `api_version`: adapter response contract version, independent of mathematical JSON.
 - `result`: the unchanged `to_data(Result)` envelope, `to_data(RealFunction)` for `parse_function`, or `to_data(VerificationReport)` for `verify`.
+- `handle`: the [handle](#pass-a-result-on-by-its-handle) of `result`, or null when `result` is null.
 - `text`, `latex`: exact human-readable presentation, not replacement evidence.
 - `symbols`: explicit name/UUID records for reuse through `symbol_ids`.
-- `error`: stage, code, message and available field/source-span information, or null.
+- `error`: stage, code, message, available field/source-span information, a reason and the next actions, or null.
 
 `capabilities` instead returns its own descriptive metadata object, which lists every
 tool, the area tools and the catalog included, and each operation with its `mcp_tool`
@@ -444,7 +551,7 @@ An unsupported elementary integral or limit may instead complete with
 `outcome=NO_CONCLUSION`, `value=null` and an explicit `deferred` request. This is
 not an MCP execution error and makes no claim of divergence or nonexistence.
 The deferred source, bounds or limit direction remain linked to the request.
-An operation added in v0.8 that reaches no verified answer reports a generic
+An operation added since v0.8 that reaches no verified answer reports a generic
 `Unevaluated` record in the same field, with its kind, the request and a reason
 code, under the same `NO_CONCLUSION` outcome.
 Unsupported operations,
@@ -457,6 +564,46 @@ result and reports its presentation stage separately.
 Workspace or arbitrary mathematical object. It rechecks mathematical claims;
 stored verification labels are not trusted.
 
+### Read the reason of an error
+
+Every error object, also the catalog's, has eight keys: `stage`, `code`, `message`, `field`, `start` and `end` as
+before, and two more. `reason` is a stable snake_case code that says what kind of failure it is, and `next_actions`
+is a list, possibly empty, of short instructions that an agent may follow next. Both derive from the error's code,
+stage and field, never from its message, and the same call gives the same ones. The `error` of a core Result, its
+`ErrorInfo`, keeps its code and message only. A deferred result (`NO_CONCLUSION`) is no error and has no reason here;
+its `Unevaluated` record carries its own.
+
+| Reason | When | Next actions |
+| --- | --- | --- |
+| `invalid_input` | An argument is malformed or out of the operation's domain | See the operation's arguments in `mathforge.catalog` (its name as `query`), or the tool's input schema; correct the field, or, when `field` is null, the inputs that `message` names |
+| `unknown_operation` | `operation` names no operation of the area tool, or of `mathforge.compute` | Find the operation and its tool with `mathforge.catalog` |
+| `unknown_tool` | No tool has this name | Find the tool with `mathforge.catalog` |
+| `unsupported` | The operation does not cover this input (status `UNSUPPORTED`) | Find an operation that covers it with `mathforge.catalog` |
+| `resource_limit_exceeded` | A limit of the request, the transport or a parser ran out | Retry with larger limits, each at most its default, or a smaller input; only a smaller input when the limits are already the defaults or the cap is fixed (the request and text sizes, the parser's limits, the variable count) |
+| `limit_out_of_range` | A `limits` field is not a positive integer up to its default | Give each field a value up to its default (`mathforge.capabilities` lists them) |
+| `response_too_large` | The full result exceeds the response byte limit | Retry with a smaller input or smaller calls |
+| `presentation_failed` | Text or LaTeX rendering failed; `result` is kept | Use the canonical `result` |
+| `unknown_handle` | The server holds no document with this handle | Repeat the call that returned it and pass the new handle, or send the argument in its friendly form (for `mathforge.compute`, the operand's canonical envelope) |
+| `invalid_symbol_ids`, `invalid_symbol_table` | `symbol_ids` is malformed or names identities twice | Pass `symbol_ids` copied from an earlier response's `symbols` |
+| `symbol_conflict` | One symbol identity appears under two names or two sets of metadata | Pass `symbol_ids` from the earlier response's `symbols` and use those names |
+| `symbol_mismatch` | An operation refused arguments in which one name stands for two symbol identities, as a handle beside text of a call without `symbol_ids` gives (code `invalid_input`) | Pass `symbol_ids` from the earlier response's `symbols` |
+| `invalid_document` | An envelope is not a valid MathForge document (code `invalid_serialization`) | Send the envelope exactly as returned, or its handle where the tool takes one; `mathforge.verify` takes the whole Result document only |
+| `parse_syntax` | Mathematical text does not parse | Correct the text at `start`..`end` of the field |
+| `unknown_symbol` | Text uses an undeclared name | Declare every name in `variables` or `variable`; for a number field, write closed text without names |
+
+Any other code, such as `division_by_zero`, `singular_matrix` or `execution_error`, is its own reason, with no next
+actions. A client should branch on `reason` and treat an unknown one as it would its `code`.
+
+```python
+reply = call_tool("mathforge.ntheory", {"operation": "binomial", "arguments": {"n": 10, "k": 3}})
+error = reply.payload["error"]
+assert (error["code"], error["field"], error["reason"]) == ("invalid_input", "operation", "unknown_operation")
+assert error["next_actions"] == ["call mathforge.catalog with a query to find the operation and the tool that runs it"]
+
+reply = call_tool("mathforge.solve", {"problem": "x=1", "limits": {"max_work": 10**9}})
+assert reply.payload["error"]["reason"] == "limit_out_of_range"
+```
+
 ## Migration note for MCP clients
 
 A v0.7 client keeps working. The changes are additive, and `api_version` stays 1.
@@ -464,7 +611,7 @@ A v0.7 client keeps working. The changes are additive, and `api_version` stays 1
 - The tool listing and `mathforge.capabilities` show the area tools and the catalog after the thirty curated
   tools, which keep their names, order, input schemas and results. A client that expects exactly thirty tools
   must accept more.
-- The result of an operation added in v0.8 is a JSON **v6** envelope (`"version": 6`); `continued_fraction` is the
+- The result of an operation added since v0.8 is a JSON **v6** envelope (`"version": 6`); `continued_fraction` is the
   first. Results of operations that existed in v0.7 keep the format version they had (1 through 5), also when an
   area tool runs them, so results of format versions 1 through 5 are unchanged. MathForge 0.7 does not read v6
   documents.
@@ -475,6 +622,12 @@ A v0.7 client keeps working. The changes are additive, and `api_version` stays 1
   too, and name envelope versions 1–5.
 - A v6 result whose operation this build does not know, for example one made by a later build, does not verify:
   the report is not verified and holds a single `UNKNOWN` check. The reply is an ordinary response, never an error.
+- Since v0.9, the response of every computation tool has a `handle` key beside `result`, and every error object has
+  `reason` and `next_actions` beside its six keys, whose values do not change. The output schemas list and require
+  them. An area tool argument that takes an envelope also takes a handle. The input schemas of the thirty curated
+  tools do not change; among them only `mathforge.compute` reads a handle, as an operand: an operand string that
+  matches the handle pattern, an `invalid_input` at stage `decoding` before, now resolves or fails with
+  `unknown_handle` at stage `input`, although the frozen schema of `mathforge.compute` does not list handles.
 
 ```python
 from mathforge.deferred import Reason, Unevaluated
@@ -499,7 +652,8 @@ Optional `limits` fields may lower, but never exceed, `ComputationLimits`
 defaults. The adapter also bounds request/response size, matrix entries, numbers,
 equation/variable counts and parser/renderer work. Input failures before a core
 result exists have `result=null`. Oversize results return `response_too_large`
-instead of a truncated certificate. Larger computations remain available through
+instead of a truncated certificate. A handle counts as the document it stands for,
+against the request byte limit and the request's `limits` alike. Larger computations remain available through
 the Python API with explicitly supplied finite limits.
 
 ## Test the protocol

@@ -230,10 +230,26 @@ class DualVersionTest(unittest.TestCase):
         with registry._testing_families(demo):
             operations = mf.capabilities()["operations"]
             names = [entry["name"] for entry in operations]
-            # The 102 frozen v0.7 entries, then continued_fraction and the demo's demo_variable: the superseding
-            # integer_gcd keeps its one frozen v0.7 entry.
-            self.assertEqual(len(operations), len(frozen["operations"]) + 2)
-            self.assertEqual(names[len(frozen["operations"]):], ["continued_fraction", "demo_variable"])
+            # The 102 frozen v0.7 entries, then the v6 operations in the order of their families (area packages in
+            # name order: continued_fraction and the seventeen v0.9 number theory operations among the 66 of v0.8 and
+            # v0.9), and the demo's demo_variable: the superseding integer_gcd keeps its one frozen v0.7 entry.
+            self.assertEqual(len(operations), len(frozen["operations"]) + 67)
+            self.assertEqual(names[len(frozen["operations"]):],
+                             ["count_real_roots", "complex_roots", "interpolate", "denest_sqrt", "sturm_sequence",
+                              "cyclotomic_polynomial", "partitions", "derangements", "bell", "stirling1", "solve_abs",
+                              "solve_sqrt", "distance", "polygon_area", "line_intersection", "orientation",
+                              "convex_hull", "trig_power_antiderivative", "trig_power_integral", "matrix_power",
+                              "eigenvectors", "definiteness", "gram_schmidt", "hermite_normal_form",
+                              "smith_normal_form", "continued_fraction", "powmod", "multiplicative_order",
+                              "primitive_root", "legendre_symbol", "jacobi_symbol", "sqrt_mod", "next_prime",
+                              "prev_prime", "linear_diophantine", "quadratic_continued_fraction", "convergents",
+                              "pell_fundamental", "moebius", "divisor_sigma", "integer_nth_root", "discrete_log",
+                              "two_squares", "digits", "rational_approximation", "sum_polynomial", "geometric_sum",
+                              "geometric_series", "polynomial_geometric_series", "series_coefficients", "residue",
+                              "set_union", "set_intersection", "set_difference", "set_complement",
+                              "set_symmetric_difference", "correlation", "linear_regression", "quantile", "mode",
+                              "stationary_distribution", "fisher_exact", "dot", "cross", "projection",
+                              "triple_product", "demo_variable"])
             self.assertEqual(names.count("integer_gcd"), 1)
             self.assertEqual(len(names), len(set(names)))
             catalog = [entry["name"] for entry in call_tool("mathforge.catalog", {"limit": 200}).payload["operations"]]
@@ -340,13 +356,110 @@ class DualSchemaTest(unittest.TestCase):
 
 class FamilyListTest(unittest.TestCase):
     def test_families_come_from_area_packages(self):
-        self.assertEqual(registry.v6_families(), (PILOT,))
-        self.assertEqual(importlib.import_module("mathforge.areas.ntheory").FAMILIES, (PILOT,))
+        self.assertEqual(registry.v6_families(), ("mathforge.areas.algebra.roots",
+                                                  "mathforge.areas.algebra.polynomial_tools",
+                                                  "mathforge.areas.algebra.radicals",
+                                                  "mathforge.areas.algebra.sequences",
+                                                  "mathforge.areas.discrete.counting",
+                                                  "mathforge.areas.equations.piecewise",
+                                                  "mathforge.areas.geometry.plane",
+                                                  "mathforge.areas.geometry.hull",
+                                                  "mathforge.areas.integrals.trig_powers",
+                                                  "mathforge.areas.linalg.powers",
+                                                  "mathforge.areas.linalg.eigen",
+                                                  "mathforge.areas.linalg.forms",
+                                                  "mathforge.areas.linalg.lattice",
+                                                  PILOT,
+                                                  "mathforge.areas.ntheory.modular",
+                                                  "mathforge.areas.ntheory.prime_search",
+                                                  "mathforge.areas.ntheory.diophantine",
+                                                  "mathforge.areas.ntheory.quadratic_irrational",
+                                                  "mathforge.areas.ntheory.arithmetic_functions",
+                                                  "mathforge.areas.ntheory.discrete",
+                                                  "mathforge.areas.numeric.digits",
+                                                  "mathforge.areas.numeric.approximation",
+                                                  "mathforge.areas.series.sums",
+                                                  "mathforge.areas.series.power_series",
+                                                  "mathforge.areas.series.laurent",
+                                                  "mathforge.areas.sets.interval_algebra",
+                                                  "mathforge.areas.sets.symmetric",
+                                                  "mathforge.areas.stats.bivariate",
+                                                  "mathforge.areas.stats.order",
+                                                  "mathforge.areas.stats.markov",
+                                                  "mathforge.areas.stats.exact_tests",
+                                                  "mathforge.areas.vector.products"))
+        self.assertEqual(importlib.import_module("mathforge.areas.ntheory").FAMILIES,
+                         (PILOT, "mathforge.areas.ntheory.modular", "mathforge.areas.ntheory.prime_search",
+                          "mathforge.areas.ntheory.diophantine", "mathforge.areas.ntheory.quadratic_irrational",
+                          "mathforge.areas.ntheory.arithmetic_functions", "mathforge.areas.ntheory.discrete"))
         self.assertIs(registry.v6_families(), registry.v6_families())  # Cached.
         with registry._testing_families(demo):
-            self.assertEqual(registry.v6_families(), (PILOT, demo.__name__))
+            self.assertEqual(registry.v6_families(), ("mathforge.areas.algebra.roots",
+                                                      "mathforge.areas.algebra.polynomial_tools",
+                                                      "mathforge.areas.algebra.radicals",
+                                                      "mathforge.areas.algebra.sequences",
+                                                      "mathforge.areas.discrete.counting",
+                                                      "mathforge.areas.equations.piecewise",
+                                                      "mathforge.areas.geometry.plane",
+                                                      "mathforge.areas.geometry.hull",
+                                                      "mathforge.areas.integrals.trig_powers",
+                                                      "mathforge.areas.linalg.powers",
+                                                      "mathforge.areas.linalg.eigen",
+                                                      "mathforge.areas.linalg.forms",
+                                                      "mathforge.areas.linalg.lattice",
+                                                      PILOT,
+                                                      "mathforge.areas.ntheory.modular",
+                                                      "mathforge.areas.ntheory.prime_search",
+                                                      "mathforge.areas.ntheory.diophantine",
+                                                      "mathforge.areas.ntheory.quadratic_irrational",
+                                                      "mathforge.areas.ntheory.arithmetic_functions",
+                                                      "mathforge.areas.ntheory.discrete",
+                                                      "mathforge.areas.numeric.digits",
+                                                      "mathforge.areas.numeric.approximation",
+                                                      "mathforge.areas.series.sums",
+                                                      "mathforge.areas.series.power_series",
+                                                      "mathforge.areas.series.laurent",
+                                                      "mathforge.areas.sets.interval_algebra",
+                                                      "mathforge.areas.sets.symmetric",
+                                                      "mathforge.areas.stats.bivariate",
+                                                      "mathforge.areas.stats.order",
+                                                      "mathforge.areas.stats.markov",
+                                                      "mathforge.areas.stats.exact_tests",
+                                                      "mathforge.areas.vector.products",
+                                                      demo.__name__))
             self.assertTrue(registry.record_module(demo.__name__))
-        self.assertEqual(registry.v6_families(), (PILOT,))
+        self.assertEqual(registry.v6_families(), ("mathforge.areas.algebra.roots",
+                                                  "mathforge.areas.algebra.polynomial_tools",
+                                                  "mathforge.areas.algebra.radicals",
+                                                  "mathforge.areas.algebra.sequences",
+                                                  "mathforge.areas.discrete.counting",
+                                                  "mathforge.areas.equations.piecewise",
+                                                  "mathforge.areas.geometry.plane",
+                                                  "mathforge.areas.geometry.hull",
+                                                  "mathforge.areas.integrals.trig_powers",
+                                                  "mathforge.areas.linalg.powers",
+                                                  "mathforge.areas.linalg.eigen",
+                                                  "mathforge.areas.linalg.forms",
+                                                  "mathforge.areas.linalg.lattice",
+                                                  PILOT,
+                                                  "mathforge.areas.ntheory.modular",
+                                                  "mathforge.areas.ntheory.prime_search",
+                                                  "mathforge.areas.ntheory.diophantine",
+                                                  "mathforge.areas.ntheory.quadratic_irrational",
+                                                  "mathforge.areas.ntheory.arithmetic_functions",
+                                                  "mathforge.areas.ntheory.discrete",
+                                                  "mathforge.areas.numeric.digits",
+                                                  "mathforge.areas.numeric.approximation",
+                                                  "mathforge.areas.series.sums",
+                                                  "mathforge.areas.series.power_series",
+                                                  "mathforge.areas.series.laurent",
+                                                  "mathforge.areas.sets.interval_algebra",
+                                                  "mathforge.areas.sets.symmetric",
+                                                  "mathforge.areas.stats.bivariate",
+                                                  "mathforge.areas.stats.order",
+                                                  "mathforge.areas.stats.markov",
+                                                  "mathforge.areas.stats.exact_tests",
+                                                  "mathforge.areas.vector.products"))
 
     def test_spec_lookup_imports_no_checker_kernel_or_lean(self):
         report = probe(

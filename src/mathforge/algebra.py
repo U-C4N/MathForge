@@ -4,6 +4,7 @@ from __future__ import annotations
 __all__ = [
     "ComplexAlgebraic",
     "ComplexRoot",
+    "DenestedRoot",
     "complex_add",
     "complex_algebraic",
     "complex_conjugate",
@@ -13,9 +14,15 @@ __all__ = [
     "complex_norm_squared",
     "complex_pow",
     "complex_real",
+    "complex_roots",
     "complex_sqrt",
     "complex_sub",
+    "count_real_roots",
+    "cyclotomic_polynomial",
+    "denest_sqrt",
+    "interpolate",
     "quadratic_roots",
+    "sturm_sequence",
 ]
 
 from ._generated.values import (
@@ -28,8 +35,15 @@ from ._generated.values import (
     complex_norm_squared,
     complex_pow,
     complex_real,
+    complex_roots,
     complex_sqrt,
     complex_sub,
+    count_real_roots,
+    cyclotomic_polynomial,
+    denest_sqrt,
+    interpolate,
     quadratic_roots,
+    sturm_sequence,
 )
 from .complex_numbers import ComplexAlgebraic, ComplexRoot
+from .areas.algebra.radicals import DenestedRoot

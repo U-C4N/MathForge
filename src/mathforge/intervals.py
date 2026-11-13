@@ -159,6 +159,74 @@ class IntervalSet:
                     j += 1
             return IntervalSet(tuple(intersections))
 
+    # The complement, the differences and the operators below are unchecked like union and intersection: they
+    # compute with compare_real and the canonical constructor, and no certificate checks them. The family
+    # mathforge.areas.sets.interval_algebra verifies its own results. Each takes the operands that union takes (an
+    # IntervalSet, or the EmptySet or UniversalSet of the reals), and its ends are records of the operands.
+
+    def complement(self, *, limits=None):
+        """The reals outside the set: the gaps before, between and after its intervals. A gap is closed at an end
+        exactly where the interval beside it is open, so the gap between two intervals open at one point is that
+        point."""
+        with computation(limits) as budget:
+            gaps = []
+            lower, left_closed = None, False  # The start of the next gap: minus infinity first.
+            for item in self.intervals:
+                budget.tick()
+                if item.lower is not None:  # Only the first interval of a canonical set can start at -inf.
+                    gaps.append(Interval(lower, item.lower, left_closed, not item.left_closed))
+                if item.upper is None:  # It reaches +inf: no gap after it.
+                    return IntervalSet(tuple(gaps))
+                lower, left_closed = item.upper, not item.right_closed
+            gaps.append(Interval(lower, None, left_closed, False))
+            return IntervalSet(tuple(gaps))
+
+    def difference(self, other, *, limits=None):
+        """The reals in this set and not in other."""
+        with computation(limits):
+            other = self.from_solution_set(other)
+            return self.intersection(other.complement())
+
+    def symmetric_difference(self, other, *, limits=None):
+        """The reals in exactly one of this set and other."""
+        with computation(limits):
+            other = self.from_solution_set(other)
+            return self.difference(other).union(other.difference(self))
+
+    def __or__(self, other):
+        return self.union(other) if _operand(other) else NotImplemented
+
+    def __ror__(self, other):
+        return self.union(other) if _operand(other) else NotImplemented
+
+    def __and__(self, other):
+        return self.intersection(other) if _operand(other) else NotImplemented
+
+    def __rand__(self, other):
+        return self.intersection(other) if _operand(other) else NotImplemented
+
+    def __sub__(self, other):
+        return self.difference(other) if _operand(other) else NotImplemented
+
+    def __rsub__(self, other):
+        return self.from_solution_set(other).difference(self) if _operand(other) else NotImplemented
+
+    def __xor__(self, other):
+        return self.symmetric_difference(other) if _operand(other) else NotImplemented
+
+    def __rxor__(self, other):
+        return self.symmetric_difference(other) if _operand(other) else NotImplemented
+
+    def __invert__(self):
+        return self.complement()
+
+
+def _operand(value):
+    """Whether a set operator takes value as its other operand: an IntervalSet, an EmptySet or a UniversalSet (whose
+    domain from_solution_set then checks). Anything else gives NotImplemented, so that Python raises TypeError."""
+    from .contracts import EmptySet, UniversalSet
+    return type(value) in (IntervalSet, EmptySet, UniversalSet)
+
 
 def equal_interval_sets(left, right):
     left, right = IntervalSet.from_solution_set(left), IntervalSet.from_solution_set(right)

@@ -1,16 +1,41 @@
 # Compatibility and release checks
 
+## What v0.9 preserves
+
+v0.9 is additive. Every v0.8 operation keeps its name, signature, values and errors,
+the thirty v0.7 MCP tools keep their names, order and input schemas, the v0.8 area
+tools accept the new operations of their areas besides their old ones, three area
+tools join them (40 tools in all), and v1–v6 documents keep their bytes and verdicts. The 65 new operations
+live in their area modules and in `mathforge.operations` and write JSON v6. Two
+behaviours of existing types are new: `IntervalSet` gains set operators (`|`, `&`,
+`-`, `^`, `~`) and `Matrix ** k` raises a square matrix to a power; `Matrix * Matrix`
+still raises `InvalidInput`, now naming `@` in its message. The check of power
+series charges each coefficient operation by the length of its operands, so a
+long `taylor` or `series_coefficients` check stops at its work limit sooner and
+never runs long within it.
+
+MCP responses gain additive keys, and `api_version` stays 1: each computation
+tool's response names its result with a `handle` (`mf:sha256:` and the digest of
+the result's canonical JSON), which an area tool argument or a `mathforge.compute`
+operand may send in place of the envelope, and each error object gains `reason`
+and `next_actions` beside its six keys, whose values do not change. A client that
+rejects unknown keys must accept these. `ErrorInfo` and serialized Results do not
+change. The input schemas of the thirty v0.7 tools do not change either, so the
+frozen schema of `mathforge.compute` does not list handles; an operand string that
+matches the handle pattern, an `invalid_input` before, now resolves as a handle or
+fails with `unknown_handle`.
+
 ## What v0.8 preserves
 
 The dependency-free Python 3.11–3.14 core and the v0.7 public API remain. Every
 v0.7 operation keeps its name, signature and values, and its errors apart from
 resource limits; the thirty v0.7 MCP tools keep their names, order and input
-schemas, and `api_version` stays 1. Operations added in v0.8 live in their area
+schemas, and `api_version` stays 1. Operations added since v0.8 live in their area
 module and in `mathforge.operations`, not in the plain `mathforge` namespace.
 
 Mathematical JSON v1–v5 documents keep their bytes and content hashes, also in
 mixed workspaces. The results of the v0.7 operations keep their format version and
-serialize to the same bytes. Only the operations that v0.8 adds write JSON v6,
+serialize to the same bytes. Only the operations added since v0.8 write JSON v6,
 which MathForge 0.7 does not read. A v6 request records its format version, so a
 later build's v6 requests keep their content hashes when this build loads them, and
 a v6 result whose operation a build does not know verifies as `UNKNOWN`, never as

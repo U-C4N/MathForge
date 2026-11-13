@@ -74,8 +74,10 @@ DUAL_RUNNER = ("mathforge.operations_v6", "run_dual", "run_dual")
 LEAN_IMPORT = "from ..lean import FALLBACK, functions as _LEAN"
 LEAN_NAMES = ("FALLBACK", "_LEAN")
 
-# Annotation name -> the module of its import line, copied in order from the import block of the
-# v0.7 api_v7.py. Builtins need no entry; record classes of registered families are found on their own.
+# Annotation name -> the module of its import line. The generated import lines follow this order: first the
+# names of the import block of the v0.7 api_v7.py, in its order, then the core classes that only v6 specs name,
+# appended so that the import lines of the v0.7 names stay as generated. Builtins need no entry; record classes
+# of registered families are found on their own.
 NAME_SOURCES: dict[str, str] = {
     "Result": "mathforge.contracts",
     "ComputationLimits": "mathforge.limits",
@@ -96,6 +98,14 @@ NAME_SOURCES: dict[str, str] = {
     "TaylorPolynomial": "mathforge.function_calculus",
     "FunctionLimitValue": "mathforge.function_calculus",
     "RationalPrimitive": "mathforge.rational_integration",
+    "Polynomial": "mathforge.polynomial",
+    "IntervalSet": "mathforge.intervals",
+    "Interval": "mathforge.intervals",
+    "FiniteSet": "mathforge.contracts",
+    "Literal": "typing",
+    "EmptySet": "mathforge.contracts",
+    "UniversalSet": "mathforge.contracts",
+    "RationalFunction": "mathforge.rational_function",
 }
 
 # The v5 record classes each area module exports, derived from the import block of the v0.7 api_v7.py:

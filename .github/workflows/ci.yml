@@ -37,6 +37,8 @@ jobs:
         run: python tools/check_docs.py
       - name: Gate deterministic exact-core costs
         run: python tools/check_benchmarks.py
+      - name: Check the probe scoreboard
+        run: python tools/check_probes.py
 
   # REL-05 REL-06 REL-07 REL-08 REL-09 REL-10 REL-12: Installed artifact checks include macOS.
   distributions:

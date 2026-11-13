@@ -40,6 +40,9 @@ _single = mf.real_function(f.sin(x), (x,))
 _multi = mf.real_function(f.sin(x) * f.cos(y), (x, y))
 _reciprocal = _rational_function(1, x)
 _p = mf.Polynomial.from_expression(x**4 + 4, x)
+_closed = mf.IntervalSet((mf.Interval(mf.Rational(0), mf.Rational(1), True, True),))  # [0, 1]
+_open = mf.IntervalSet((mf.Interval(mf.Rational(1, 2), mf.Rational(2)),))  # (1/2, 2)
+_sin_squared = mf.real_function(f.sin(x)**2, (x,))
 
 SMALL_INPUTS: dict[str, dict[str, object]] = {
     # ntheory
@@ -53,6 +56,23 @@ SMALL_INPUTS: dict[str, dict[str, object]] = {
     "divisors": dict(n=24),
     "totient": dict(n=36),
     "continued_fraction": dict(value=mf.Rational(415, 93)),
+    "powmod": dict(base=7, exponent=128, modulus=13),
+    "multiplicative_order": dict(a=2, n=7),
+    "primitive_root": dict(p=23),
+    "legendre_symbol": dict(a=2, p=7),
+    "jacobi_symbol": dict(a=2, n=15),
+    "sqrt_mod": dict(a=2, p=7),
+    "next_prime": dict(n=13),
+    "prev_prime": dict(n=100),
+    "linear_diophantine": dict(a=6, b=9, c=15),
+    "quadratic_continued_fraction": dict(p=0, q=1, d=2, r=1),
+    "convergents": dict(value=mf.Rational(415, 93)),
+    "pell_fundamental": dict(d=13),
+    "moebius": dict(n=30),
+    "divisor_sigma": dict(n=12, k=1),
+    "integer_nth_root": dict(n=26, k=3),
+    "discrete_log": dict(base=2, target=3, p=11),
+    "two_squares": dict(n=25),
     # discrete
     "factorial": dict(n=12),
     "binomial": dict(n=20, k=8),
@@ -61,6 +81,10 @@ SMALL_INPUTS: dict[str, dict[str, object]] = {
     "fibonacci": dict(n=100),
     "catalan": dict(n=12),
     "stirling": dict(n=8, k=3),
+    "partitions": dict(n=10),
+    "derangements": dict(n=5),
+    "bell": dict(n=5),
+    "stirling1": dict(n=5, k=2),
     # algebra: complex scalars
     "complex_algebraic": dict(real=mf.sqrt(2), imag=1),
     "complex_add": dict(left=_z, right=2),
@@ -90,6 +114,13 @@ SMALL_INPUTS: dict[str, dict[str, object]] = {
     "variance": dict(data=(1, 2, 4), ddof=1),
     "stddev": dict(data=(1, 2, 4), ddof=0),
     "covariance": dict(x=(1, 2, 4), y=(2, 3, 7), ddof=1),
+    "correlation": dict(xs=(1, 2, 3), ys=(1, 3, 2)),
+    "linear_regression": dict(xs=(0, 1, 2), ys=(1, 3, 5)),
+    "quantile": dict(data=(1, 2, 3, 4), p=mf.Rational(1, 3)),
+    "mode": dict(data=(1, 2, 2, 3, 3)),
+    "stationary_distribution": dict(M=mf.Matrix(((mf.Rational(1, 2), mf.Rational(1, 2)),
+                                                 (mf.Rational(1, 4), mf.Rational(3, 4))))),
+    "fisher_exact": dict(table=mf.Matrix(((3, 1), (1, 3)))),
     # linalg
     "trace": dict(A=_square),
     "rowspace": dict(A=_tall),
@@ -103,6 +134,12 @@ SMALL_INPUTS: dict[str, dict[str, object]] = {
     "nullspace": dict(A=mf.Matrix(((1, 2), (2, 4)))),
     "charpoly": dict(A=mf.Matrix(((0, 2), (1, 0))), variable=x),
     "real_eigenvalues": dict(A=mf.Matrix(((0, 2), (1, 0)))),
+    "matrix_power": dict(M=mf.Matrix(((1, 1), (1, 0))), k=10),
+    "eigenvectors": dict(M=mf.Matrix(((2, 1), (1, 2)))),
+    "definiteness": dict(M=mf.Matrix(((2, 1), (1, 2)))),
+    "gram_schmidt": dict(M=mf.Matrix(((1, 1), (1, 0)))),
+    "hermite_normal_form": dict(M=mf.Matrix(((2, 4), (6, 8)))),
+    "smith_normal_form": dict(M=mf.Matrix(((2, 4), (6, 8)))),
     # analysis
     "function_differentiate": dict(expression=_single, variable=x, n=1),
     "function_partial_diff": dict(expression=_multi, variable=x, n=1),
@@ -122,6 +159,12 @@ SMALL_INPUTS: dict[str, dict[str, object]] = {
     "function_limit": dict(expression=mf.real_function(f.sin(x) / f.as_real_expr(x), (x,)), variable=x, point=0,
                            side="both"),
     "limit": dict(expression=_rational_function(x**2 - 1, x - 1), variable=x, point=1, side="both"),
+    "sum_polynomial": dict(polynomial=mf.Polynomial((0, 0, 1), x)),
+    "geometric_sum": dict(first=1, ratio=2, count=10),
+    "geometric_series": dict(first=1, ratio=mf.Rational(1, 2)),
+    "polynomial_geometric_series": dict(polynomial=mf.Polynomial((0, 1), x), ratio=mf.Rational(1, 2)),
+    "series_coefficients": dict(function=mf.real_function(f.exp(x), (x,)), variable=x, center=0, order=4),
+    "residue": dict(function=_reciprocal, variable=x, point=0),
     # integrals
     "function_antiderivative": dict(expression=_single, variable=x),
     "function_integrate": dict(expression=_single, variable=x, lower=0, upper=1),
@@ -129,6 +172,8 @@ SMALL_INPUTS: dict[str, dict[str, object]] = {
     "rational_integrate": dict(expression=_reciprocal, variable=x, lower=1, upper=2),
     "antiderivative": dict(expression=x**2, variable=x),
     "integrate": dict(expression=x**2, variable=x, lower=0, upper=1),
+    "trig_power_antiderivative": dict(function=_sin_squared, variable=x),
+    "trig_power_integral": dict(function=_sin_squared, variable=x, lower_pi=0, upper_pi=1),
     # algebra: polynomials and real algebraic numbers
     "expand": dict(expression=(x + 1)**2, variable=x),
     "expand_multivariate": dict(expression=(x + y)**2, variables=(x, y)),
@@ -147,6 +192,32 @@ SMALL_INPUTS: dict[str, dict[str, object]] = {
     "algebraic_pow": dict(base=_alpha, n=-3),
     "minimal_polynomial": dict(expression=_alpha, variable=x),
     "apart": dict(expression=_rational_function(x + 1, x * x - 1)),
+    "count_real_roots": dict(polynomial=mf.Polynomial((-2, 0, 1), x), lower=0, upper="+inf"),
+    "complex_roots": dict(polynomial=mf.Polynomial((1, 0, 1), x)),
+    "interpolate": dict(xs=(0, 1, 2), ys=(1, 2, 5), variable=x),
+    "denest_sqrt": dict(a=3, b=2, d=2),
+    "sturm_sequence": dict(polynomial=mf.Polynomial((-2, 0, 1), x)),
+    "cyclotomic_polynomial": dict(n=12, variable=x),
+    # sets
+    "set_union": dict(a=_closed, b=_open),
+    "set_intersection": dict(a=_closed, b=_open),
+    "set_difference": dict(a=_closed, b=_open),
+    "set_complement": dict(a=_closed),
+    "set_symmetric_difference": dict(a=_closed, b=_open),
+    # numeric
+    "digits": dict(value=mf.sqrt(2), places=10),
+    "rational_approximation": dict(value=mf.sqrt(2), max_denominator=100),
+    # vector
+    "dot": dict(a=(1, 2, 3), b=(4, 5, 6)),
+    "cross": dict(a=(1, 0, 0), b=(0, 1, 0)),
+    "projection": dict(a=(1, 2), b=(3, 0)),
+    "triple_product": dict(a=(1, 0, 0), b=(0, 1, 0), c=(0, 0, 1)),
+    # geometry
+    "distance": dict(p=(0, 0), q=(1, 1)),
+    "polygon_area": dict(points=mf.Matrix(((0, 0), (4, 0), (0, 3)))),
+    "line_intersection": dict(p1=(0, 0), p2=(1, 1), q1=(0, 1), q2=(1, 0)),
+    "orientation": dict(p=(0, 0), q=(1, 0), r=(0, 1)),
+    "convex_hull": dict(points=mf.Matrix(((0, 0), (2, 0), (1, 1), (1, 2), (0, 2)))),
     # expr
     "evaluate": dict(expression=x**2 + 1, bindings={x: 2}),
     "substitute": dict(expression=x**2 + y, bindings={x: 2}),
@@ -156,6 +227,10 @@ SMALL_INPUTS: dict[str, dict[str, object]] = {
     # equations: the cubic takes the v2 real-set solver, not the v0.1 rules for degree two at most
     "solve": dict(problem=mf.Eq(x**3 - x, 0), for_=x),
     "solve_system": dict(system_or_equations=(mf.Eq(x + y, 3), mf.Eq(x - y, 1)), for_=(x, y)),
+    "solve_abs": dict(lhs=mf.real_function(f.abs(f.as_real_expr(x) - 1), (x,)),
+                      rhs=mf.real_function(f.as_real_expr(2), (x,)), variable=x, relation="<"),
+    "solve_sqrt": dict(lhs=mf.real_function(f.sqrt(f.as_real_expr(x)), (x,)),
+                       rhs=mf.real_function(f.as_real_expr(3), (x,)), variable=x, relation="="),
 }
 
 LEGACY_NAMES = tuple(entry.name for entry in LEGACY_CATALOG)

@@ -62,7 +62,72 @@ __all__ = [
     "rational_antiderivative",
     "rational_integrate",
     "function_integrate",
+    "count_real_roots",
+    "complex_roots",
+    "interpolate",
+    "denest_sqrt",
+    "sturm_sequence",
+    "cyclotomic_polynomial",
+    "partitions",
+    "derangements",
+    "bell",
+    "stirling1",
+    "solve_abs",
+    "solve_sqrt",
+    "distance",
+    "polygon_area",
+    "line_intersection",
+    "orientation",
+    "convex_hull",
+    "trig_power_antiderivative",
+    "trig_power_integral",
+    "matrix_power",
+    "eigenvectors",
+    "definiteness",
+    "gram_schmidt",
+    "hermite_normal_form",
+    "smith_normal_form",
     "continued_fraction",
+    "powmod",
+    "multiplicative_order",
+    "primitive_root",
+    "legendre_symbol",
+    "jacobi_symbol",
+    "sqrt_mod",
+    "next_prime",
+    "prev_prime",
+    "linear_diophantine",
+    "quadratic_continued_fraction",
+    "convergents",
+    "pell_fundamental",
+    "moebius",
+    "divisor_sigma",
+    "integer_nth_root",
+    "discrete_log",
+    "two_squares",
+    "digits",
+    "rational_approximation",
+    "sum_polynomial",
+    "geometric_sum",
+    "geometric_series",
+    "polynomial_geometric_series",
+    "series_coefficients",
+    "residue",
+    "set_union",
+    "set_intersection",
+    "set_difference",
+    "set_complement",
+    "set_symmetric_difference",
+    "correlation",
+    "linear_regression",
+    "quantile",
+    "mode",
+    "stationary_distribution",
+    "fisher_exact",
+    "dot",
+    "cross",
+    "projection",
+    "triple_product",
 ]
 
 from typing import TYPE_CHECKING
@@ -81,7 +146,23 @@ from ..lean import FALLBACK, functions as _LEAN
 from . import structured
 
 if TYPE_CHECKING:
+    from ..polynomial import Polynomial
+    from ..intervals import IntervalSet
+    from typing import Literal
+    from ..contracts import EmptySet, UniversalSet
+    from ..rational_function import RationalFunction
+    from ..areas.algebra.radicals import DenestedRoot
+    from ..areas.geometry.plane import LineIntersection
+    from ..areas.integrals.trig_powers import PiLinear
+    from ..areas.linalg.eigen import RationalEigenvectors
+    from ..areas.linalg.forms import Inertia
     from ..areas.ntheory.continued_fraction import ContinuedFraction
+    from ..areas.ntheory.diophantine import DiophantineSolution
+    from ..areas.ntheory.discrete import DiscreteLogarithm, SumOfTwoSquares
+    from ..areas.ntheory.quadratic_irrational import PeriodicContinuedFraction
+    from ..areas.numeric.digits import TruncatedDecimal
+    from ..areas.series.power_series import PowerSeries
+    from ..areas.stats.bivariate import LinearFit
 
 
 def integer_gcd(a: int, b: int, *, limits: ComputationLimits | None = None) -> int:
@@ -564,9 +645,529 @@ def function_integrate(expression, variable: Symbol, lower, upper, *, limits: Co
     return structured.function_integrate(expression, variable, lower, upper, limits=limits).unwrap()
 
 
+def count_real_roots(polynomial: Polynomial, lower: Rational | int | Literal['-inf', '+inf'] = '-inf', upper: Rational | int | Literal['-inf', '+inf'] = '+inf', *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.count_real_roots(polynomial, lower, upper)
+        if _value is not FALLBACK:
+            return _value
+    return structured.count_real_roots(polynomial, lower, upper, limits=limits).unwrap()
+
+
+def complex_roots(polynomial: Polynomial, *, limits: ComputationLimits | None = None) -> tuple[ComplexRoot, ...]:
+    if limits is None:
+        _value = _LEAN.complex_roots(polynomial)
+        if _value is not FALLBACK:
+            return _value
+    return structured.complex_roots(polynomial, limits=limits).unwrap()
+
+
+def interpolate(xs, ys, variable: Symbol, *, limits: ComputationLimits | None = None) -> Polynomial:
+    if limits is None:
+        _value = _LEAN.interpolate(xs, ys, variable)
+        if _value is not FALLBACK:
+            return _value
+    return structured.interpolate(xs, ys, variable, limits=limits).unwrap()
+
+
+def denest_sqrt(a: Rational | int, b: Rational | int, d: int, *, limits: ComputationLimits | None = None) -> DenestedRoot:
+    if limits is None:
+        _value = _LEAN.denest_sqrt(a, b, d)
+        if _value is not FALLBACK:
+            return _value
+    return structured.denest_sqrt(a, b, d, limits=limits).unwrap()
+
+
+def sturm_sequence(polynomial: Polynomial, *, limits: ComputationLimits | None = None) -> tuple[Polynomial, ...]:
+    if limits is None:
+        _value = _LEAN.sturm_sequence(polynomial)
+        if _value is not FALLBACK:
+            return _value
+    return structured.sturm_sequence(polynomial, limits=limits).unwrap()
+
+
+def cyclotomic_polynomial(n: int, variable: Symbol, *, limits: ComputationLimits | None = None) -> Polynomial:
+    if limits is None:
+        _value = _LEAN.cyclotomic_polynomial(n, variable)
+        if _value is not FALLBACK:
+            return _value
+    return structured.cyclotomic_polynomial(n, variable, limits=limits).unwrap()
+
+
+def partitions(n: int, *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.partitions(n)
+        if _value is not FALLBACK:
+            return _value
+    return structured.partitions(n, limits=limits).unwrap()
+
+
+def derangements(n: int, *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.derangements(n)
+        if _value is not FALLBACK:
+            return _value
+    return structured.derangements(n, limits=limits).unwrap()
+
+
+def bell(n: int, *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.bell(n)
+        if _value is not FALLBACK:
+            return _value
+    return structured.bell(n, limits=limits).unwrap()
+
+
+def stirling1(n: int, k: int, *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.stirling1(n, k)
+        if _value is not FALLBACK:
+            return _value
+    return structured.stirling1(n, k, limits=limits).unwrap()
+
+
+def solve_abs(lhs: RealFunction, rhs: RealFunction, variable: Symbol, relation: str = '=', *, limits: ComputationLimits | None = None) -> EmptySet | UniversalSet | IntervalSet:
+    if limits is None:
+        _value = _LEAN.solve_abs(lhs, rhs, variable, relation)
+        if _value is not FALLBACK:
+            return _value
+    return structured.solve_abs(lhs, rhs, variable, relation, limits=limits).unwrap()
+
+
+def solve_sqrt(lhs: RealFunction, rhs: RealFunction, variable: Symbol, relation: str = '=', *, limits: ComputationLimits | None = None) -> EmptySet | UniversalSet | IntervalSet:
+    if limits is None:
+        _value = _LEAN.solve_sqrt(lhs, rhs, variable, relation)
+        if _value is not FALLBACK:
+            return _value
+    return structured.solve_sqrt(lhs, rhs, variable, relation, limits=limits).unwrap()
+
+
+def distance(p, q, *, limits: ComputationLimits | None = None) -> Expression:
+    if limits is None:
+        _value = _LEAN.distance(p, q)
+        if _value is not FALLBACK:
+            return _value
+    return structured.distance(p, q, limits=limits).unwrap()
+
+
+def polygon_area(points: Matrix, *, limits: ComputationLimits | None = None) -> Rational:
+    if limits is None:
+        _value = _LEAN.polygon_area(points)
+        if _value is not FALLBACK:
+            return _value
+    return structured.polygon_area(points, limits=limits).unwrap()
+
+
+def line_intersection(p1, p2, q1, q2, *, limits: ComputationLimits | None = None) -> LineIntersection:
+    if limits is None:
+        _value = _LEAN.line_intersection(p1, p2, q1, q2)
+        if _value is not FALLBACK:
+            return _value
+    return structured.line_intersection(p1, p2, q1, q2, limits=limits).unwrap()
+
+
+def orientation(p, q, r, *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.orientation(p, q, r)
+        if _value is not FALLBACK:
+            return _value
+    return structured.orientation(p, q, r, limits=limits).unwrap()
+
+
+def convex_hull(points: Matrix, *, limits: ComputationLimits | None = None) -> Matrix:
+    if limits is None:
+        _value = _LEAN.convex_hull(points)
+        if _value is not FALLBACK:
+            return _value
+    return structured.convex_hull(points, limits=limits).unwrap()
+
+
+def trig_power_antiderivative(function: RealFunction, variable: Symbol, *, limits: ComputationLimits | None = None) -> RealFunction:
+    if limits is None:
+        _value = _LEAN.trig_power_antiderivative(function, variable)
+        if _value is not FALLBACK:
+            return _value
+    return structured.trig_power_antiderivative(function, variable, limits=limits).unwrap()
+
+
+def trig_power_integral(function: RealFunction, variable: Symbol, lower_pi: Rational | int, upper_pi: Rational | int, *, limits: ComputationLimits | None = None) -> PiLinear:
+    if limits is None:
+        _value = _LEAN.trig_power_integral(function, variable, lower_pi, upper_pi)
+        if _value is not FALLBACK:
+            return _value
+    return structured.trig_power_integral(function, variable, lower_pi, upper_pi, limits=limits).unwrap()
+
+
+def matrix_power(M: Matrix, k: int, *, limits: ComputationLimits | None = None) -> Matrix:
+    if limits is None:
+        _value = _LEAN.matrix_power(M, k)
+        if _value is not FALLBACK:
+            return _value
+    return structured.matrix_power(M, k, limits=limits).unwrap()
+
+
+def eigenvectors(M: Matrix, *, limits: ComputationLimits | None = None) -> RationalEigenvectors:
+    if limits is None:
+        _value = _LEAN.eigenvectors(M)
+        if _value is not FALLBACK:
+            return _value
+    return structured.eigenvectors(M, limits=limits).unwrap()
+
+
+def definiteness(M: Matrix, *, limits: ComputationLimits | None = None) -> Inertia:
+    if limits is None:
+        _value = _LEAN.definiteness(M)
+        if _value is not FALLBACK:
+            return _value
+    return structured.definiteness(M, limits=limits).unwrap()
+
+
+def gram_schmidt(M: Matrix, *, limits: ComputationLimits | None = None) -> Matrix:
+    if limits is None:
+        _value = _LEAN.gram_schmidt(M)
+        if _value is not FALLBACK:
+            return _value
+    return structured.gram_schmidt(M, limits=limits).unwrap()
+
+
+def hermite_normal_form(M: Matrix, *, limits: ComputationLimits | None = None) -> Matrix:
+    if limits is None:
+        _value = _LEAN.hermite_normal_form(M)
+        if _value is not FALLBACK:
+            return _value
+    return structured.hermite_normal_form(M, limits=limits).unwrap()
+
+
+def smith_normal_form(M: Matrix, *, limits: ComputationLimits | None = None) -> tuple[int, ...]:
+    if limits is None:
+        _value = _LEAN.smith_normal_form(M)
+        if _value is not FALLBACK:
+            return _value
+    return structured.smith_normal_form(M, limits=limits).unwrap()
+
+
 def continued_fraction(value: Rational | int, *, limits: ComputationLimits | None = None) -> ContinuedFraction:
     if limits is None:
         _value = _LEAN.continued_fraction(value)
         if _value is not FALLBACK:
             return _value
     return structured.continued_fraction(value, limits=limits).unwrap()
+
+
+def powmod(base: int, exponent: int, modulus: int, *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.powmod(base, exponent, modulus)
+        if _value is not FALLBACK:
+            return _value
+    return structured.powmod(base, exponent, modulus, limits=limits).unwrap()
+
+
+def multiplicative_order(a: int, n: int, *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.multiplicative_order(a, n)
+        if _value is not FALLBACK:
+            return _value
+    return structured.multiplicative_order(a, n, limits=limits).unwrap()
+
+
+def primitive_root(p: int, *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.primitive_root(p)
+        if _value is not FALLBACK:
+            return _value
+    return structured.primitive_root(p, limits=limits).unwrap()
+
+
+def legendre_symbol(a: int, p: int, *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.legendre_symbol(a, p)
+        if _value is not FALLBACK:
+            return _value
+    return structured.legendre_symbol(a, p, limits=limits).unwrap()
+
+
+def jacobi_symbol(a: int, n: int, *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.jacobi_symbol(a, n)
+        if _value is not FALLBACK:
+            return _value
+    return structured.jacobi_symbol(a, n, limits=limits).unwrap()
+
+
+def sqrt_mod(a: int, p: int, *, limits: ComputationLimits | None = None) -> tuple[int, ...]:
+    if limits is None:
+        _value = _LEAN.sqrt_mod(a, p)
+        if _value is not FALLBACK:
+            return _value
+    return structured.sqrt_mod(a, p, limits=limits).unwrap()
+
+
+def next_prime(n: int, *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.next_prime(n)
+        if _value is not FALLBACK:
+            return _value
+    return structured.next_prime(n, limits=limits).unwrap()
+
+
+def prev_prime(n: int, *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.prev_prime(n)
+        if _value is not FALLBACK:
+            return _value
+    return structured.prev_prime(n, limits=limits).unwrap()
+
+
+def linear_diophantine(a: int, b: int, c: int, *, limits: ComputationLimits | None = None) -> DiophantineSolution:
+    if limits is None:
+        _value = _LEAN.linear_diophantine(a, b, c)
+        if _value is not FALLBACK:
+            return _value
+    return structured.linear_diophantine(a, b, c, limits=limits).unwrap()
+
+
+def quadratic_continued_fraction(p: int, q: int, d: int, r: int, *, limits: ComputationLimits | None = None) -> PeriodicContinuedFraction:
+    if limits is None:
+        _value = _LEAN.quadratic_continued_fraction(p, q, d, r)
+        if _value is not FALLBACK:
+            return _value
+    return structured.quadratic_continued_fraction(p, q, d, r, limits=limits).unwrap()
+
+
+def convergents(value: Rational | int, *, limits: ComputationLimits | None = None) -> tuple[Rational, ...]:
+    if limits is None:
+        _value = _LEAN.convergents(value)
+        if _value is not FALLBACK:
+            return _value
+    return structured.convergents(value, limits=limits).unwrap()
+
+
+def pell_fundamental(d: int, *, limits: ComputationLimits | None = None) -> tuple[int, int]:
+    if limits is None:
+        _value = _LEAN.pell_fundamental(d)
+        if _value is not FALLBACK:
+            return _value
+    return structured.pell_fundamental(d, limits=limits).unwrap()
+
+
+def moebius(n: int, *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.moebius(n)
+        if _value is not FALLBACK:
+            return _value
+    return structured.moebius(n, limits=limits).unwrap()
+
+
+def divisor_sigma(n: int, k: int, *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.divisor_sigma(n, k)
+        if _value is not FALLBACK:
+            return _value
+    return structured.divisor_sigma(n, k, limits=limits).unwrap()
+
+
+def integer_nth_root(n: int, k: int, *, limits: ComputationLimits | None = None) -> int:
+    if limits is None:
+        _value = _LEAN.integer_nth_root(n, k)
+        if _value is not FALLBACK:
+            return _value
+    return structured.integer_nth_root(n, k, limits=limits).unwrap()
+
+
+def discrete_log(base: int, target: int, p: int, *, limits: ComputationLimits | None = None) -> DiscreteLogarithm:
+    if limits is None:
+        _value = _LEAN.discrete_log(base, target, p)
+        if _value is not FALLBACK:
+            return _value
+    return structured.discrete_log(base, target, p, limits=limits).unwrap()
+
+
+def two_squares(n: int, *, limits: ComputationLimits | None = None) -> SumOfTwoSquares:
+    if limits is None:
+        _value = _LEAN.two_squares(n)
+        if _value is not FALLBACK:
+            return _value
+    return structured.two_squares(n, limits=limits).unwrap()
+
+
+def digits(value: Expression | int, places: int, *, limits: ComputationLimits | None = None) -> TruncatedDecimal:
+    if limits is None:
+        _value = _LEAN.digits(value, places)
+        if _value is not FALLBACK:
+            return _value
+    return structured.digits(value, places, limits=limits).unwrap()
+
+
+def rational_approximation(value: Expression | int, max_denominator: int, *, limits: ComputationLimits | None = None) -> Rational:
+    if limits is None:
+        _value = _LEAN.rational_approximation(value, max_denominator)
+        if _value is not FALLBACK:
+            return _value
+    return structured.rational_approximation(value, max_denominator, limits=limits).unwrap()
+
+
+def sum_polynomial(polynomial: Polynomial, *, limits: ComputationLimits | None = None) -> Polynomial:
+    if limits is None:
+        _value = _LEAN.sum_polynomial(polynomial)
+        if _value is not FALLBACK:
+            return _value
+    return structured.sum_polynomial(polynomial, limits=limits).unwrap()
+
+
+def geometric_sum(first: Rational | int, ratio: Rational | int, count: int, *, limits: ComputationLimits | None = None) -> Rational:
+    if limits is None:
+        _value = _LEAN.geometric_sum(first, ratio, count)
+        if _value is not FALLBACK:
+            return _value
+    return structured.geometric_sum(first, ratio, count, limits=limits).unwrap()
+
+
+def geometric_series(first: Rational | int, ratio: Rational | int, *, limits: ComputationLimits | None = None) -> Rational:
+    if limits is None:
+        _value = _LEAN.geometric_series(first, ratio)
+        if _value is not FALLBACK:
+            return _value
+    return structured.geometric_series(first, ratio, limits=limits).unwrap()
+
+
+def polynomial_geometric_series(polynomial: Polynomial, ratio: Rational | int, *, limits: ComputationLimits | None = None) -> Rational:
+    if limits is None:
+        _value = _LEAN.polynomial_geometric_series(polynomial, ratio)
+        if _value is not FALLBACK:
+            return _value
+    return structured.polynomial_geometric_series(polynomial, ratio, limits=limits).unwrap()
+
+
+def series_coefficients(function: RealFunction, variable: Symbol, center: Rational | int, order: int, *, limits: ComputationLimits | None = None) -> PowerSeries:
+    if limits is None:
+        _value = _LEAN.series_coefficients(function, variable, center, order)
+        if _value is not FALLBACK:
+            return _value
+    return structured.series_coefficients(function, variable, center, order, limits=limits).unwrap()
+
+
+def residue(function: RationalFunction, variable: Symbol, point: Rational | int, *, limits: ComputationLimits | None = None) -> Rational:
+    if limits is None:
+        _value = _LEAN.residue(function, variable, point)
+        if _value is not FALLBACK:
+            return _value
+    return structured.residue(function, variable, point, limits=limits).unwrap()
+
+
+def set_union(a: IntervalSet, b: IntervalSet, *, limits: ComputationLimits | None = None) -> IntervalSet:
+    if limits is None:
+        _value = _LEAN.set_union(a, b)
+        if _value is not FALLBACK:
+            return _value
+    return structured.set_union(a, b, limits=limits).unwrap()
+
+
+def set_intersection(a: IntervalSet, b: IntervalSet, *, limits: ComputationLimits | None = None) -> IntervalSet:
+    if limits is None:
+        _value = _LEAN.set_intersection(a, b)
+        if _value is not FALLBACK:
+            return _value
+    return structured.set_intersection(a, b, limits=limits).unwrap()
+
+
+def set_difference(a: IntervalSet, b: IntervalSet, *, limits: ComputationLimits | None = None) -> IntervalSet:
+    if limits is None:
+        _value = _LEAN.set_difference(a, b)
+        if _value is not FALLBACK:
+            return _value
+    return structured.set_difference(a, b, limits=limits).unwrap()
+
+
+def set_complement(a: IntervalSet, *, limits: ComputationLimits | None = None) -> IntervalSet:
+    if limits is None:
+        _value = _LEAN.set_complement(a)
+        if _value is not FALLBACK:
+            return _value
+    return structured.set_complement(a, limits=limits).unwrap()
+
+
+def set_symmetric_difference(a: IntervalSet, b: IntervalSet, *, limits: ComputationLimits | None = None) -> IntervalSet:
+    if limits is None:
+        _value = _LEAN.set_symmetric_difference(a, b)
+        if _value is not FALLBACK:
+            return _value
+    return structured.set_symmetric_difference(a, b, limits=limits).unwrap()
+
+
+def correlation(xs, ys, *, limits: ComputationLimits | None = None) -> Expression:
+    if limits is None:
+        _value = _LEAN.correlation(xs, ys)
+        if _value is not FALLBACK:
+            return _value
+    return structured.correlation(xs, ys, limits=limits).unwrap()
+
+
+def linear_regression(xs, ys, *, limits: ComputationLimits | None = None) -> LinearFit:
+    if limits is None:
+        _value = _LEAN.linear_regression(xs, ys)
+        if _value is not FALLBACK:
+            return _value
+    return structured.linear_regression(xs, ys, limits=limits).unwrap()
+
+
+def quantile(data, p: Rational | int, *, limits: ComputationLimits | None = None) -> Rational:
+    if limits is None:
+        _value = _LEAN.quantile(data, p)
+        if _value is not FALLBACK:
+            return _value
+    return structured.quantile(data, p, limits=limits).unwrap()
+
+
+def mode(data, *, limits: ComputationLimits | None = None) -> tuple[Rational, ...]:
+    if limits is None:
+        _value = _LEAN.mode(data)
+        if _value is not FALLBACK:
+            return _value
+    return structured.mode(data, limits=limits).unwrap()
+
+
+def stationary_distribution(M: Matrix, *, limits: ComputationLimits | None = None) -> tuple[Rational, ...]:
+    if limits is None:
+        _value = _LEAN.stationary_distribution(M)
+        if _value is not FALLBACK:
+            return _value
+    return structured.stationary_distribution(M, limits=limits).unwrap()
+
+
+def fisher_exact(table: Matrix, *, limits: ComputationLimits | None = None) -> Rational:
+    if limits is None:
+        _value = _LEAN.fisher_exact(table)
+        if _value is not FALLBACK:
+            return _value
+    return structured.fisher_exact(table, limits=limits).unwrap()
+
+
+def dot(a, b, *, limits: ComputationLimits | None = None) -> Rational:
+    if limits is None:
+        _value = _LEAN.dot(a, b)
+        if _value is not FALLBACK:
+            return _value
+    return structured.dot(a, b, limits=limits).unwrap()
+
+
+def cross(a, b, *, limits: ComputationLimits | None = None) -> tuple[Rational, Rational, Rational]:
+    if limits is None:
+        _value = _LEAN.cross(a, b)
+        if _value is not FALLBACK:
+            return _value
+    return structured.cross(a, b, limits=limits).unwrap()
+
+
+def projection(a, b, *, limits: ComputationLimits | None = None) -> tuple[Rational, ...]:
+    if limits is None:
+        _value = _LEAN.projection(a, b)
+        if _value is not FALLBACK:
+            return _value
+    return structured.projection(a, b, limits=limits).unwrap()
+
+
+def triple_product(a, b, c, *, limits: ComputationLimits | None = None) -> Rational:
+    if limits is None:
+        _value = _LEAN.triple_product(a, b, c)
+        if _value is not FALLBACK:
+            return _value
+    return structured.triple_product(a, b, c, limits=limits).unwrap()

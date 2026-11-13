@@ -3,9 +3,14 @@
 ``MODULI`` holds the 64 largest primes below 2**61, in decreasing order. Producers and independent checkers of the
 linear algebra families compute determinants and ranks modulo these primes: a determinant that is not zero modulo a
 prime is not zero, and agreement modulo primes whose product exceeds twice a bound fixes an integer of that bound.
-``is_prime`` is Miller-Rabin with the bases 2 to 37, which is deterministic for every n below 3.3 * 10**24 (Sorenson
-and Webster, 2015), so in particular for every candidate below MODULI[-1]. tests/v08/linalg/test_kernel.py checks the
-table: 64 entries, strictly decreasing, below 2**61, each prime, and no prime between two entries or above the first.
+``is_prime`` is Miller-Rabin with the thirteen prime bases 2 to 41, which is deterministic for every n below
+psi_13 = 3,317,044,064,679,887,385,961,981 (about 3.3 * 10**24), the smallest composite that passes all thirteen: so
+in particular for every candidate below MODULI[-1]. The twelve bases 2 to 37 decide less, only the n below
+psi_12 = 318,665,857,834,031,151,167,461 = 399165290221 * 798330580441 (about 3.2 * 10**23), which passes all twelve
+and fails base 41. Both bounds are from Sorenson and Webster, "Strong pseudoprimes to twelve prime bases",
+Mathematics of Computation 86 (2017), 985-1003 (arXiv:1509.00864); they are the terms 12 and 13 of OEIS A014233.
+tests/v08/linalg/test_kernel.py checks the table: 64 entries, strictly decreasing, below 2**61, each prime, and no
+prime between two entries or above the first; tests/v09/test_trusted_fixes.py checks the test around both bounds.
 """
 
 from __future__ import annotations
@@ -35,13 +40,15 @@ MODULI: tuple[int, ...] = (
     2305843009213691347,
 )
 
-_BASES = (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37)
-_DETERMINISTIC_BELOW = 3_317_044_064_679_887_385_961_981  # Bases 2..37 decide every n below this.
+_BASES = (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41)
+# psi_13: the thirteen bases decide every n below it. Without base 41 the bound is psi_12, ten times smaller.
+DETERMINISTIC_BELOW = 3_317_044_064_679_887_385_961_981
 
 
 def is_prime(n: int) -> bool:
-    """Whether n is prime, for 0 <= n < 3.3 * 10**24 (deterministic Miller-Rabin with the bases 2 to 37)."""
-    if type(n) is not int or n < 0 or n >= _DETERMINISTIC_BELOW:
+    """Whether n is prime, for 0 <= n < DETERMINISTIC_BELOW, about 3.3 * 10**24 (deterministic Miller-Rabin with the
+    thirteen prime bases 2 to 41); ValueError for any other argument."""
+    if type(n) is not int or n < 0 or n >= DETERMINISTIC_BELOW:
         raise ValueError("is_prime takes an integer in [0, 3.3 * 10**24)")
     if n < 2:
         return False

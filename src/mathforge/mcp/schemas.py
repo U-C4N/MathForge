@@ -11,6 +11,7 @@ from ..limits import ComputationLimits
 from ..registry import AREAS, DEFINITION_NAMES, KIND_NAMES, tool_operations
 from .boundary import (CATALOG_LIMIT, MAX_CATALOG_LIMIT, MAX_EQUATIONS, MAX_QUERY_CHARACTERS, MAX_SCALAR_CHARACTERS,
                        MAX_TEXT_CHARACTERS, MAX_VARIABLES, operand_tags)
+from .handles import PATTERN as HANDLE_PATTERN
 
 NAME = {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_]*$", "maxLength": 128}  # The decoders reject sqrt.
 TEXT = {"type": "string", "maxLength": MAX_TEXT_CHARACTERS}
@@ -131,8 +132,9 @@ def _area_schema(tool, ids, limits):
         shared.update(operations[spec.name].pop("$defs"))
     schema = _object({"operation": {"type": "string", "enum": list(operations)},
                       "arguments": {"type": "object", "anyOf": [{"$ref": "#/$defs/" + name} for name in operations],
-                                    "description": "The named arguments of the operation: friendly JSON or canonical "
-                                                   "object envelopes. Arguments with a default may be omitted."},
+                                    "description": "The named arguments of the operation: friendly JSON, canonical "
+                                                   "object envelopes or handles of earlier results. Arguments with a "
+                                                   "default may be omitted."},
                       "symbol_ids": ids, "limits": limits}, ["operation", "arguments"])
     schema["$defs"] = operations | {name: shared[name] for name in DEFINITION_NAMES if name in shared}
     return schema
@@ -142,16 +144,20 @@ def _error_schema() -> dict:
     nullable_text = {"type": ["string", "null"]}
     return _object({"stage": {"type": "string"}, "code": {"type": "string"}, "message": {"type": "string"},
                     "field": nullable_text, "start": {"type": ["integer", "null"]},
-                    "end": {"type": ["integer", "null"]}}, ["stage", "code", "message", "field", "start", "end"])
+                    "end": {"type": ["integer", "null"]},
+                    "reason": {"type": "string"},
+                    "next_actions": {"type": "array", "items": {"type": "string"}}},
+                   ["stage", "code", "message", "field", "start", "end", "reason", "next_actions"])
 
 
 def output_schema() -> dict:
     nullable_text = {"type": ["string", "null"]}
     return _object({"api_version": {"const": 1}, "result": {"type": ["object", "null"]},
+                    "handle": {"type": ["string", "null"], "pattern": HANDLE_PATTERN},
                     "text": {"type": "string"}, "latex": nullable_text,
                     "symbols": {"type": "array", "items": _object({"name": {"type": "string"}, "uid": {"type": "string"}}, ["name", "uid"])},
                     "error": {"anyOf": [_error_schema(), {"type": "null"}]}},
-                   ["api_version", "result", "text", "latex", "symbols", "error"])
+                   ["api_version", "result", "handle", "text", "latex", "symbols", "error"])
 
 
 def catalog_schema() -> dict:

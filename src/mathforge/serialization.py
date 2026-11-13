@@ -31,6 +31,14 @@ def _resource_limit(message: str):
     raise SerializationError(message, code="resource_limit_exceeded")
 
 
+def _symbol_conflict() -> SerializationError:
+    """Two records of one symbol identity disagree. The code stays invalid_serialization; the reason attribute lets
+    the MCP boundary tell an agent to keep one name per identity, without reading the message."""
+    error = SerializationError("Conflicting metadata for the same symbol identity")
+    error.reason = "symbol_conflict"
+    return error
+
+
 def _limits(value):
     from .limits import DecodeLimits
 
@@ -444,7 +452,7 @@ class _Encoder:
     def _symbol(self, identifier: str, data: Any) -> None:
         previous = self.symbols.setdefault(identifier, data)
         if previous != data:
-            raise SerializationError("Conflicting metadata for the same symbol identity")
+            raise _symbol_conflict()
 
     def option(self, value: Any) -> Any:
         from .workspace import FrozenOptions
@@ -611,7 +619,7 @@ class _Decoder:
             if identifier in self.symbols:
                 previous, symbol = self.symbols[identifier]
                 if previous != metadata:
-                    raise SerializationError("Conflicting metadata for the same symbol identity")
+                    raise _symbol_conflict()
                 return symbol
             symbol = m.Symbol(name=name, domain=domain, assumptions=assumptions, uid=identifier)
             if symbol.assumptions != assumptions:

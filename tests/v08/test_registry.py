@@ -146,7 +146,9 @@ class RegistryTests(unittest.TestCase):
         self.assertEqual(registry.AREAS, ("expr", "algebra", "sets", "logic", "equations", "analysis", "series",
                                           "integrals", "ode", "special", "linalg", "stats", "ntheory", "discrete",
                                           "geometry", "vector", "numeric", "crypto"))
-        self.assertEqual(len(registry.KIND_NAMES), 18)
+        self.assertEqual(len(registry.KIND_NAMES), 21)
+        # The kinds of v0.9 follow those of v0.8, whose order is published.
+        self.assertEqual(registry.KIND_NAMES[17:], ("object", "polynomial", "interval_set", "relation"))
         self.assertEqual(len(registry.MCP_TOOLS), 12)
         covered = [area for areas in registry.MCP_TOOLS.values() for area in areas]
         self.assertEqual(sorted(covered), sorted(registry.AREAS))
@@ -160,19 +162,31 @@ class RegistryTests(unittest.TestCase):
         def names(area):
             return {spec.name for spec in registry.area_operations(area)}
 
+        # The v0.8 pilot family, continued_fraction, is v6, and so are the v0.9 families from powmod on.
         self.assertEqual(names("ntheory"), {"integer_gcd", "integer_lcm", "integer_xgcd", "mod_inverse", "crt",
                                             "is_prime", "factor_integer", "divisors", "totient",
-                                            "continued_fraction"})  # The v0.8 pilot family is v6.
-        self.assertEqual(names("series"), {"function_taylor", "function_limit"})
+                                            "continued_fraction", "powmod", "multiplicative_order",
+                                            "primitive_root", "legendre_symbol", "jacobi_symbol", "sqrt_mod",
+                                            "next_prime", "prev_prime", "linear_diophantine",
+                                            "quadratic_continued_fraction", "convergents", "pell_fundamental",
+                                            "moebius", "divisor_sigma", "integer_nth_root", "discrete_log",
+                                            "two_squares"})
+        self.assertEqual(names("series"), {"function_taylor", "function_limit", "sum_polynomial", "geometric_sum",
+                                           "geometric_series", "polynomial_geometric_series", "series_coefficients",
+                                           "residue"})
         self.assertEqual(names("integrals"), {"function_antiderivative", "rational_antiderivative",
-                                              "rational_integrate", "function_integrate"})
+                                              "rational_integrate", "function_integrate",
+                                              "trig_power_antiderivative", "trig_power_integral"})
         sizes = {area: len(registry.area_operations(area)) for area in registry.AREAS}
         self.assertEqual({area: size for area, size in sizes.items() if size},
-                         {"algebra": 12, "analysis": 6, "series": 2, "integrals": 4, "linalg": 5, "stats": 15,
-                          "ntheory": 10, "discrete": 7})
-        self.assertEqual([spec.public_name for spec in registry.area_operations("series")], ["function_limit", "taylor"])
+                         {"algebra": 18, "sets": 5, "equations": 2, "analysis": 6, "series": 8, "integrals": 6,
+                          "linalg": 11, "stats": 21, "ntheory": 27, "discrete": 11, "geometry": 5, "vector": 4,
+                          "numeric": 2})
+        self.assertEqual([spec.public_name for spec in registry.area_operations("series")],
+                         ["function_limit", "geometric_series", "geometric_sum", "polynomial_geometric_series",
+                          "residue", "series_coefficients", "sum_polynomial", "taylor"])
         analysis = registry.tool_operations("mathforge.analysis")
-        self.assertEqual(len(analysis), 12)
+        self.assertEqual(len(analysis), 20)
         self.assertEqual({spec.area for spec in analysis}, {"analysis", "series", "integrals"})
         self.assertEqual(registry.tool_operations("mathforge.logic"), ())
 
@@ -416,7 +430,7 @@ class RegistryTests(unittest.TestCase):
 
     def test_build_rejects_names_of_mcp_schema_definitions(self):
         """An area tool's $defs hold each operation under its name, beside the kinds and the envelope."""
-        self.assertEqual(registry.DEFINITION_NAMES, (*registry.KIND_NAMES, "envelope"))
+        self.assertEqual(registry.DEFINITION_NAMES, (*registry.KIND_NAMES, "envelope", "handle"))
         for name in ("rational", "envelope"):
             with self.subTest(operation=name):
                 self.install_family(demo_spec(name))

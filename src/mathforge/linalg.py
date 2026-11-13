@@ -2,14 +2,37 @@
 from __future__ import annotations
 
 __all__ = [
+    "Eigenspace",
+    "Inertia",
     "LUDecomposition",
     "LeastSquaresResult",
+    "RationalEigenvectors",
     "columnspace",
+    "definiteness",
+    "eigenvectors",
+    "gram_schmidt",
+    "hermite_normal_form",
     "least_squares",
     "lu",
+    "matrix_power",
     "rowspace",
+    "smith_normal_form",
     "trace",
 ]
 
-from ._generated.values import columnspace, least_squares, lu, rowspace, trace
+from ._generated.values import (
+    columnspace,
+    definiteness,
+    eigenvectors,
+    gram_schmidt,
+    hermite_normal_form,
+    least_squares,
+    lu,
+    matrix_power,
+    rowspace,
+    smith_normal_form,
+    trace,
+)
 from .linear_extensions import LUDecomposition, LeastSquaresResult
+from .areas.linalg.eigen import Eigenspace, RationalEigenvectors
+from .areas.linalg.forms import Inertia

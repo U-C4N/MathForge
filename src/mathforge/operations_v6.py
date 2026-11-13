@@ -37,10 +37,12 @@ from . import contracts as c
 from . import operations_v5, registry
 from .deferred import Unevaluated
 from .errors import InvalidInput, MathForgeError, UnsupportedOperation
+from .intervals import IntervalSet
 from .limits import ComputationLimits, ResourceLimitError, computation
 from .matrices import Matrix
 from .model import Rational, Reals, Symbol
 from .operations_v5 import _freeze
+from .polynomial import Polynomial
 
 REQUEST_VERSION = 6  # The format version that every request of run() carries.
 
@@ -79,6 +81,8 @@ def _rational(value: object) -> bool:
     return type(value) is int or type(value) is Rational
 
 
+_RELATIONS = ("=", "<", "<=", ">", ">=")  # The values of the relation kind; mcp.kinds enumerates them in this order.
+
 # The argument kinds whose exact types run() checks before produce(), with the text of its error. Lists arrive
 # frozen into tuples. The other kinds stay with the family.
 _KINDS: dict[str, tuple[Callable[[object], bool], str]] = {
@@ -90,6 +94,10 @@ _KINDS: dict[str, tuple[Callable[[object], bool], str]] = {
                       "a tuple or list of exact rationals"),
     "matrix": (lambda value: type(value) is Matrix, "a Matrix"),
     "symbol": (lambda value: type(value) is Symbol, "a Symbol"),
+    "polynomial": (lambda value: type(value) is Polynomial, "a Polynomial"),
+    "interval_set": (lambda value: type(value) is IntervalSet, "an IntervalSet"),
+    "relation": (lambda value: type(value) is str and value in _RELATIONS,
+                 "a relation: '=', '<', '<=', '>' or '>='"),
 }
 # operation -> (the spec its checks were made for, (argument name, test, text) for each checked argument). A
 # registry rebuilt with other families gives new spec objects, and so new checks.

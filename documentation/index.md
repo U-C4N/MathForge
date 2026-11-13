@@ -8,6 +8,7 @@ release: verification is algorithmic checking, not formal proof.
 
 - [Solve your first problem](quickstart.md)
 - [Use elementary analysis, complex algebra and discrete mathematics](v07-mathematics.md)
+- [Use the v0.9 mathematics: number theory, roots and radicals, piecewise equations, interval sets, decimal digits, sums and power series, trigonometric integrals, matrix powers and eigenvectors, vectors, plane geometry, bivariate statistics and counting](v09-mathematics.md)
 - [Factor polynomials and compute with real algebraic numbers](exact-algebra.md)
 - [Read mathematical text](parsing.md)
 - [Compute limits and analyze real functions](function-analysis.md)
@@ -22,7 +23,7 @@ release: verification is algorithmic checking, not formal proof.
 
 Operations belong to mathematical areas. Each area is a module that loads on first use, such as `mf.ntheory`
 or `mf.discrete`, and the MCP adapter serves the operations of an area through one tool per group of areas, next
-to a catalog that finds them. Results of operations added in v0.8 use mathematical JSON v6.
+to a catalog that finds them. Results of operations added since v0.8 use mathematical JSON v6.
 Version 0.8 also lowers the fixed cost of exact computation without changing values,
 errors or v1–v5 documents; see [measured performance](performance.md).
 

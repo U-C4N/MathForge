@@ -100,6 +100,7 @@ def _syntax(text: str, token: _Token, message: str, *, code: str | None = None) 
 def _resource(text: str, start: int, end: int, name: str) -> ResourceLimitError:
     error = ResourceLimitError(f"Parse limit exceeded: {name}")
     _locate(error, text, start, end)
+    error.parse_limit = True  # A ParseLimits limit, which ComputationLimits does not raise.
     return error
 
 

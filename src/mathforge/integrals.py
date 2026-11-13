@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 __all__ = [
+    "PiLinear",
     "RationalPrimitive",
     "RealExpr",
     "RealFunction",
@@ -9,6 +10,8 @@ __all__ = [
     "function_integrate",
     "rational_antiderivative",
     "rational_integrate",
+    "trig_power_antiderivative",
+    "trig_power_integral",
 ]
 
 from ._generated.values import (
@@ -16,6 +19,9 @@ from ._generated.values import (
     function_integrate,
     rational_antiderivative,
     rational_integrate,
+    trig_power_antiderivative,
+    trig_power_integral,
 )
 from .functions import RealExpr, RealFunction
 from .rational_integration import RationalPrimitive
+from .areas.integrals.trig_powers import PiLinear

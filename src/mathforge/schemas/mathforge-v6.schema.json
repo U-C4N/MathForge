@@ -2391,6 +2391,171 @@
           "if": {
             "properties": {
               "type": {
+                "const": "v6_denested_root"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/v6_denested_root"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "v6_diophantine_solution"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/v6_diophantine_solution"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "v6_discrete_logarithm"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/v6_discrete_logarithm"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "v6_eigenspace"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/v6_eigenspace"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "v6_inertia"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/v6_inertia"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "v6_line_intersection"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/v6_line_intersection"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "v6_linear_fit"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/v6_linear_fit"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "v6_periodic_continued_fraction"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/v6_periodic_continued_fraction"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "v6_pi_linear"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/v6_pi_linear"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "v6_power_series"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/v6_power_series"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "v6_rational_eigenvectors"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/v6_rational_eigenvectors"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
                 "const": "v6_reason"
               }
             },
@@ -2400,6 +2565,36 @@
           },
           "then": {
             "$ref": "#/$defs/v6_reason"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "v6_sum_of_two_squares"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/v6_sum_of_two_squares"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "v6_truncated_decimal"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "$ref": "#/$defs/v6_truncated_decimal"
           }
         },
         {
@@ -2527,7 +2722,20 @@
             "v5_unevaluated_integral",
             "v5_unevaluated_limit",
             "v6_continued_fraction",
+            "v6_denested_root",
+            "v6_diophantine_solution",
+            "v6_discrete_logarithm",
+            "v6_eigenspace",
+            "v6_inertia",
+            "v6_line_intersection",
+            "v6_linear_fit",
+            "v6_periodic_continued_fraction",
+            "v6_pi_linear",
+            "v6_power_series",
+            "v6_rational_eigenvectors",
             "v6_reason",
+            "v6_sum_of_two_squares",
+            "v6_truncated_decimal",
             "v6_unevaluated",
             "verification_level",
             "verification_report"
@@ -3237,6 +3445,63 @@
               "type",
               "operation",
               "arguments"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "bell"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 1,
+                "minItems": 1,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "n"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "bell"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
             ],
             "type": "object"
           }
@@ -4237,6 +4502,63 @@
           "if": {
             "properties": {
               "operation": {
+                "const": "complex_roots"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 1,
+                "minItems": 1,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "polynomial"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "complex_roots"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
                 "const": "complex_sqrt"
               }
             },
@@ -4485,6 +4807,282 @@
           "if": {
             "properties": {
               "operation": {
+                "const": "convergents"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 1,
+                "minItems": 1,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "value"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "convergents"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "convex_hull"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 1,
+                "minItems": 1,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "points"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "convex_hull"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "correlation"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "xs"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "ys"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "correlation"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "count_real_roots"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 3,
+                "minItems": 3,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "lower"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "polynomial"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "upper"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "count_real_roots"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
                 "const": "covariance"
               }
             },
@@ -4570,6 +5168,79 @@
           "if": {
             "properties": {
               "operation": {
+                "const": "cross"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "a"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "b"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "cross"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
                 "const": "crt"
               }
             },
@@ -4615,6 +5286,444 @@
               "type",
               "operation",
               "arguments"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "cyclotomic_polynomial"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "n"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "variable"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "cyclotomic_polynomial"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "definiteness"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 1,
+                "minItems": 1,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "M"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "definiteness"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "denest_sqrt"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 3,
+                "minItems": 3,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "a"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "b"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "d"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "denest_sqrt"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "derangements"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 1,
+                "minItems": 1,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "n"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "derangements"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "digits"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "places"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "value"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "digits"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "discrete_log"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 3,
+                "minItems": 3,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "base"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "p"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "target"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "discrete_log"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
             ],
             "type": "object"
           }
@@ -4729,6 +5838,79 @@
           "if": {
             "properties": {
               "operation": {
+                "const": "distance"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "p"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "q"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "distance"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
                 "const": "distribution_variance"
               }
             },
@@ -4782,6 +5964,79 @@
           "if": {
             "properties": {
               "operation": {
+                "const": "divisor_sigma"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "k"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "n"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "divisor_sigma"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
                 "const": "divisors"
               }
             },
@@ -4827,6 +6082,136 @@
               "type",
               "operation",
               "arguments"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "dot"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "a"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "b"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "dot"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "eigenvectors"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 1,
+                "minItems": 1,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "M"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "eigenvectors"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
             ],
             "type": "object"
           }
@@ -5580,6 +6965,63 @@
               "type",
               "operation",
               "arguments"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "fisher_exact"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 1,
+                "minItems": 1,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "table"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "fisher_exact"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
             ],
             "type": "object"
           }
@@ -6406,6 +7848,282 @@
           "if": {
             "properties": {
               "operation": {
+                "const": "geometric_series"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "first"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "ratio"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "geometric_series"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "geometric_sum"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 3,
+                "minItems": 3,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "count"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "first"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "ratio"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "geometric_sum"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "gram_schmidt"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 1,
+                "minItems": 1,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "M"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "gram_schmidt"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "hermite_normal_form"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 1,
+                "minItems": 1,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "M"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "hermite_normal_form"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
                 "const": "hypergeometric"
               }
             },
@@ -6629,6 +8347,79 @@
           "if": {
             "properties": {
               "operation": {
+                "const": "integer_nth_root"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "k"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "n"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "integer_nth_root"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
                 "const": "integer_xgcd"
               }
             },
@@ -6698,6 +8489,95 @@
           "if": {
             "properties": {
               "operation": {
+                "const": "interpolate"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 3,
+                "minItems": 3,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "variable"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "xs"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "ys"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "interpolate"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
                 "const": "is_prime"
               }
             },
@@ -6743,6 +8623,79 @@
               "type",
               "operation",
               "arguments"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "jacobi_symbol"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "a"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "n"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "jacobi_symbol"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
             ],
             "type": "object"
           }
@@ -6812,6 +8765,79 @@
               "type",
               "operation",
               "arguments"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "legendre_symbol"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "a"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "p"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "legendre_symbol"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
             ],
             "type": "object"
           }
@@ -7248,6 +9274,273 @@
           "if": {
             "properties": {
               "operation": {
+                "const": "line_intersection"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 4,
+                "minItems": 4,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "p1"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "p2"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "q1"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "q2"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "line_intersection"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "linear_diophantine"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 3,
+                "minItems": 3,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "a"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "b"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "c"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "linear_diophantine"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "linear_regression"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "xs"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "ys"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "linear_regression"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
                 "const": "lu"
               }
             },
@@ -7293,6 +9586,79 @@
               "type",
               "operation",
               "arguments"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "matrix_power"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "M"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "k"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "matrix_power"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
             ],
             "type": "object"
           }
@@ -7700,6 +10066,120 @@
           "if": {
             "properties": {
               "operation": {
+                "const": "mode"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 1,
+                "minItems": 1,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "data"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "mode"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "moebius"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 1,
+                "minItems": 1,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "n"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "moebius"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
                 "const": "moment"
               }
             },
@@ -7822,6 +10302,339 @@
           "if": {
             "properties": {
               "operation": {
+                "const": "multiplicative_order"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "a"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "n"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "multiplicative_order"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "next_prime"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 1,
+                "minItems": 1,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "n"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "next_prime"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "orientation"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 3,
+                "minItems": 3,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "p"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "q"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "r"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "orientation"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "partitions"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 1,
+                "minItems": 1,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "n"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "partitions"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "pell_fundamental"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 1,
+                "minItems": 1,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "d"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "pell_fundamental"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
                 "const": "permutations_count"
               }
             },
@@ -7891,6 +10704,339 @@
           "if": {
             "properties": {
               "operation": {
+                "const": "polygon_area"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 1,
+                "minItems": 1,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "points"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "polygon_area"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "polynomial_geometric_series"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "polynomial"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "ratio"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "polynomial_geometric_series"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "powmod"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 3,
+                "minItems": 3,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "base"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "exponent"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "modulus"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "powmod"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "prev_prime"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 1,
+                "minItems": 1,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "n"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "prev_prime"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "primitive_root"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 1,
+                "minItems": 1,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "p"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "primitive_root"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
                 "const": "probability"
               }
             },
@@ -7952,6 +11098,184 @@
               "type",
               "operation",
               "arguments"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "projection"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "a"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "b"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "projection"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "quadratic_continued_fraction"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 4,
+                "minItems": 4,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "d"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "p"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "q"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "r"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "quadratic_continued_fraction"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
             ],
             "type": "object"
           }
@@ -8045,6 +11369,79 @@
           "if": {
             "properties": {
               "operation": {
+                "const": "quantile"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "data"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "p"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "quantile"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
                 "const": "rational_antiderivative"
               }
             },
@@ -8106,6 +11503,79 @@
               "type",
               "operation",
               "arguments"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "rational_approximation"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "max_denominator"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "value"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "rational_approximation"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
             ],
             "type": "object"
           }
@@ -8268,6 +11738,95 @@
           "if": {
             "properties": {
               "operation": {
+                "const": "residue"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 3,
+                "minItems": 3,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "function"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "point"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "variable"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "residue"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
                 "const": "resultant"
               }
             },
@@ -8382,6 +11941,857 @@
               "type",
               "operation",
               "arguments"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "series_coefficients"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 4,
+                "minItems": 4,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "center"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "function"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "order"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "variable"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "series_coefficients"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "set_complement"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 1,
+                "minItems": 1,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "a"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "set_complement"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "set_difference"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "a"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "b"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "set_difference"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "set_intersection"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "a"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "b"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "set_intersection"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "set_symmetric_difference"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "a"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "b"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "set_symmetric_difference"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "set_union"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "a"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "b"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "set_union"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "smith_normal_form"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 1,
+                "minItems": 1,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "M"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "smith_normal_form"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "solve_abs"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 4,
+                "minItems": 4,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "lhs"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "relation"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "rhs"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "variable"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "solve_abs"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "solve_sqrt"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 4,
+                "minItems": 4,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "lhs"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "relation"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "rhs"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "variable"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "solve_sqrt"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "sqrt_mod"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "a"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "p"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "sqrt_mod"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "stationary_distribution"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 1,
+                "minItems": 1,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "M"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "stationary_distribution"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
             ],
             "type": "object"
           }
@@ -8528,6 +12938,193 @@
           "if": {
             "properties": {
               "operation": {
+                "const": "stirling1"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "k"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "n"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "stirling1"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "sturm_sequence"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 1,
+                "minItems": 1,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "polynomial"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "sturm_sequence"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "sum_polynomial"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 1,
+                "minItems": 1,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "polynomial"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "sum_polynomial"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
                 "const": "totient"
               }
             },
@@ -8634,6 +13231,330 @@
           "if": {
             "properties": {
               "operation": {
+                "const": "trig_power_antiderivative"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "function"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "variable"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "trig_power_antiderivative"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "trig_power_integral"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 4,
+                "minItems": 4,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "function"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "lower_pi"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "upper_pi"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "variable"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "trig_power_integral"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "triple_product"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 3,
+                "minItems": 3,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "a"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "b"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "c"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "triple_product"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "two_squares"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "items": false,
+                "maxItems": 1,
+                "minItems": 1,
+                "prefixItems": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "name": {
+                        "const": "n"
+                      },
+                      "value": {
+                        "$ref": "#/$defs/node"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "value"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "type": "array"
+              },
+              "operation": {
+                "const": "two_squares"
+              },
+              "type": {
+                "const": "operation_request"
+              },
+              "version": {
+                "const": 6
+              }
+            },
+            "required": [
+              "type",
+              "operation",
+              "arguments",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "operation": {
                 "const": "variance"
               }
             },
@@ -8710,6 +13631,7 @@
                     "algebraic_pow",
                     "analyze_function",
                     "apart",
+                    "bell",
                     "bernoulli",
                     "binomial",
                     "binomial_distribution",
@@ -8726,16 +13648,32 @@
                     "complex_norm_squared",
                     "complex_pow",
                     "complex_real",
+                    "complex_roots",
                     "complex_sqrt",
                     "complex_sub",
                     "condition",
                     "continued_fraction",
+                    "convergents",
+                    "convex_hull",
+                    "correlation",
+                    "count_real_roots",
                     "covariance",
+                    "cross",
                     "crt",
+                    "cyclotomic_polynomial",
+                    "definiteness",
+                    "denest_sqrt",
+                    "derangements",
+                    "digits",
+                    "discrete_log",
                     "discrete_uniform",
                     "discriminant",
+                    "distance",
                     "distribution_variance",
+                    "divisor_sigma",
                     "divisors",
+                    "dot",
+                    "eigenvectors",
                     "evaluate_algebraic",
                     "expectation",
                     "extrema_values",
@@ -8743,6 +13681,7 @@
                     "factor_integer",
                     "factorial",
                     "fibonacci",
+                    "fisher_exact",
                     "function_antiderivative",
                     "function_differentiate",
                     "function_evaluate",
@@ -8753,32 +13692,79 @@
                     "function_limit",
                     "function_partial_diff",
                     "function_taylor",
+                    "geometric_series",
+                    "geometric_sum",
+                    "gram_schmidt",
+                    "hermite_normal_form",
                     "hypergeometric",
                     "integer_gcd",
                     "integer_lcm",
+                    "integer_nth_root",
                     "integer_xgcd",
+                    "interpolate",
                     "is_prime",
+                    "jacobi_symbol",
                     "least_squares",
+                    "legendre_symbol",
                     "limit",
+                    "line_intersection",
+                    "linear_diophantine",
+                    "linear_regression",
                     "lu",
+                    "matrix_power",
                     "mean",
                     "median",
                     "minimal_polynomial",
                     "mod_inverse",
+                    "mode",
+                    "moebius",
                     "moment",
                     "multinomial",
+                    "multiplicative_order",
+                    "next_prime",
+                    "orientation",
+                    "partitions",
+                    "pell_fundamental",
                     "permutations_count",
+                    "polygon_area",
+                    "polynomial_geometric_series",
+                    "powmod",
+                    "prev_prime",
+                    "primitive_root",
                     "probability",
+                    "projection",
+                    "quadratic_continued_fraction",
                     "quadratic_roots",
+                    "quantile",
                     "rational_antiderivative",
+                    "rational_approximation",
                     "rational_integrate",
                     "real_eigenvalues",
+                    "residue",
                     "resultant",
                     "rowspace",
+                    "series_coefficients",
+                    "set_complement",
+                    "set_difference",
+                    "set_intersection",
+                    "set_symmetric_difference",
+                    "set_union",
+                    "smith_normal_form",
+                    "solve_abs",
+                    "solve_sqrt",
+                    "sqrt_mod",
+                    "stationary_distribution",
                     "stddev",
                     "stirling",
+                    "stirling1",
+                    "sturm_sequence",
+                    "sum_polynomial",
                     "totient",
                     "trace",
+                    "trig_power_antiderivative",
+                    "trig_power_integral",
+                    "triple_product",
+                    "two_squares",
                     "variance"
                   ]
                 }
@@ -8889,7 +13875,72 @@
                     "totient",
                     "trace",
                     "variance",
-                    "continued_fraction"
+                    "bell",
+                    "complex_roots",
+                    "continued_fraction",
+                    "convergents",
+                    "convex_hull",
+                    "correlation",
+                    "count_real_roots",
+                    "cross",
+                    "cyclotomic_polynomial",
+                    "definiteness",
+                    "denest_sqrt",
+                    "derangements",
+                    "digits",
+                    "discrete_log",
+                    "distance",
+                    "divisor_sigma",
+                    "dot",
+                    "eigenvectors",
+                    "fisher_exact",
+                    "geometric_series",
+                    "geometric_sum",
+                    "gram_schmidt",
+                    "hermite_normal_form",
+                    "integer_nth_root",
+                    "interpolate",
+                    "jacobi_symbol",
+                    "legendre_symbol",
+                    "line_intersection",
+                    "linear_diophantine",
+                    "linear_regression",
+                    "matrix_power",
+                    "mode",
+                    "moebius",
+                    "multiplicative_order",
+                    "next_prime",
+                    "orientation",
+                    "partitions",
+                    "pell_fundamental",
+                    "polygon_area",
+                    "polynomial_geometric_series",
+                    "powmod",
+                    "prev_prime",
+                    "primitive_root",
+                    "projection",
+                    "quadratic_continued_fraction",
+                    "quantile",
+                    "rational_approximation",
+                    "residue",
+                    "series_coefficients",
+                    "set_complement",
+                    "set_difference",
+                    "set_intersection",
+                    "set_symmetric_difference",
+                    "set_union",
+                    "smith_normal_form",
+                    "solve_abs",
+                    "solve_sqrt",
+                    "sqrt_mod",
+                    "stationary_distribution",
+                    "stirling1",
+                    "sturm_sequence",
+                    "sum_polynomial",
+                    "trig_power_antiderivative",
+                    "trig_power_integral",
+                    "triple_product",
+                    "two_squares"
                   ]
                 },
                 "type": "string"
@@ -10750,6 +15801,254 @@
       ],
       "type": "object"
     },
+    "v6_denested_root": {
+      "additionalProperties": false,
+      "properties": {
+        "sign": {
+          "$ref": "#/$defs/node"
+        },
+        "type": {
+          "const": "v6_denested_root"
+        },
+        "x": {
+          "$ref": "#/$defs/node"
+        },
+        "y": {
+          "$ref": "#/$defs/node"
+        }
+      },
+      "required": [
+        "type",
+        "x",
+        "y",
+        "sign"
+      ],
+      "type": "object"
+    },
+    "v6_diophantine_solution": {
+      "additionalProperties": false,
+      "properties": {
+        "dx": {
+          "$ref": "#/$defs/node"
+        },
+        "dy": {
+          "$ref": "#/$defs/node"
+        },
+        "type": {
+          "const": "v6_diophantine_solution"
+        },
+        "x": {
+          "$ref": "#/$defs/node"
+        },
+        "y": {
+          "$ref": "#/$defs/node"
+        }
+      },
+      "required": [
+        "type",
+        "x",
+        "y",
+        "dx",
+        "dy"
+      ],
+      "type": "object"
+    },
+    "v6_discrete_logarithm": {
+      "additionalProperties": false,
+      "properties": {
+        "exponent": {
+          "$ref": "#/$defs/node"
+        },
+        "order": {
+          "$ref": "#/$defs/node"
+        },
+        "type": {
+          "const": "v6_discrete_logarithm"
+        }
+      },
+      "required": [
+        "type",
+        "exponent",
+        "order"
+      ],
+      "type": "object"
+    },
+    "v6_eigenspace": {
+      "additionalProperties": false,
+      "properties": {
+        "basis": {
+          "$ref": "#/$defs/node"
+        },
+        "multiplicity": {
+          "$ref": "#/$defs/node"
+        },
+        "type": {
+          "const": "v6_eigenspace"
+        },
+        "value": {
+          "$ref": "#/$defs/node"
+        }
+      },
+      "required": [
+        "type",
+        "value",
+        "multiplicity",
+        "basis"
+      ],
+      "type": "object"
+    },
+    "v6_inertia": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/node"
+        },
+        "negative": {
+          "$ref": "#/$defs/node"
+        },
+        "positive": {
+          "$ref": "#/$defs/node"
+        },
+        "type": {
+          "const": "v6_inertia"
+        },
+        "zero": {
+          "$ref": "#/$defs/node"
+        }
+      },
+      "required": [
+        "type",
+        "positive",
+        "negative",
+        "zero",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "v6_line_intersection": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/node"
+        },
+        "point": {
+          "$ref": "#/$defs/node"
+        },
+        "type": {
+          "const": "v6_line_intersection"
+        }
+      },
+      "required": [
+        "type",
+        "kind",
+        "point"
+      ],
+      "type": "object"
+    },
+    "v6_linear_fit": {
+      "additionalProperties": false,
+      "properties": {
+        "intercept": {
+          "$ref": "#/$defs/node"
+        },
+        "slope": {
+          "$ref": "#/$defs/node"
+        },
+        "type": {
+          "const": "v6_linear_fit"
+        }
+      },
+      "required": [
+        "type",
+        "slope",
+        "intercept"
+      ],
+      "type": "object"
+    },
+    "v6_periodic_continued_fraction": {
+      "additionalProperties": false,
+      "properties": {
+        "period": {
+          "$ref": "#/$defs/node"
+        },
+        "preperiod": {
+          "$ref": "#/$defs/node"
+        },
+        "type": {
+          "const": "v6_periodic_continued_fraction"
+        }
+      },
+      "required": [
+        "type",
+        "preperiod",
+        "period"
+      ],
+      "type": "object"
+    },
+    "v6_pi_linear": {
+      "additionalProperties": false,
+      "properties": {
+        "algebraic": {
+          "$ref": "#/$defs/node"
+        },
+        "pi_coefficient": {
+          "$ref": "#/$defs/node"
+        },
+        "type": {
+          "const": "v6_pi_linear"
+        }
+      },
+      "required": [
+        "type",
+        "algebraic",
+        "pi_coefficient"
+      ],
+      "type": "object"
+    },
+    "v6_power_series": {
+      "additionalProperties": false,
+      "properties": {
+        "center": {
+          "$ref": "#/$defs/node"
+        },
+        "coefficients": {
+          "$ref": "#/$defs/node"
+        },
+        "type": {
+          "const": "v6_power_series"
+        },
+        "variable": {
+          "$ref": "#/$defs/node"
+        }
+      },
+      "required": [
+        "type",
+        "variable",
+        "center",
+        "coefficients"
+      ],
+      "type": "object"
+    },
+    "v6_rational_eigenvectors": {
+      "additionalProperties": false,
+      "properties": {
+        "eigenspaces": {
+          "$ref": "#/$defs/node"
+        },
+        "residual": {
+          "$ref": "#/$defs/node"
+        },
+        "type": {
+          "const": "v6_rational_eigenvectors"
+        }
+      },
+      "required": [
+        "type",
+        "eigenspaces",
+        "residual"
+      ],
+      "type": "object"
+    },
     "v6_reason": {
       "additionalProperties": false,
       "properties": {
@@ -10767,6 +16066,58 @@
         "type",
         "code",
         "detail"
+      ],
+      "type": "object"
+    },
+    "v6_sum_of_two_squares": {
+      "additionalProperties": false,
+      "properties": {
+        "a": {
+          "$ref": "#/$defs/node"
+        },
+        "b": {
+          "$ref": "#/$defs/node"
+        },
+        "count": {
+          "$ref": "#/$defs/node"
+        },
+        "type": {
+          "const": "v6_sum_of_two_squares"
+        }
+      },
+      "required": [
+        "type",
+        "count",
+        "a",
+        "b"
+      ],
+      "type": "object"
+    },
+    "v6_truncated_decimal": {
+      "additionalProperties": false,
+      "properties": {
+        "exact": {
+          "$ref": "#/$defs/node"
+        },
+        "magnitude": {
+          "$ref": "#/$defs/node"
+        },
+        "places": {
+          "$ref": "#/$defs/node"
+        },
+        "sign": {
+          "$ref": "#/$defs/node"
+        },
+        "type": {
+          "const": "v6_truncated_decimal"
+        }
+      },
+      "required": [
+        "type",
+        "sign",
+        "magnitude",
+        "places",
+        "exact"
       ],
       "type": "object"
     },

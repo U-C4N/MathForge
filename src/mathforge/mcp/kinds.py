@@ -5,11 +5,21 @@ a decoder from JSON to the Python value the operation receives, and an encoder f
 Every kind takes a friendly JSON form or a canonical object envelope, exactly what to_data returns (format
 versions 1-6), as mathforge.compute does; the "object" kind takes only the envelope. Compound forms are made
 of their element kinds, so an element may itself be an envelope, for example a real algebraic root binding.
-Envelopes pass compute's checks: their shape, a walk within the request budget that admits operand tags only,
-and the canonical minimum format.
+Envelopes pass compute's checks: their shape, a walk within the request budget that admits operand tags only
+(compute's and those of the v6 family records; an interval_set argument's own envelope also those of an interval
+set), and the canonical minimum format. The kinds of v0.9 charge the reconstruction of their envelopes, the ends
+of intervals included, to the request budget; the kinds of v0.8 keep v0.8's fresh budget for each envelope. An
+interval_set argument, in either form, is then rebuilt once more from its canonical envelope, in a fresh budget of the
+default limits divided by RESULT_COPIES, the copies of it that a Result may hold, so that such a Result reloads.
 
-Decoding runs no code. Integer and fraction strings are bounded digit strings; scalar, function and
-rational-function text goes through the bounded MathForge parsers; names resolve through one request-local
+Wherever a kind takes an envelope, it also takes a handle, the string "mf:sha256:<64 hex digits>" that a response
+returned (mcp.handles). The handle resolves through boundary.resolve_handle to the canonical envelope of the stored
+document, or of a stored Result's value, which then goes through exactly the checks of that envelope sent in full; an
+unknown handle is an unknown_handle error at the argument. No friendly string form contains a colon, so a handle never
+reads as friendly input, and a string that only resembles a handle is friendly input, decoded as before.
+
+Decoding runs no code. Integer and fraction strings are bounded digit strings; scalar, function, polynomial
+and rational-function text goes through the bounded MathForge parsers; names resolve through one request-local
 symbol table that symbol_ids seeds. JSON decimal numbers and true/false are never exact numbers.
 
 Schemas are definitions: a kind's schema refers to the kinds it is made of, and to the envelope, as
@@ -22,34 +32,78 @@ from __future__ import annotations
 import ast
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import re
 from types import MappingProxyType
 from typing import Any
 
 from .. import registry
+from ..algebraic import RealAlgebraicRoot, as_endpoint
 from ..complex_numbers import ComplexAlgebraic
-from ..errors import MathForgeError, SerializationError
+from ..errors import MathForgeError, SerializationError, UnsupportedOperation
 from ..functions import RealFunction, parse_function
-from ..limits import ComputationLimits, computation
+from ..intervals import Interval, IntervalSet
+from ..limits import ComputationLimits, DecodeLimits, computation
 from ..matrices import Matrix
 from ..model import Expression, Rational, Symbol
 from ..operations_v5 import _freeze
+from ..operations_v6 import _RELATIONS
+from ..polynomial import Polynomial
 from ..probability import FiniteDistribution
 from ..rational_function import RationalFunction, as_rational_function
-from ..serialization import to_data
-from .boundary import (MAX_SCALAR_CHARACTERS, MAX_TEXT_CHARACTERS, MAX_VARIABLES, InputError, _decode_envelopes,
-                       _envelope, _rational, _scalar, _symbols, operand_tags)
+from ..serialization import from_data, to_data
+from .boundary import (MAX_REQUEST_BYTES, MAX_SCALAR_CHARACTERS, MAX_TEXT_CHARACTERS, MAX_VARIABLES, InputError,
+                       Resolver, _decode_envelopes, _envelope, _rational, _scalar, _symbols, operand_tags)
+from .handles import PATTERN as HANDLE_PATTERN, is_handle
 from .schemas import NAME, TEXT
 
 ENVELOPE_VERSIONS = (1, 2, 3, 4, 5, 6)
 _INTEGER = re.compile(r"[+-]?[0-9]+")
 _SIDES = ("both", "left", "right")
+_INTERVAL_FIELDS = ("lower", "upper", "left_closed", "right_closed")
+# The tags of an IntervalSet and its Intervals: operands only in the whole-argument envelope of an interval_set
+# argument. Every other kind, an end of an interval included, keeps v0.8's located decoding error for them, and
+# compute's operand tags stay the ones that its frozen v0.7 schema enumerates.
+_INTERVAL_TAGS = frozenset({"interval", "interval_set"})
+# The most intervals that a friendly interval_set may list; an envelope may hold more. A Result repeats its request in
+# its step, and its value too, and reloading it rebuilds every copy with full checks: under the default limits,
+# mathforge.verify reloaded an echo's Result, which holds the set four times, with at most 666 intervals of small
+# rational ends, 97 of ends such as 2*k + sqrt(2) and 49 of sqrt(10^12 + k) (measured 2026-11-12). The cap bounds the
+# request; RESULT_COPIES bounds the cost of rebuilding the set, also of fewer intervals with costlier ends. 32
+# intervals with ends of the first two kinds pass both.
+MAX_INTERVALS = 32
+# Reloading a Result (mathforge.verify, mf.loads, mf.from_data) rebuilds every copy of a value that it holds, in one
+# budget of the default limits. A set operation on two sets holds each argument in its request and in its step's copy
+# of the request, and its value in the step's outputs and as the value, where the value may be as large as both
+# arguments together: 2 + 2 + 2 * 2 = 8 copies of the larger argument. Rebuilding a request also inspects its
+# arguments, which adds up to about 28% of their nodes for rational ends, and a value can cost a little more than its
+# parts: with 9 copies, unions of two disjoint sets of 337 intervals with rational ends that each passed did not
+# reload, with 10 every such union tried did (measured 2026-11-12). So an interval_set argument, in either form, must
+# rebuild from its canonical envelope within the default limits divided by RESULT_COPIES: those that the copies share
+# (work, nodes, refinements and evidence items, and the decoder's bytes and tagged nodes). The limits on one integer,
+# on depth and on a matrix stay whole. This bounds the copies of the arguments, not a value that compares ends of
+# different arguments, which neither argument's rebuilding compared: A = {(sqrt(10^400 + 1), 2 * 10^200)} and
+# B = {(sqrt(10^400 + 2), 3 * 10^200)} each pass, while their difference A \ B = {(sqrt(10^400 + 1), sqrt(10^400 + 2)]}
+# costs 1,661,069 units of work to rebuild (measured 2026-11-12). An operation whose value pairs ends of different
+# arguments must bound the rebuilding of its value itself.
+RESULT_COPIES = 10
+
+
+def _shares(limits: Any, *names: str) -> Any:
+    """Limits with each named limit divided by RESULT_COPIES."""
+    return replace(limits, **{name: getattr(limits, name) // RESULT_COPIES for name in names})
+
+
+_RELOAD_LIMITS = _shares(ComputationLimits(), "max_work", "max_nodes", "max_refinements", "max_evidence_items")
+_RELOAD_DECODE_LIMITS = _shares(DecodeLimits(), "max_bytes", "max_nodes")
 _ENVELOPE = {"type": "object", "additionalProperties": False, "required": ["format", "version", "kind", "data"],
              "description": "A canonical MathForge object envelope, exactly as to_data returns it.",
              "properties": {"format": {"const": "mathforge"}, "version": {"enum": list(ENVELOPE_VERSIONS)},
                             "kind": {"const": "object"}, "data": {"type": "object", "required": ["type"]}}}
+_HANDLE = {"type": "string", "pattern": HANDLE_PATTERN,
+           "description": "The handle of an earlier result of this server process, in place of its envelope."}
 _DEFINITION = "#/$defs/"
+_SHARED = ("envelope", "handle")  # The $defs entries that are not kinds.
 
 
 def _ref(name: str) -> dict[str, str]:
@@ -60,10 +114,14 @@ def _ref(name: str) -> dict[str, str]:
 class Context:
     """The decoding state of one request: its limits, its symbol table and the position being decoded."""
 
-    def __init__(self, limits: ComputationLimits, symbol_ids: Any = None):
+    def __init__(self, limits: ComputationLimits, symbol_ids: Any = None, request_bytes: int = 0):
         self.limits = limits
         self.field = "arguments"
+        self._resolver = Resolver(request_bytes)  # request_bytes: the size of the request as sent
         self.symbols: dict[str, Symbol] = {}  # The names the request used, in first-use order.
+        # The names that two symbol identities share in the decoded arguments, set by decode_arguments: a handle or an
+        # envelope of an earlier call made without symbol_ids, beside text of this one, gives a name two identities.
+        self.mismatched: tuple[str, ...] = ()
         ids = {} if symbol_ids is None else symbol_ids
         if type(ids) is not dict:
             raise InputError("symbol_ids must map variable names to UUID strings", field="symbol_ids")
@@ -75,8 +133,9 @@ class Context:
             raise InputError(str(exc), code=exc.code, field="symbol_ids") from exc
         self._tags: frozenset[str] | None = None
 
-    def error(self, message: str, *, code: str = "invalid_input") -> InputError:
-        return InputError(message, code=code, field=self.field)
+    def error(self, message: str, *, code: str = "invalid_input", fixed: bool = False) -> InputError:
+        """An input error at the current position; fixed=True marks a cap that no limits field raises."""
+        return InputError(message, code=code, field=self.field, fixed=fixed)
 
     @contextmanager
     def at(self, part: str) -> Iterator[None]:
@@ -96,25 +155,70 @@ class Context:
         if type(name) is str and name in self.symbols:
             return self.symbols[name]
         if len(self.symbols) >= MAX_VARIABLES:
-            raise self.error("Too many variables", code="resource_limit_exceeded")
+            raise self.error("Too many variables", code="resource_limit_exceeded", fixed=True)
         if type(name) is str and name in self._declared:
             symbol = self._declared[name]
         else:
             try:
                 symbol = _symbols([name], None)[name]
             except InputError as exc:
-                raise self.error(str(exc), code=exc.code) from exc
+                raise self.error(str(exc), code=exc.code, fixed=getattr(exc, "fixed_limit", False)) from exc
         self.symbols[name] = symbol
         return symbol
 
-    def envelope(self, raw: Any) -> Any:
-        """Decode a canonical object envelope (versions 1-6) with mathforge.compute's checks."""
+    def resolve(self, reference: str) -> dict[str, Any]:
+        """The canonical envelope that a handle stands for at the current position, not yet checked or decoded."""
+        return self._resolver(reference, self.field, self.limits)
+
+    def envelope(self, raw: Any, *, extra_tags: frozenset[str] = frozenset(), charged: bool = False) -> Any:
+        """Decode a canonical object envelope (versions 1-6) with mathforge.compute's checks.
+
+        extra_tags widens the operand tags for this envelope alone; only the interval_set kind passes any, the
+        tags of an interval set, for its whole argument. charged=True, which the kinds of v0.9 pass, charges the
+        reconstruction of the value to the active request budget.
+        """
         if self._tags is None:
             # compute's operand tags and the family records of v6; the deferral records are not operands.
             self._tags = frozenset(operand_tags()) | {"v6_" + tag for tag, cls in registry.record_types(6).items()
                                                       if cls.__module__ != registry.DEFERRED_MODULE}
-        _envelope(raw, self.field, self.limits, tags=self._tags, versions=ENVELOPE_VERSIONS)
+        tags = (self._tags | extra_tags) if extra_tags else self._tags
+        _envelope(raw, self.field, self.limits, tags=tags, versions=ENVELOPE_VERSIONS)
+        if charged:
+            return _decode_charged(raw, self.field, self.limits)
+        # v0.8 behaviour, kept for the kinds of v0.8 until the MCP hardening milestone: from_data rebuilds the value
+        # in a fresh budget of its own, so the request budget pays only for the walk above.
         return _decode_envelopes([raw], [self.field], self.limits)[0]
+
+
+def _decode_charged(envelope: dict[str, Any], field: str, limits: ComputationLimits) -> Any:
+    """Decode a checked envelope as boundary._decode_envelopes does, but within the active request budget.
+
+    from_data always rebuilds a value in a fresh budget, so every nested envelope, each end of an interval among
+    them, would get a whole budget of its own. These are from_data's steps (the same one-item tuple document, guard,
+    decoder and error mapping) with the reconstruction charged to the request instead.
+    """
+    from ..serialization import _Decoder, _decode_limits, _guard_data
+    document = {"format": "mathforge", "version": envelope["version"], "kind": "object",
+                "data": {"type": "tuple", "items": [envelope["data"]]}}
+    decode_limits = DecodeLimits(max_bytes=MAX_REQUEST_BYTES, max_depth=min(128, limits.max_depth),
+                                 max_nodes=limits.max_nodes)
+    token = _decode_limits.set(decode_limits)
+    try:
+        _guard_data(document, decode_limits)
+        with computation(limits) as budget:  # The active request budget, never a fresh one.
+            (value,) = _Decoder(version=envelope["version"]).decode(document["data"])
+    except SerializationError:
+        raise
+    except (MathForgeError, TypeError, ValueError, ZeroDivisionError, OverflowError, RecursionError) as exc:
+        if getattr(exc, "code", None) == "resource_limit_exceeded":
+            raise SerializationError(str(exc), code="resource_limit_exceeded") from exc
+        raise SerializationError("Invalid mathematical document") from exc
+    finally:
+        _decode_limits.reset(token)
+    budget.nodes()  # As _decode_envelopes charges each operand's canonical check.
+    if to_data(value) != envelope:
+        raise InputError("Operands must use their canonical minimum wire format", field=field)
+    return value
 
 
 @dataclass(frozen=True)
@@ -127,11 +231,16 @@ class Kind:
 
 
 def _kind(name: str, friendly: dict[str, Any] | None, decode_friendly: Callable[[Any, Context], Any] | None,
-          encode_friendly: Callable[[Any], Any] | None) -> Kind:
+          encode_friendly: Callable[[Any], Any] | None, *, charged: bool = False,
+          extra_tags: frozenset[str] = frozenset(), check: Callable[[Any, Context], None] | None = None) -> Kind:
+    """A kind; charged and extra_tags apply to its whole-argument envelope, as Context.envelope takes them. check, if
+    given, runs on the value that the kind's decoder returns, from either form; the encoder's round trip skips it."""
     def decode(raw: Any, context: Context) -> Any:
         with computation(context.limits):
+            if is_handle(raw):  # The envelope it stands for, checked below as one sent in full.
+                raw = context.resolve(raw)
             if type(raw) is dict and raw.get("format") == "mathforge":
-                return context.envelope(raw)
+                return context.envelope(raw, extra_tags=extra_tags, charged=charged)
             if decode_friendly is None:
                 raise context.error("A canonical MathForge object envelope is required")
             return decode_friendly(raw, context)
@@ -139,8 +248,18 @@ def _kind(name: str, friendly: dict[str, Any] | None, decode_friendly: Callable[
     def encode(value: Any) -> Any:
         return _encode(value, decode, encode_friendly)
 
-    envelope = _ref("envelope")
-    return Kind(name, {"anyOf": [envelope] if friendly is None else [friendly, envelope]}, decode, encode)
+    envelope, handle = _ref("envelope"), _ref("handle")
+    schema = {"anyOf": [envelope, handle] if friendly is None else [friendly, envelope, handle]}
+    if check is None:
+        return Kind(name, schema, decode, encode)
+    after = check
+
+    def checked(raw: Any, context: Context) -> Any:
+        value = decode(raw, context)
+        after(value, context)
+        return value
+
+    return Kind(name, schema, checked, encode)
 
 
 def _encode(value: Any, decode: Callable[[Any, Context], Any], friendly: Callable[[Any], Any] | None) -> Any:
@@ -296,7 +415,8 @@ def _text(raw: Any, context: Context) -> str:
     if type(raw) is not str:
         raise context.error("Mathematical text is required")
     if len(raw) > MAX_TEXT_CHARACTERS:
-        raise context.error("Mathematical text exceeds the character limit", code="resource_limit_exceeded")
+        raise context.error("Mathematical text exceeds the character limit", code="resource_limit_exceeded",
+                            fixed=True)
     return raw
 
 
@@ -341,6 +461,114 @@ def _encode_rational_function(value: Any) -> Any:
             "variable": value.variable.name}
 
 
+def _decode_polynomial(raw: Any, context: Context) -> Polynomial:
+    if type(raw) is not dict or set(raw) != {"text", "variable"}:
+        raise context.error('A polynomial is {"text": ..., "variable": name}')
+    with context.at(".variable"):
+        variable = context.symbol(raw["variable"])
+    with context.at(".text"):
+        from ..parsing import parse_expression
+        expression = parse_expression(_text(raw["text"], context), symbols={variable.name: variable},
+                                      limits=context.limits)
+        if type(expression) is RationalFunction:  # The text divides by an expression in the variable.
+            raise context.error("A polynomial divides by rational constants only")
+        return Polynomial.from_expression(expression, variable)
+
+
+def _encode_polynomial(value: Any) -> Any:
+    if type(value) is not Polynomial:
+        return None
+    from ..rendering import render_text
+    return {"text": render_text(value), "variable": value.variable.name}
+
+
+def _decode_end(raw: Any, context: Context) -> Rational | RealAlgebraicRoot | None:
+    """An end of an interval, as Interval admits it: None for an infinite end, else a Rational or a root."""
+    if raw is None:
+        return None
+    if type(raw) not in (int, str, dict):
+        raise context.error("An interval end is a JSON integer, closed exact mathematical text, or null for an "
+                            "infinite end; JSON decimal numbers and booleans are not exact")
+    if type(raw) is str and raw.strip() in ("inf", "+inf", "-inf"):  # How the point kind spells an infinity.
+        raise context.error("An infinite end is null, not text")
+    if is_handle(raw):  # The envelope it stands for, checked below as one sent in full.
+        raw = context.resolve(raw)
+    if type(raw) is dict and raw.get("format") == "mathforge":  # The scalar kind's test for an envelope.
+        # A Rational or a RealAlgebraicRoot needs no interval tags; the request budget pays for the rebuilding.
+        value = context.envelope(raw, charged=True)
+    else:
+        value = _decode_scalar(raw, context)
+    if type(value) is int or isinstance(value, Expression):  # Else the envelope of another object.
+        try:
+            return as_endpoint(value, limits=context.limits)
+        except UnsupportedOperation:  # A symbol, or square roots that are not rational multiples of each other.
+            pass
+    raise context.error("An interval end must be a rational number or a number of one quadratic field, written with "
+                        "square roots that are rational multiples of each other, such as '(1+sqrt(5))/2'; send "
+                        "another real algebraic number as a RealAlgebraicRoot envelope")
+
+
+def _decode_interval(raw: Any, context: Context) -> Interval:
+    if type(raw) is not dict or set(raw) != set(_INTERVAL_FIELDS):
+        raise context.error('An interval is {"lower": ..., "upper": ..., "left_closed": ..., "right_closed": ...}; '
+                            "null is an infinite end")
+    ends, flags = [], []
+    for end, flag in (("lower", "left_closed"), ("upper", "right_closed")):
+        with context.at("." + end):
+            ends.append(_decode_end(raw[end], context))
+        with context.at("." + flag):
+            if type(raw[flag]) is not bool:
+                raise context.error(flag + " must be true or false")
+            if raw[flag] and ends[-1] is None:
+                raise context.error("An infinite end must be open")
+            flags.append(raw[flag])
+    return Interval(*ends, *flags)  # It rejects reversed ends.
+
+
+def _decode_interval_set(raw: Any, context: Context) -> IntervalSet:
+    """The canonical union of the intervals given: sorted, merged, and without the empty ones."""
+    if type(raw) is list and len(raw) > MAX_INTERVALS:  # Before any end is decoded.
+        raise context.error(f"An interval set has at most {MAX_INTERVALS} intervals")
+    return IntervalSet(_items(raw, context, _decode_interval, "An interval set is an array of intervals"))
+
+
+def _reloadable(value: Any, context: Context) -> None:
+    """Refuse a decoded interval_set argument that a Result holding it RESULT_COPIES times could not reload.
+
+    from_data rebuilds the canonical envelope of the value, as reloading a Result rebuilds each copy, in a fresh
+    budget of the default limits divided by RESULT_COPIES; the request budget, which the decoding has charged, pays
+    nothing for it. Running out there is a resource_limit_exceeded located at the argument."""
+    try:
+        from_data(to_data(value), decode_limits=_RELOAD_DECODE_LIMITS, computation_limits=_RELOAD_LIMITS)
+    except SerializationError as exc:
+        if exc.code != "resource_limit_exceeded":
+            raise
+        raise context.error(f"The interval set costs more than 1/{RESULT_COPIES} of the default limits to rebuild, so "
+                            f"a result that holds it might not reload within them ({exc})",
+                            code="resource_limit_exceeded", fixed=True) from exc
+
+
+def _encode_end(value: Any) -> Any:
+    if value is None:
+        return None
+    if type(value) is Rational and value.denominator == 1:  # An end decodes an integer to this same Rational.
+        return _encode_int(value.numerator)
+    return SCALAR.encode(value)
+
+
+def _encode_interval_set(value: Any) -> Any:
+    if type(value) is not IntervalSet:
+        return None
+    return [{"lower": _encode_end(item.lower), "upper": _encode_end(item.upper), "left_closed": item.left_closed,
+             "right_closed": item.right_closed} for item in value.intervals]
+
+
+def _decode_relation(raw: Any, context: Context) -> str:
+    if type(raw) is str and raw in _RELATIONS:
+        return raw
+    raise context.error("A relation is '=', '<', '<=', '>' or '>='")
+
+
 def _decode_bindings(raw: Any, context: Context) -> dict[Symbol, Any]:
     if type(raw) is not dict:
         raise context.error("bindings map variable names to scalars")
@@ -382,6 +610,7 @@ FUNCTION = _kind("function", {"type": "object", "additionalProperties": False, "
                                                                          "maxItems": MAX_VARIABLES,
                                                                          "uniqueItems": True}}},
                  _decode_function, _encode_function)
+_END = {"anyOf": [_ref("scalar"), {"type": "null"}]}  # An end of an interval; null is an infinite one.
 
 KINDS: Mapping[str, Kind] = MappingProxyType({kind.name: kind for kind in (
     INT,
@@ -432,11 +661,25 @@ KINDS: Mapping[str, Kind] = MappingProxyType({kind.name: kind for kind in (
     _kind("side", {"type": "string", "enum": list(_SIDES)}, _decode_side,
           lambda value: value if type(value) is str else None),
     _kind("object", None, None, None),
+    # The kinds of v0.9 charge the reconstruction of their envelopes to the request budget.
+    _kind("polynomial", {"type": "object", "additionalProperties": False, "required": ["text", "variable"],
+                         "properties": {"text": TEXT, "variable": NAME}},
+          _decode_polynomial, _encode_polynomial, charged=True),
+    _kind("interval_set", {"type": "array", "description": "A union of real intervals; null is an infinite end.",
+                           "maxItems": MAX_INTERVALS,
+                           "items": {"type": "object", "additionalProperties": False,
+                                     "required": list(_INTERVAL_FIELDS),
+                                     "properties": {"lower": _END, "upper": _END,
+                                                    "left_closed": {"type": "boolean"},
+                                                    "right_closed": {"type": "boolean"}}}},
+          _decode_interval_set, _encode_interval_set, charged=True, extra_tags=_INTERVAL_TAGS, check=_reloadable),
+    _kind("relation", {"type": "string", "enum": list(_RELATIONS)}, _decode_relation,
+          lambda value: value if type(value) is str else None, charged=True),
 )})
 
 
 def definitions(kinds: Iterable[str]) -> dict[str, dict[str, Any]]:
-    """The $defs entries that the schemas of some kinds need, in KIND_NAMES order, then the envelope's.
+    """The $defs entries that the schemas of some kinds need, in KIND_NAMES order, then the envelope's and the handle's.
 
     They cover the kinds given and every kind that their schemas refer to.
     """
@@ -447,7 +690,8 @@ def definitions(kinds: Iterable[str]) -> dict[str, dict[str, Any]]:
         if name not in needed:
             needed.add(name)
             pending.extend(_references(KINDS[name].schema))
-    return {name: KINDS[name].schema for name in registry.KIND_NAMES if name in needed} | {"envelope": _ENVELOPE}
+    return {name: KINDS[name].schema for name in registry.KIND_NAMES if name in needed} | {"envelope": _ENVELOPE,
+                                                                                          "handle": _HANDLE}
 
 
 def _references(schema: Any) -> set[str]:
@@ -457,7 +701,7 @@ def _references(schema: Any) -> set[str]:
         node = pending.pop()
         if type(node) is dict:
             reference = node.get("$ref")
-            if type(reference) is str and reference != _DEFINITION + "envelope":
+            if type(reference) is str and reference.removeprefix(_DEFINITION) not in _SHARED:
                 found.add(reference.removeprefix(_DEFINITION))
             pending.extend(node.values())
         elif type(node) is list:
@@ -512,7 +756,27 @@ def decode_arguments(spec: registry.OperationSpec, raw: Mapping[str, Any], conte
     # Each envelope has its own decoder, so one encoder checks every symbol together, as compute's single
     # decoder does: a symbol identity has one name, domain and set of assumptions in a request.
     try:
-        to_data(_freeze(tuple(values.values())))
+        document = to_data(_freeze(tuple(values.values())))
     except SerializationError as exc:
-        raise InputError(str(exc), code=exc.code, field="arguments") from exc
+        raise InputError(str(exc), code=exc.code, field="arguments", reason=getattr(exc, "reason", None)) from exc
+    context.mismatched = _shared_names(document)
     return values
+
+
+def _shared_names(document: dict[str, Any]) -> tuple[str, ...]:
+    """The symbol names that more than one symbol identity carries in a canonical document, sorted.
+
+    The call still runs, as before; an error of its computation then has the reason symbol_mismatch, which tells the
+    agent to pass the symbol_ids of the earlier response.
+    """
+    identities: dict[Any, set[Any]] = {}
+    pending = [document["data"]]
+    while pending:
+        node = pending.pop()
+        if type(node) is dict:
+            if node.get("type") == "symbol":
+                identities.setdefault(node.get("name"), set()).add(node.get("uid"))
+            pending.extend(node.values())
+        elif type(node) is list:
+            pending.extend(node)
+    return tuple(sorted(str(name) for name, uids in identities.items() if len(uids) > 1))

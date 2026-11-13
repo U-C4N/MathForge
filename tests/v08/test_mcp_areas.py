@@ -310,18 +310,20 @@ class AreaToolTests(unittest.TestCase):
     def test_kinds_cover_the_registry(self):
         from mathforge.mcp.kinds import KINDS, definitions
         self.assertEqual(tuple(KINDS), registry.KIND_NAMES)
-        envelope = {"$ref": "#/$defs/envelope"}
-        self.assertEqual(KINDS["object"].schema, {"anyOf": [envelope]})
+        envelope, handle = {"$ref": "#/$defs/envelope"}, {"$ref": "#/$defs/handle"}  # A handle since v0.9
+        self.assertEqual(KINDS["object"].schema, {"anyOf": [envelope, handle]})
         table = definitions(registry.KIND_NAMES)
-        self.assertEqual(list(table), [*registry.KIND_NAMES, "envelope"])
+        self.assertEqual(list(table), [*registry.KIND_NAMES, "envelope", "handle"])
         self.assertEqual(table["envelope"]["properties"]["format"], {"const": "mathforge"})
+        self.assertEqual(table["handle"]["pattern"], "^mf:sha256:[0-9a-f]{64}$")
         self.assertEqual(definitions(["int_pairs"]), {"int_pairs": KINDS["int_pairs"].schema,
-                                                      "int": KINDS["int"].schema, "envelope": table["envelope"]})
+                                                      "int": KINDS["int"].schema, "envelope": table["envelope"],
+                                                      "handle": table["handle"]})
         for name, kind in KINDS.items():
             with self.subTest(kind=name):
                 self.assertEqual(kind.name, name)
-                self.assertEqual(kind.schema["anyOf"][-1], envelope)
-                self.assertEqual(len(kind.schema["anyOf"]), 1 if name == "object" else 2)
+                self.assertEqual(kind.schema["anyOf"][-2:], [envelope, handle])
+                self.assertEqual(len(kind.schema["anyOf"]), 2 if name == "object" else 3)
                 self.assertTrue(set(definitions([name])) <= set(table))
 
     def test_encode_rules(self):
@@ -340,15 +342,25 @@ class AreaToolTests(unittest.TestCase):
             ("rational_function", m.rational_function(1, x, variable=x), {"text": "(1)/(x)", "variable": "x"}),
             ("distribution", m.FiniteDistribution((0, 1), (m.Rational(1, 2), m.Rational(1, 2))),
              {"outcomes": ["0/1", "1/1"], "probabilities": ["1/2", "1/2"]}),
+            ("polynomial", m.Polynomial((-1, 0, m.Rational(1, 2)), x), {"text": "1/2*x^2 - 1", "variable": "x"}),
+            ("interval_set", m.IntervalSet((m.Interval(None, 1, False, True), m.Interval(m.Rational(3, 2), 2))),
+             [{"lower": None, "upper": 1, "left_closed": False, "right_closed": True},
+              {"lower": "3/2", "upper": 2, "left_closed": False, "right_closed": False}]),
+            ("relation", "<=", "<="),
         ]
         # Values without a friendly form that decodes to the identical object fall back to their envelope.
         integer = m.Symbol("x", domain=m.Integers, uid=X_ID)  # A name decodes to a real symbol.
         root = m.operations.real_roots(x ** 3 - 2, x).value[0].root  # The real cube root of 2.
         hole = m.rational_function(m.Polynomial((-1, 0, 1), x), m.Polynomial((-1, 1), x), variable=x)
         empty = m.Matrix((), ncols=2)
+        counting = m.Polynomial((0, 1), integer)
         cases += [("complex", 2, m.to_data(2)), ("symbol", integer, m.to_data(integer)),
                   ("scalar", root, m.to_data(root)), ("rational_function", hole, m.to_data(hole)),
-                  ("int", 10 ** 2000, m.to_data(10 ** 2000)), ("matrix", empty, m.to_data(empty))]
+                  ("int", 10 ** 2000, m.to_data(10 ** 2000)), ("matrix", empty, m.to_data(empty)),
+                  ("polynomial", counting, m.to_data(counting)),
+                  # An end of an interval is an element: it alone falls back, as an element of a list does.
+                  ("interval_set", m.IntervalSet((m.Interval(0, root, True),)),
+                   [{"lower": 0, "upper": m.to_data(root), "left_closed": True, "right_closed": False}])]
         for kind, value, expected in cases:
             with self.subTest(kind=kind, value=value):
                 encoded = KINDS[kind].encode(value)
@@ -362,7 +374,9 @@ class AreaToolTests(unittest.TestCase):
         from mathforge.mcp.kinds import KINDS
         malformed = (None, True, 1.5, "", "\x00", "x" * 2000, [], [None], [[1.5]], {}, {"text": None},
                      {"format": "mathforge"}, {"format": "mathforge", "version": 6, "kind": "object", "data": []},
-                     {"outcomes": [1], "probabilities": "1"}, {"text": "x", "variables": "x"}, {"x": [1]})
+                     {"outcomes": [1], "probabilities": "1"}, {"text": "x", "variables": "x"}, {"x": [1]},
+                     {"text": "1/x", "variable": None}, "==",
+                     [{"lower": 0, "upper": None, "left_closed": 1, "right_closed": True}])
         for tool in area_tools():
             for spec in registry.tool_operations(tool):
                 valid = {argument.name: KINDS[argument.kind].encode(ast.literal_eval(argument.default or "0"))
@@ -428,7 +442,7 @@ class AreaToolTests(unittest.TestCase):
         allowed = {key for schema in frozen.values() for key, _ in schema_keywords(schema)} - {"not"}
         allowed |= {"$defs", "$ref"}
         schemas = input_schemas()
-        self.assertGreaterEqual(len(schemas), 37)
+        self.assertGreaterEqual(len(schemas), 40)
         for name, schema in schemas.items():
             with self.subTest(tool=name):
                 self.assertEqual(schema["type"], "object")
@@ -465,13 +479,16 @@ class AreaToolTests(unittest.TestCase):
         self.assertTrue(ntheory.is_valid({"operation": "continued_fraction", "arguments": {"value": "7/3"}}))
         for invalid in ({"operation": "integer_gcd", "arguments": {"a": 0.5, "b": 4}},
                         {"operation": "integer_gcd", "arguments": {"a": 6}},
-                        {"operation": "integer_gcd", "arguments": {"a": 6, "b": 4, "c": 1}},
+                        {"operation": "integer_gcd", "arguments": {"a": 6, "b": 4, "extra": 1}},
                         {"operation": "binomial", "arguments": {"n": 5, "k": 2}}):
             self.assertFalse(ntheory.is_valid(invalid), invalid)
         # The schema lets "arguments" match another operation of the tool; the server checks the operation named.
-        crossed = {"operation": "integer_gcd", "arguments": {"n": 5}}
-        self.assertTrue(ntheory.is_valid(crossed))
-        self.assertEqual(self.error(call_tool("mathforge.ntheory", crossed))["field"], "arguments.n")
+        # integer_gcd's a and b with a c are the arguments of linear_diophantine.
+        for crossed, field in (({"operation": "integer_gcd", "arguments": {"n": 5}}, "arguments.n"),
+                               ({"operation": "integer_gcd", "arguments": {"a": 6, "b": 4, "c": 1}}, "arguments.c")):
+            with self.subTest(crossed=crossed):
+                self.assertTrue(ntheory.is_valid(crossed))
+                self.assertEqual(self.error(call_tool("mathforge.ntheory", crossed))["field"], field)
         for operation, positional in frontend_samples().items():
             spec = registry.spec(operation)
             arguments = {argument.name: KINDS[argument.kind].encode(value)
@@ -506,7 +523,9 @@ class AreaToolTests(unittest.TestCase):
                                     ("stddev", "ddof"): 0, ("covariance", "ddof"): 0,
                                     ("function_differentiate", "n"): 1, ("function_partial_diff", "n"): 1,
                                     ("function_taylor", "point"): 0, ("function_taylor", "order"): 5,
-                                    ("function_limit", "side"): "both"})
+                                    ("function_limit", "side"): "both", ("count_real_roots", "lower"): "-inf",
+                                    ("count_real_roots", "upper"): "+inf", ("solve_abs", "relation"): "=",
+                                    ("solve_sqrt", "relation"): "="})
         default = call_tool("mathforge.catalog", {}).payload
         self.assertEqual(len(default["operations"]), 50)
         self.assertEqual(default["operations"], everything[:50])

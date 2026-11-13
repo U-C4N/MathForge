@@ -262,12 +262,12 @@ class GeneratedApiTests(unittest.TestCase):
 
     def test_a_wrapper_name_outside_the_reserved_names_is_refused(self):
         with patch.dict(self.tool.RUNNERS, {6: ("mathforge.operations_v6", "run as execute", "execute")}):
-            with self.assertRaisesRegex(ValueError, "^Generated mathforge/_generated/structured.py: continued_fraction "
+            with self.assertRaisesRegex(ValueError, "^Generated mathforge/_generated/structured.py: count_real_roots "
                                                     "uses execute, which registry.WRAPPER_NAMES must reserve$"):
                 self.tool.render_files(SRC)
 
     def test_v6_operations_use_the_v6_runner(self):
-        pilot = self.rendered("_generated/structured.py")  # continued_fraction is the one production v6 family.
+        pilot = self.rendered("_generated/structured.py")  # continued_fraction is one production v6 family.
         self.assertIn("from ..operations_v6 import run as run_v6\n", pilot)
         self.assertIn('    return run_v6("continued_fraction", dict(value=value), limits=limits)\n', pilot)
         self.install_family(demo_spec(), records={"demo_box": DemoBox})  # It replaces the production families.

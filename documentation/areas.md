@@ -36,7 +36,7 @@ assert mf.ntheory.continued_fraction(-5).terms == (-5,)
 assert mf.operations.continued_fraction(0.5).execution_status is mf.ExecutionStatus.INVALID_INPUT
 ```
 
-The results of operations added in v0.8 use JSON format version 6, which MathForge 0.7 does not read. Results
+The results of operations added since v0.8 use JSON format version 6, which MathForge 0.7 does not read. Results
 of the earlier operations keep their format version.
 
 ## Names
@@ -52,7 +52,7 @@ assert not hasattr(mf, "continued_fraction")
 assert mf.operations.continued_fraction(7).value == mf.ntheory.ContinuedFraction((7,))
 ```
 
-By design, `typing.get_type_hints()` raises `NameError` for the functions of operations added in v0.8: their
+By design, `typing.get_type_hints()` raises `NameError` for the functions of operations added since v0.8: their
 annotations name record classes, such as `ContinuedFraction`, that only type checkers resolve, because
 `import mathforge` loads none of the modules that define them.
 

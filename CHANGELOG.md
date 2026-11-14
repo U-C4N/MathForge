@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.9.0 — 2026-11-13
+## 0.9.0 — 2026-11-14
 
 - Fix the deterministic Miller–Rabin test of the trusted layer: it now uses the thirteen prime bases 2 to 41. With the twelve bases 2 to 37, its stated bound of 3,317,044,064,679,887,385,961,981 admitted the composite 318,665,857,834,031,151,167,461 = 399,165,290,221 × 798,330,580,441; no shipped result was affected, because every caller stayed below `2**61`.
 - Fix `powers_by_prime` of the trusted layer, which looped forever on an empty list of primes; it now returns an empty mapping.

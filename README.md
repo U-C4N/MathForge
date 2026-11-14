@@ -262,7 +262,7 @@ output and remote HTTP serving are outside this alpha.
 
 | Version | Date | Highlights |
 | --- | --- | --- |
-| 0.9.0 | 2026-11-13 | More mathematics: 65 new operations in number theory, algebra, equations, sets, decimal digits, series, integrals, linear algebra, vectors, geometry, statistics and counting; three new MCP area tools |
+| 0.9.0 | 2026-11-14 | More mathematics: 65 new operations in number theory, algebra, equations, sets, decimal digits, series, integrals, linear algebra, vectors, geometry, statistics and counting; three new MCP area tools |
 | 0.8.0 | 2026-10-21 | The speed release: exact kernels with independent checkers, a lean value path, area modules, mathematical JSON v6, MCP area tools and continued fractions |
 | 0.7.0 | 2026-10-14 | Real elementary functions, exact integration, complex algebra, number theory, combinatorics, probability, statistics and JSON v5 |
 | 0.6.0 | 2026-10-14 | Complete polynomial factorization, resultants, real algebraic arithmetic, characteristic polynomials, real eigenvalues and JSON v4 |
